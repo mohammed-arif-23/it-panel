@@ -1,103 +1,214 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+import { useAuth } from '@/contexts/AuthContext'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { GraduationCap, BookOpen, Calendar, LogIn, Loader2, Users, Award, LogOut } from 'lucide-react'
+import Link from 'next/link'
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+export default function HomePage() {
+  const { user, loading, login, logout, hasRegistration } = useAuth()
+  const [registerNumber, setRegisterNumber] = useState('')
+  const [isLogging, setIsLogging] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLogging(true)
+    setError('')
+
+    const result = await login(registerNumber)
+    if (!result.success) {
+      setError(result.error || 'Login failed')
+    }
+    setIsLogging(false)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          {/* Loading */}
+          <div className="flex items-center justify-center space-x-2">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            <span className="text-gray-600">Loading...</span>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-[90%] flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">        
+            <h1 className="text-xl font-bold text-gray-900">Department of Information Technology</h1>
+          </div>
+
+          <Card>
+            <CardHeader className="text-center">
+              <CardTitle className="flex  items-center justify-center gap-2">
+                <LogIn className="h-5 w-5 " />
+                Student Login
+              </CardTitle>
+          
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                
+                  <input
+                    type="text"
+                    required
+                    value={registerNumber}
+                    onChange={(e) => setRegisterNumber(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter your registration number"
+                  />
+                </div>
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+                    {error}
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={isLogging}
+                  className="w-full text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  {isLogging ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Logging in...
+                    </>
+                  ) : (
+                    'Login'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Features Preview */}
+          <div className="mt-8 grid grid-cols-2 gap-4">
+            <Card className="text-center p-4">
+              <BookOpen className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+              <h3 className="font-medium text-black">NPTEL Courses</h3>
+              <p className="text-sm text-black mt-1">Track your course progress</p>
+            </Card>
+            <Card className="text-center p-4">
+              <Calendar className="h-8 w-8 text-green-600 mx-auto mb-2" />
+              <h3 className="font-medium text-black">Seminar Booking</h3>
+              <p className="text-sm text-black mt-1">Book seminar slots</p>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // User is logged in - show dashboard navigation
+  return (
+    <div className="min-h-screen pt-4">
+        <div className="text-center mb-8">
+          <h2 className="text-xl font-bold text-black mb-4">
+            Department of Information Technology
+          </h2>
+        </div>
+      {/* User Info and Logout */}
+      <div className=" backdrop-blur-sm ">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-center items-center ">
+          { user.name ?( <div className="text-center">
+              <h2 className="text-xl font-semibold text-black">
+                Welcome, {user.name}
+              </h2>
+              <p className="text-sm text-black">
+                {user.register_number || ''} {user.register_number && user.class_year?'•':''} {user.class_year || ''}
+              </p>
+            </div>) : (<div className="text-center">
+              <p  className='text-red-500 text-sm'>Go to Quick actions and Update Your Profile</p>
+            </div>)}
+          
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        {/* Service Cards */}
+        <div className="grid md:grid-cols-2 gap-8 mb-8">
+          {/* NPTEL Card */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-3">
+                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <BookOpen className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold">NPTEL Courses</h3>
+                  <p className="text-sm text-black">Track your learning progress</p>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+
+                <Button asChild className="w-full mt-4 bg-blue-600 text-white border border-blue-600 hover:bg-blue-700">
+                  <Link href="/nptel">Update NPTEL Progress</Link>
+                </Button>
+            </CardContent>
+          </Card>
+
+          {/* Seminar Booking Card */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-3">
+                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <Calendar className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold">Seminar Booking</h3>
+                  <p className="text-sm text-black">Book your seminar slots</p>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+             
+                
+                <Button asChild className="w-full mt-4 bg-green-600 hover:bg-green-700">
+                  <Link href="/seminar" className='text-white'>Book for Seminar</Link>
+                </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Button variant="outline" asChild>
+                <Link href="/profile" className='bg-transparent  hover:bg-red-50'>Update Profile</Link>
+              </Button>
+                <Button 
+              variant="outline" 
+              onClick={logout}
+              className="text-red-600 bg-transparent hover:text-red-700 hover:bg-red-50"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
-  );
+  )
 }
