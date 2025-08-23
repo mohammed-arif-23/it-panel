@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { emailService } from '../../../../lib/emailService';
 
+export const config = {
+  runtime: 'edge',
+  unstable_noStore: true,
+};
+
+// Enable cron job execution
 export async function GET(request: NextRequest) {
   try {
     // Test email service connection
