@@ -98,8 +98,9 @@ export async function POST(request: NextRequest) {
       .eq('student_id', selectedBooking.student_id)
       .eq('booking_date', seminarDate)
       .single();
-    
-    const seminarTopic = booking?.seminar_topic || 'Not provided';
+
+    // Add proper typing to the booking object
+    const seminarTopic = (booking as { seminar_topic?: string } | null)?.seminar_topic || 'Not provided';
 
     // Format the seminar date for email
     const formattedDate = tomorrow.toLocaleDateString('en-US', {

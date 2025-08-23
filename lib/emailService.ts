@@ -14,6 +14,7 @@ export interface StudentNotification {
   name: string;
   registerNumber: string;
   seminarDate: string;
+  seminarTopic?: string;
 }
 
 class EmailService {
