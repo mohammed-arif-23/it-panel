@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import { GraduationCap, BookOpen, Calendar, LogIn, Loader2, Users, Award, LogOut } from 'lucide-react'
+import { GraduationCap, BookOpen, Calendar, LogIn, Loader2, Users, Award, LogOut, FileText } from 'lucide-react'
 import Link from 'next/link'
 
 export default function HomePage() {
@@ -25,13 +25,7 @@ export default function HomePage() {
       return false
     }
     
-    // Extract positions 6-7-8 (indices 5-6-7) for department code
-    // Example: 620123205001 -> positions 6-7-8 are indices 5-6-7 = "320"
-    // Wait, let me recalculate: 620123205001
-    // Position: 123456789012
-    // For positions 6-7-8, we need indices 5-6-7 which gives "320"
-    // But we want "205", so let me check what positions contain "205"
-    // 620123205001: positions 7-8-9 (indices 6-7-8) contain "205"
+
     const departmentCode = regNumber.substring(6, 9)
     return departmentCode === '205'
   }
@@ -85,7 +79,7 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[70vh] flex items-center justify-center">
         <div className="text-center">
           {/* Loading */}
           <div className="flex items-center justify-center space-x-2">
@@ -156,19 +150,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          {/* Features Preview */}
-          <div className="mt-8 grid grid-cols-2 gap-4">
-            <Card className="text-center p-4">
-              <BookOpen className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-              <h3 className="font-medium text-black">NPTEL Courses</h3>
-              <p className="text-sm text-black mt-1">Track your course progress</p>
-            </Card>
-            <Card className="text-center p-4">
-              <Calendar className="h-8 w-8 text-green-600 mx-auto mb-2" />
-              <h3 className="font-medium text-black">Seminar Booking</h3>
-              <p className="text-sm text-black mt-1">Book seminar slots</p>
-            </Card>
-          </div>
+        
         </div>
       </div>
     )
@@ -204,7 +186,7 @@ export default function HomePage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Service Cards */}
-        <div className="grid md:grid-cols-2 gap-8 mb-8">
+        <div className="grid md:grid-cols-3 gap-8 mb-8">
           {/* NPTEL Card */}
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
@@ -244,6 +226,28 @@ export default function HomePage() {
                 
                 <Button asChild className="w-full mt-4 bg-green-600 hover:bg-green-700">
                   <Link href="/seminar" className='text-white'>Book for Seminar</Link>
+                </Button>
+            </CardContent>
+          </Card>
+
+          {/* Assignment Submission Card */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-3">
+                <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <FileText className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold">Assignment Submission</h3>
+                  <p className="text-sm text-black">Submit your assignments</p>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+             
+                
+                <Button asChild className="w-full mt-4 bg-purple-600 text-white border border-purple-600 hover:bg-purple-700">
+                  <Link href="/assignments">Submit Assignments</Link>
                 </Button>
             </CardContent>
           </Card>

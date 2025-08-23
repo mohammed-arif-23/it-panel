@@ -148,6 +148,70 @@ export interface Database {
           selected_at?: string
         }
       }
+      assignments: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          due_date: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string | null
+          due_date: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string | null
+          due_date?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      assignment_submissions: {
+        Row: {
+          id: string
+          assignment_id: string
+          student_id: string
+          file_url: string
+          file_name: string
+          marks: number | null
+          status: 'submitted' | 'graded'
+          submitted_at: string
+          graded_at: string | null
+          feedback: string | null
+        }
+        Insert: {
+          id?: string
+          assignment_id: string
+          student_id: string
+          file_url: string
+          file_name: string
+          marks?: number | null
+          status?: 'submitted' | 'graded'
+          submitted_at?: string
+          graded_at?: string | null
+          feedback?: string | null
+        }
+        Update: {
+          id?: string
+          assignment_id?: string
+          student_id?: string
+          file_url?: string
+          file_name?: string
+          marks?: number | null
+          status?: 'submitted' | 'graded'
+          submitted_at?: string
+          graded_at?: string | null
+          feedback?: string | null
+        }
+      }
       // Legacy NPTEL tables from original project
       ii_it_students: {
         Row: {

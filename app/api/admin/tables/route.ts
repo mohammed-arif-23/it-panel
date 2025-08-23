@@ -34,6 +34,18 @@ export async function GET(request: NextRequest) {
         type: 'unified'
       },
       {
+        name: 'assignments',
+        displayName: 'Assignments',
+        description: 'Assignment tasks and details',
+        type: 'unified'
+      },
+      {
+        name: 'assignment_submissions',
+        displayName: 'Assignment Submissions',
+        description: 'Student assignment submissions and grades',
+        type: 'unified'
+      },
+      {
         name: 'ii_it_students',
         displayName: 'II IT Students (Legacy)',
         description: 'Legacy NPTEL records for II IT students',

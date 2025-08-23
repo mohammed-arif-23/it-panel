@@ -31,6 +31,27 @@ const tableColumns = {
     { name: 'seminar_date', type: 'date', displayName: 'Seminar Date' },
     { name: 'selected_at', type: 'timestamp', displayName: 'Selected At' }
   ],
+  assignments: [
+    { name: 'id', type: 'string', displayName: 'ID' },
+    { name: 'title', type: 'string', displayName: 'Title' },
+    { name: 'description', type: 'string', displayName: 'Description' },
+    { name: 'class_year', type: 'string', displayName: 'Class Year' },
+    { name: 'due_date', type: 'timestamp', displayName: 'Due Date' },
+    { name: 'created_at', type: 'timestamp', displayName: 'Created At' },
+    { name: 'updated_at', type: 'timestamp', displayName: 'Updated At' }
+  ],
+  assignment_submissions: [
+    { name: 'id', type: 'string', displayName: 'ID' },
+    { name: 'assignment_id', type: 'string', displayName: 'Assignment ID' },
+    { name: 'student_id', type: 'string', displayName: 'Student ID' },
+    { name: 'file_url', type: 'string', displayName: 'File URL' },
+    { name: 'file_name', type: 'string', displayName: 'File Name' },
+    { name: 'marks', type: 'number', displayName: 'Marks' },
+    { name: 'status', type: 'enum', displayName: 'Status' },
+    { name: 'submitted_at', type: 'timestamp', displayName: 'Submitted At' },
+    { name: 'graded_at', type: 'timestamp', displayName: 'Graded At' },
+    { name: 'feedback', type: 'string', displayName: 'Feedback' }
+  ],
   ii_it_students: [
     { name: 'id', type: 'string', displayName: 'ID' },
     { name: 'register_number', type: 'string', displayName: 'Register Number' },
