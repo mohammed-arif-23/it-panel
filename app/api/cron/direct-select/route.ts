@@ -16,15 +16,9 @@ interface BookingWithStudent {
   };
 }
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    // Check if this is a cron job request and bypass authentication if needed
-    const userAgent = request.headers.get('user-agent') || '';
-    const isCronJob = userAgent.includes('Vercel-Cron-Job') || userAgent.includes('cron');
-    
-    if (isCronJob) {
-      console.log('Cron job request detected, proceeding with auto-selection');
-    }
+    console.log('Direct cron selection started at:', new Date().toISOString());
     
     // Get next working day (skip Sunday as it's a holiday)
     const tomorrow = new Date();
@@ -38,7 +32,7 @@ export async function POST(request: NextRequest) {
     const seminarDate = tomorrow.toISOString().split('T')[0];
     const dayName = tomorrow.toLocaleDateString('en-US', { weekday: 'long' });
 
-    console.log('Starting auto-selection for date:', seminarDate, '(' + dayName + ')');
+    console.log('Processing selection for date:', seminarDate, '(' + dayName + ')');
 
     // Ensure we never schedule on Sunday
     if (tomorrow.getDay() === 0) {
@@ -48,13 +42,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if selections already exist for tomorrow (should be 2 selections, one per class)
-    const { data: existingSelections, error: selectionCheckError } = await supabase
+    // Check if selections already exist for tomorrow
+    const { data: existingSelections } = await supabase
       .from('unified_seminar_selections')
       .select('*')
       .eq('seminar_date', seminarDate);
 
     if (existingSelections && existingSelections.length >= 2) {
+      console.log('Selections already exist for this date');
       return NextResponse.json(
         { message: 'Selections already exist for this date', selections: existingSelections },
         { status: 200 }
@@ -88,33 +83,20 @@ export async function POST(request: NextRequest) {
 
     console.log(`Found ${bookings.length} bookings for selection`);
 
-    // Get all previously selected students to exclude them from future selections
-    const { data: previousSelections, error: previousSelectionsError } = await supabase
+    // Get all previously selected students to exclude them
+    const { data: previousSelections } = await supabase
       .from('unified_seminar_selections')
       .select('student_id')
-      .neq('seminar_date', seminarDate); // Exclude today's selections if any exist
+      .neq('seminar_date', seminarDate);
 
-    if (previousSelectionsError) {
-      console.error('Error fetching previous selections:', previousSelectionsError);
-      return NextResponse.json(
-        { error: 'Failed to fetch previous selections', details: previousSelectionsError.message },
-        { status: 500 }
-      );
-    }
-
-    // Create a set of previously selected student IDs for efficient lookup
     const previouslySelectedStudentIds = new Set(
       (previousSelections as any[])?.map(selection => selection.student_id) || []
     );
 
-    console.log(`Found ${previouslySelectedStudentIds.size} previously selected students to exclude`);
-
-    // Filter out previously selected students from bookings
+    // Filter out previously selected students
     const eligibleBookings = bookings.filter(booking => 
       !previouslySelectedStudentIds.has(booking.student_id)
     );
-
-    console.log(`Eligible bookings after excluding previous selections: ${eligibleBookings.length}`);
 
     if (eligibleBookings.length === 0) {
       return NextResponse.json(
@@ -132,29 +114,21 @@ export async function POST(request: NextRequest) {
     const iiItBookings = eligibleBookings.filter(booking => booking.unified_students.class_year === 'II-IT');
     const iiiItBookings = eligibleBookings.filter(booking => booking.unified_students.class_year === 'III-IT');
 
-    console.log(`Eligible II-IT bookings: ${iiItBookings.length}, Eligible III-IT bookings: ${iiiItBookings.length}`);
-
     const selectedStudents: Array<{ booking: BookingWithStudent; student: BookingWithStudent['unified_students'] }> = [];
-    const selectionResults: any[] = [];
 
-    // Select one student from II-IT class if available
+    // Select one student from each class
     if (iiItBookings.length > 0) {
       const randomIndex = Math.floor(Math.random() * iiItBookings.length);
       const selectedBooking = iiItBookings[randomIndex];
       selectedStudents.push({ booking: selectedBooking, student: selectedBooking.unified_students });
       console.log('Selected II-IT student:', selectedBooking.unified_students.register_number);
-    } else {
-      console.log('No eligible II-IT students available (all previously selected or no bookings)');
     }
 
-    // Select one student from III-IT class if available
     if (iiiItBookings.length > 0) {
       const randomIndex = Math.floor(Math.random() * iiiItBookings.length);
       const selectedBooking = iiiItBookings[randomIndex];
       selectedStudents.push({ booking: selectedBooking, student: selectedBooking.unified_students });
       console.log('Selected III-IT student:', selectedBooking.unified_students.register_number);
-    } else {
-      console.log('No eligible III-IT students available (all previously selected or no bookings)');
     }
 
     if (selectedStudents.length === 0) {
@@ -164,8 +138,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create selection records for each selected student
-    for (const { booking: selectedBooking, student: selectedStudent } of selectedStudents) {
+    // Create selection records
+    const selectionResults: any[] = [];
+    for (const { booking: selectedBooking } of selectedStudents) {
       const { data: selection, error: selectionError } = await (supabase as any)
         .from('unified_seminar_selections')
         .insert([{
@@ -187,7 +162,7 @@ export async function POST(request: NextRequest) {
       selectionResults.push(selection);
     }
 
-    // Format the seminar date for email
+    // Send email notifications
     const formattedDate = tomorrow.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -195,11 +170,9 @@ export async function POST(request: NextRequest) {
       day: 'numeric'
     });
 
-    // Send email notifications to all selected students
     const emailResults = [];
     for (const { booking: selectedBooking, student: selectedStudent } of selectedStudents) {
       try {
-        // Get the selected student's booking to get the seminar topic
         const { data: booking } = await supabase
           .from('unified_seminar_bookings')
           .select('seminar_topic')
@@ -207,7 +180,6 @@ export async function POST(request: NextRequest) {
           .eq('booking_date', seminarDate)
           .single();
 
-        // Add proper typing to the booking object
         const seminarTopic = (booking as { seminar_topic?: string } | null)?.seminar_topic || 'Not provided';
 
         const emailSent = await emailService.sendSelectionNotification({
@@ -225,26 +197,19 @@ export async function POST(request: NextRequest) {
           emailSent
         });
 
-        if (emailSent) {
-          console.log('Selection email sent successfully to:', selectedStudent.email);
-        } else {
-          console.error('Failed to send selection email to:', selectedStudent.email);
-        }
+        console.log('Email result for', selectedStudent.register_number, ':', emailSent);
       } catch (emailError) {
-        console.error('Email sending error for student', selectedStudent.register_number, ':', emailError);
-        emailResults.push({
-          student: selectedStudent.register_number,
-          class: selectedStudent.class_year,
-          emailSent: false,
-          error: emailError instanceof Error ? emailError.message : 'Unknown error'
-        });
+        console.error('Email error for student', selectedStudent.register_number, ':', emailError);
       }
     }
 
+    console.log('Direct cron selection completed successfully');
+
     return NextResponse.json({
-      message: `${selectedStudents.length} student(s) selected successfully`,
+      success: true,
+      message: `Direct cron selection: ${selectedStudents.length} student(s) selected successfully`,
       selections: selectedStudents.map((item, index) => ({
-        id: (selectionResults[index] as any).id,
+        id: (selectionResults[index] as any)?.id,
         student: {
           register_number: item.student.register_number,
           name: item.student.name,
@@ -252,7 +217,7 @@ export async function POST(request: NextRequest) {
           class_year: item.student.class_year
         },
         seminar_date: seminarDate,
-        selected_at: (selectionResults[index] as any).selected_at
+        selected_at: (selectionResults[index] as any)?.selected_at
       })),
       summary: {
         total_bookings: bookings.length,
@@ -262,57 +227,24 @@ export async function POST(request: NextRequest) {
         iii_it_bookings: iiiItBookings.length,
         selected_count: selectedStudents.length
       },
-      email_results: emailResults
+      email_results: emailResults,
+      timestamp: new Date().toISOString()
     }, { status: 200 });
 
   } catch (error) {
-    console.error('Auto-selection error:', error);
+    console.error('Direct cron selection error:', error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }
 }
 
-// GET endpoint to check selection status
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const date = searchParams.get('date');
-    
-    if (!date) {
-      return NextResponse.json(
-        { error: 'Date parameter is required' },
-        { status: 400 }
-      );
-    }
-
-    const { data: selections, error } = await supabase
-      .from('unified_seminar_selections')
-      .select(`
-        *,
-        unified_students(*)
-      `)
-      .eq('seminar_date', date);
-
-    if (error) {
-      return NextResponse.json(
-        { error: 'Failed to fetch selections', details: error.message },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      selections: selections || [],
-      count: selections ? selections.length : 0,
-      exists: !!(selections && selections.length > 0)
-    }, { status: 200 });
-
-  } catch (error) {
-    console.error('Selection check error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
-  }
+// Also support POST method
+export async function POST(request: NextRequest) {
+  return GET(request);
 }
