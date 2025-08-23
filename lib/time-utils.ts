@@ -49,14 +49,31 @@ export const timeUtils = {
   getTomorrowDate: (): string => {
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
+    
+    // If tomorrow is Sunday (0), skip to Monday (add 1 more day)
+    if (tomorrow.getDay() === 0) {
+      tomorrow.setDate(tomorrow.getDate() + 1)
+    }
+    
     return tomorrow.toISOString().split('T')[0]
   },
 
   getNextMonday: (fromDate?: Date): Date => {
     const date = fromDate || new Date()
     const nextMonday = new Date(date)
-    const daysUntilMonday = (8 - date.getDay()) % 7 || 7
-    nextMonday.setDate(date.getDate() + daysUntilMonday)
+    const currentDay = date.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    
+    // Calculate days to add to get to next Monday
+    let daysToAdd
+    if (currentDay === 0) { // Sunday
+      daysToAdd = 1 // Next Monday is tomorrow
+    } else if (currentDay === 1) { // Monday
+      daysToAdd = 7 // Next Monday is in 7 days
+    } else { // Tuesday (2) through Saturday (6)
+      daysToAdd = 8 - currentDay // Days until next Monday
+    }
+    
+    nextMonday.setDate(date.getDate() + daysToAdd)
     nextMonday.setHours(0, 0, 0, 0)
     return nextMonday
   },

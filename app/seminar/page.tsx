@@ -126,6 +126,25 @@ const seminarDbHelpers = {
       .order('seminar_date', { ascending: false })
     
     return { data, error }
+  },
+
+  async hasStudentBeenPreviouslySelected(studentId: string) {
+    const { data, error } = await supabase
+      .from('unified_seminar_selections')
+      .select('id')
+      .eq('student_id', studentId)
+      .limit(1)
+      .single()
+    
+    return { hasBeenSelected: !!data && !error, error: error?.code === 'PGRST116' ? null : error }
+  },
+
+  async getPreviouslySelectedStudents() {
+    const { data, error } = await supabase
+      .from('unified_seminar_selections')
+      .select('student_id')
+    
+    return { data: data ? [...new Set((data as any[]).map(s => s.student_id))] : [], error }
   }
 }
 
@@ -277,13 +296,13 @@ export default function SeminarPage() {
       
       if (error) {
         if (error.code === '23505') {
-          setBookingMessage('You have already booked for tomorrow!')
+          setBookingMessage(`You have already booked for next seminar (${seminarTimingService.formatDateWithDay(tomorrowDate).split(',')[0]})!`)
           setHasBookedToday(true)
         } else {
           setBookingMessage('Failed to book. Please try again.')
         }
       } else {
-        setBookingMessage('Successfully booked for tomorrow\'s seminar!')
+        setBookingMessage(`Successfully booked for next seminar (${seminarTimingService.formatDateWithDay(tomorrowDate).split(',')[0]})!`)
         setHasBookedToday(true)
       }
     } catch (error) {
@@ -397,9 +416,9 @@ export default function SeminarPage() {
                                 Booking...
                               </>
                             ) : (
-                              <>
+                              <>  
                                 <Calendar className="h-4 w-4 mr-2" />
-                                Book Tomorrow's Seminar
+                                Book Next Seminar ({seminarTimingService.formatDateWithDay(seminarTimingService.getTomorrowDate()).split(',')[0]})
                               </>
                             )}
                           </Button>
@@ -421,87 +440,21 @@ export default function SeminarPage() {
                         Selection in: {seminarTimingService.formatTimeRemaining(windowInfo.timeUntilSelection)}
                       </p>
                     )}
-                    {windowInfo.nextOpenTime && (
-                      <p className="text-sm text-black">
-                        Next window: {seminarTimingService.formatTime12Hour(windowInfo.nextOpenTime)}
-                      </p>
-                    )}
+                 
                   </div>
                 )}
 
-                {bookingMessage && (
-                  <div className={`mt-4 p-3 rounded-lg ${
-                    bookingMessage.includes('Successfully') 
-                      ? 'bg-green-50 border border-green-200 text-green-700'
-                      : 'bg-red-50 border border-red-200 text-red-700'
-                  }`}>
-                    {bookingMessage}
-                  </div>
-                )}
                 
-                {selectionMessage && (
-                  <div className="mt-4 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-700">
-                    {selectionMessage}
-                  </div>
-                )}
+               
               </CardContent>
             </Card>
 
-            {/* Tomorrow's Seminar Info */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center space-x-3">
-                  <Calendar className="h-6 w-6 text-blue-600" />
-                  <CardTitle className="text-black">Tomorrow's Seminar</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-lg p-4">
-                  <p className="text-blue-900 font-medium">
-                    {seminarTimingService.formatDate(seminarTimingService.getTomorrowDate())}
-                  </p>
-                  <p className="text-blue-700 text-sm mt-1">
-                    Selection will be made after {seminarTimingService.getBookingWindowConfig().selectionTime}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Today's Selection */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center space-x-3">
-                  <Trophy className="h-6 w-6 text-yellow-600" />
-                  <CardTitle className="text-black">Today's Selection</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {todaySelection ? (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <div className="text-center">
-                      <div className="text-2xl mb-2">🎉</div>
-                      <p className="font-medium text-yellow-900">
-                        {todaySelection.student.register_number}
-                      </p>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        Selected for today's seminar
-                      </p>
-                      <p className="text-xs text-yellow-600 mt-2">
-                        Selected at {seminarTimingService.formatTime12Hour(new Date(todaySelection.selectedAt))}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center text-black">
-                    <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                    <p>No selection made yet for today</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          
 
             {/* User's Previous Selections */}
             <Card>

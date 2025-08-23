@@ -15,6 +15,7 @@ export interface StudentNotification {
   registerNumber: string;
   seminarDate: string;
   seminarTopic?: string;
+  classYear?: string;
 }
 
 class EmailService {
@@ -110,12 +111,20 @@ class EmailService {
                 <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${student.name} (${student.registerNumber})</td>
               </tr>
               <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Class:</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${student.classYear || 'Not specified'}</td>
+              </tr>
+              <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Date:</strong></td>
                 <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${student.seminarDate}</td>
               </tr>
               <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Topic:</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${student.seminarTopic || 'Not provided'}</td>
+              </tr>
+              <tr>
                 <td style="padding: 8px 0;"><strong>Department:</strong></td>
-                <td style="padding: 8px 0;">${process.env.COLLEGE_NAME || 'Department of IT'}</td>
+                <td style="padding: 8px 0;">'Department of Information Technology - AVSEC'</td>
               </tr>
             </table>
           </div>
@@ -129,21 +138,10 @@ class EmailService {
               <li>Contact your faculty coordinator if you have any questions</li>
             </ul>
           </div>
-          
-          <p style="margin-top: 30px;">
-            If you have any questions or concerns, please don't hesitate to contact the department.
-          </p>
-          
-          <p style="margin-bottom: 0;">
-            Best regards,<br>
-            <strong>${process.env.COLLEGE_NAME || 'Department of IT'}</strong><br>
-            <em>Seminar Coordination Team</em>
-          </p>
         </div>
         
         <div style="text-align: center; padding: 20px; color: #6c757d; font-size: 12px;">
-          <p style="margin: 0;">This is an automated notification from the College Seminar System.</p>
-          <p style="margin: 5px 0 0 0;">Please do not reply to this email.</p>
+          <p style="margin: 0;">This is an automated notification from the <b>Supabase</b> created by Arif - All Rights Reserved.</p>
         </div>
       </body>
       </html>
@@ -160,24 +158,10 @@ We are pleased to inform you that you have been SELECTED to present in tomorrow'
 
 SEMINAR DETAILS:
 - Student: ${student.name} (${student.registerNumber})
+- Class: ${student.classYear || 'Not specified'}
 - Date: ${student.seminarDate}
+- Topic: ${student.seminarTopic || 'Not provided'}
 - Department: ${process.env.COLLEGE_NAME || 'Department of IT'}
-
-IMPORTANT REMINDERS:
-- Please prepare your presentation materials in advance
-- Arrive at least 15 minutes before the scheduled time
-- Bring any required technical equipment or materials
-- Contact your faculty coordinator if you have any questions
-
-If you have any questions or concerns, please don't hesitate to contact the department.
-
-Best regards,
-${process.env.COLLEGE_NAME || 'Department of IT'}
-Seminar Coordination Team
-
----
-This is an automated notification from the College Seminar System.
-Please do not reply to this email.
     `;
   }
 

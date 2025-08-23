@@ -74,14 +74,14 @@ CREATE TABLE public.seminar_bookings (
     CONSTRAINT unique_student_seminar_booking UNIQUE(student_id, booking_date)
 );
 
--- Seminar selections (same as original)
+-- Seminar selections (modified to allow multiple selections per date)
 DROP TABLE IF EXISTS public.seminar_selections CASCADE;
 CREATE TABLE public.seminar_selections (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     student_id UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
     seminar_date DATE NOT NULL,
     selected_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
-    CONSTRAINT unique_seminar_date UNIQUE(seminar_date)
+    CONSTRAINT unique_student_seminar_selection UNIQUE(student_id, seminar_date)
 );
 
 -- ===========================

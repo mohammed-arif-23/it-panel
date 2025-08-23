@@ -37,7 +37,30 @@ class SeminarTimingService {
   getTomorrowDate(): string {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // If tomorrow is Sunday (0), skip to Monday (add 1 more day)
+    if (tomorrow.getDay() === 0) {
+      tomorrow.setDate(tomorrow.getDate() + 1);
+    }
+    
     return tomorrow.toISOString().split('T')[0];
+  }
+
+  isWorkingDay(date: Date): boolean {
+    const day = date.getDay();
+    // Sunday is 0, Monday is 1, Saturday is 6
+    // Working days are Monday (1) to Saturday (6)
+    return day >= 1 && day <= 6;
+  }
+
+  formatDateWithDay(dateString: string): string {
+    const date = new Date(dateString + 'T12:00:00'); // Noon to avoid timezone issues
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   }
 
   getTodayBookingWindowStart(): Date {

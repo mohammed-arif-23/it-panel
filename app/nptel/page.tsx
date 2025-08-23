@@ -312,7 +312,19 @@ export default function NPTELPage() {
     if (prevWeekUpdateTime) {
       const lastUpdate = new Date(prevWeekUpdateTime)
       const nextMonday = new Date(lastUpdate)
-      nextMonday.setDate(lastUpdate.getDate() + ((8 - lastUpdate.getDay()) % 7 || 7))
+      const currentDay = lastUpdate.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      
+      // Calculate days to add to get to next Monday
+      let daysToAdd
+      if (currentDay === 0) { // Sunday
+        daysToAdd = 1 // Next Monday is tomorrow
+      } else if (currentDay === 1) { // Monday
+        daysToAdd = 7 // Next Monday is in 7 days
+      } else { // Tuesday (2) through Saturday (6)
+        daysToAdd = 8 - currentDay // Days until next Monday
+      }
+      
+      nextMonday.setDate(lastUpdate.getDate() + daysToAdd)
       nextMonday.setHours(0, 0, 0, 0)
       
       if (now < nextMonday) {
