@@ -123,25 +123,17 @@ class EmailService {
                 <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${student.seminarTopic || 'Not provided'}</td>
               </tr>
               <tr>
-                <td style="padding: 8px 0;"><strong>Department:</strong></td>
+                <td style="padding: 8px 0;"><strong>By:</strong></td>
                 <td style="padding: 8px 0;">'Department of Information Technology - AVSEC'</td>
               </tr>
             </table>
           </div>
           
-          <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 6px; margin: 20px 0;">
-            <h4 style="margin-top: 0; color: #856404;">⚠️ Important Reminders</h4>
-            <ul style="margin: 10px 0; padding-left: 20px; color: #856404;">
-              <li>Please prepare your presentation materials in advance</li>
-              <li>Arrive at least 15 minutes before the scheduled time</li>
-              <li>Bring any required technical equipment or materials</li>
-              <li>Contact your faculty coordinator if you have any questions</li>
-            </ul>
-          </div>
+        
         </div>
         
         <div style="text-align: center; padding: 20px; color: #6c757d; font-size: 12px;">
-          <p style="margin: 0;">This is an automated notification from the <b>Supabase</b> created by Arif - All Rights Reserved.</p>
+          <p style="margin: 0;">This is an automated notification from the <b>Supabase</b> created by ©Arif - All Rights Reserved.</p>
         </div>
       </body>
       </html>

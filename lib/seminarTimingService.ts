@@ -46,6 +46,51 @@ class SeminarTimingService {
     return tomorrow.toISOString().split('T')[0];
   }
 
+  // New method to get the next seminar date for booking purposes
+  getNextSeminarDate(): string {
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+    
+    // If today is Saturday (6) or Sunday (0), seminar is on Monday
+    if (today.getDay() === 6 || today.getDay() === 0) {
+      // Find next Monday
+      const nextMonday = new Date(today);
+      const daysUntilMonday = today.getDay() === 6 ? 2 : 1; // Saturday: +2, Sunday: +1
+      nextMonday.setDate(today.getDate() + daysUntilMonday);
+      return nextMonday.toISOString().split('T')[0];
+    }
+    
+    // For Monday-Friday, normal next day (but skip if next day is Sunday)
+    if (tomorrow.getDay() === 0) {
+      tomorrow.setDate(tomorrow.getDate() + 1); // Skip Sunday to Monday
+    }
+    
+    return tomorrow.toISOString().split('T')[0];
+  }
+
+  // Get descriptive information about seminar scheduling
+  getSeminarScheduleInfo(): { nextSeminarDate: string; scheduleDescription: string } {
+    const today = new Date();
+    const nextSeminarDate = this.getNextSeminarDate();
+    const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+    
+    let scheduleDescription = '';
+    
+    if (today.getDay() === 6) { // Saturday
+      scheduleDescription = 'Saturday and Sunday bookings are both for Monday\'s seminar';
+    } else if (today.getDay() === 0) { // Sunday
+      scheduleDescription = 'Saturday and Sunday bookings are both for Monday\'s seminar';
+    } else {
+      scheduleDescription = `${dayName} bookings are for next working day\'s seminar`;
+    }
+    
+    return {
+      nextSeminarDate,
+      scheduleDescription
+    };
+  }
+
   isWorkingDay(date: Date): boolean {
     const day = date.getDay();
     // Sunday is 0, Monday is 1, Saturday is 6

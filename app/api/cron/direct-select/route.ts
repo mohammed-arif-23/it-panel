@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { emailService } from '../../../../lib/emailService';
+import { seminarTimingService } from '../../../../lib/seminarTimingService';
 
 interface BookingWithStudent {
   id: string;
@@ -20,22 +21,16 @@ export async function GET(request: NextRequest) {
   try {
     console.log('Direct cron selection started at:', new Date().toISOString());
     
-    // Get next working day (skip Sunday as it's a holiday)
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    // If tomorrow is Sunday (0), skip to Monday (add 1 more day)
-    if (tomorrow.getDay() === 0) {
-      tomorrow.setDate(tomorrow.getDate() + 1);
-    }
-    
-    const seminarDate = tomorrow.toISOString().split('T')[0];
-    const dayName = tomorrow.toLocaleDateString('en-US', { weekday: 'long' });
+    // Get next seminar date (supports Sunday booking for Monday seminars)
+    const seminarDate = seminarTimingService.getNextSeminarDate();
+    const dayName = new Date(seminarDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' });
 
     console.log('Processing selection for date:', seminarDate, '(' + dayName + ')');
 
-    // Ensure we never schedule on Sunday
-    if (tomorrow.getDay() === 0) {
+    // Note: Sunday is a holiday - no seminars are scheduled on Sunday
+    // But Sunday bookings target Monday seminars, so we allow Sunday cron execution
+    const seminarDay = new Date(seminarDate + 'T12:00:00').getDay();
+    if (seminarDay === 0) {
       return NextResponse.json(
         { error: 'Cannot schedule seminar on Sunday (holiday)', date: seminarDate },
         { status: 400 }
@@ -83,15 +78,20 @@ export async function GET(request: NextRequest) {
 
     console.log(`Found ${bookings.length} bookings for selection`);
 
-    // Get all previously selected students to exclude them
+    // Get today's previous selections to avoid duplicate selections on the same day
+    // Only consider selections made today for today's seminar date
+    const today = new Date().toISOString().split('T')[0];
+    
     const { data: previousSelections } = await supabase
       .from('unified_seminar_selections')
       .select('student_id')
-      .neq('seminar_date', seminarDate);
+      .eq('seminar_date', seminarDate); // Only get selections for the same seminar date
 
     const previouslySelectedStudentIds = new Set(
       (previousSelections as any[])?.map(selection => selection.student_id) || []
     );
+
+    console.log(`Found ${previouslySelectedStudentIds.size} students already selected for ${seminarDate} to exclude`);
 
     // Filter out previously selected students
     const eligibleBookings = bookings.filter(booking => 
@@ -101,10 +101,11 @@ export async function GET(request: NextRequest) {
     if (eligibleBookings.length === 0) {
       return NextResponse.json(
         { 
-          message: 'No eligible students available (all have been previously selected)', 
+          message: 'No eligible students available (all have been selected for this date)', 
           date: seminarDate,
           total_bookings: bookings.length,
-          previously_selected_count: previouslySelectedStudentIds.size
+          already_selected_count: previouslySelectedStudentIds.size,
+          selection_basis: 'same-day bookings only'
         },
         { status: 200 }
       );
@@ -163,7 +164,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Send email notifications
-    const formattedDate = tomorrow.toLocaleDateString('en-US', {
+    const formattedDate = new Date(seminarDate + 'T12:00:00').toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -222,7 +223,10 @@ export async function GET(request: NextRequest) {
       summary: {
         total_bookings: bookings.length,
         eligible_bookings: eligibleBookings.length,
-        previously_selected_excluded: previouslySelectedStudentIds.size,
+        already_selected_excluded: previouslySelectedStudentIds.size,
+        selection_basis: 'same-day bookings only',
+        booking_date: today,
+        seminar_date: seminarDate,
         ii_it_bookings: iiItBookings.length,
         iii_it_bookings: iiiItBookings.length,
         selected_count: selectedStudents.length

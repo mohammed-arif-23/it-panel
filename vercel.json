@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/direct-select",
-      "schedule": "0 19 * * 1-6"
+      "schedule": "0 14 * * 0-6"
     }
   ]
 }

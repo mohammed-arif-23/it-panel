@@ -249,9 +249,9 @@ export default function SeminarPage() {
     if (!seminarStudent) return
 
     try {
-      // Check if user has booked for tomorrow
-      const tomorrowDate = seminarTimingService.getTomorrowDate()
-      const { data: booking } = await seminarDbHelpers.getStudentBooking(seminarStudent.id, tomorrowDate)
+      // Check if user has booked for next seminar
+      const nextSeminarDate = seminarTimingService.getNextSeminarDate()
+      const { data: booking } = await seminarDbHelpers.getStudentBooking(seminarStudent.id, nextSeminarDate)
       setHasBookedToday(!!booking)
 
       // Get today's selection
@@ -291,18 +291,18 @@ export default function SeminarPage() {
     }
 
     try {
-      const tomorrowDate = seminarTimingService.getTomorrowDate()
-      const { data, error } = await seminarDbHelpers.createBooking(seminarStudent.id, tomorrowDate, seminarTopic)
+      const nextSeminarDate = seminarTimingService.getNextSeminarDate()
+      const { data, error } = await seminarDbHelpers.createBooking(seminarStudent.id, nextSeminarDate, seminarTopic)
       
       if (error) {
         if (error.code === '23505') {
-          setBookingMessage(`You have already booked for next seminar (${seminarTimingService.formatDateWithDay(tomorrowDate).split(',')[0]})!`)
+          setBookingMessage(`You have already booked for next seminar (${seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0]})!`)
           setHasBookedToday(true)
         } else {
           setBookingMessage('Failed to book. Please try again.')
         }
       } else {
-        setBookingMessage(`Successfully booked for next seminar (${seminarTimingService.formatDateWithDay(tomorrowDate).split(',')[0]})!`)
+        setBookingMessage(`Successfully booked for next seminar (${seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0]})!`)
         setHasBookedToday(true)
       }
     } catch (error) {
@@ -418,7 +418,7 @@ export default function SeminarPage() {
                             ) : (
                               <>  
                                 <Calendar className="h-4 w-4 mr-2" />
-                                Book Next Seminar ({seminarTimingService.formatDateWithDay(seminarTimingService.getTomorrowDate()).split(',')[0]})
+                                Book Next Seminar ({seminarTimingService.formatDateWithDay(seminarTimingService.getNextSeminarDate()).split(',')[0]})
                               </>
                             )}
                           </Button>
@@ -454,6 +454,34 @@ export default function SeminarPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Next Seminar Info */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center space-x-3">
+                  <Calendar className="h-6 w-6 text-blue-600" />
+                  <CardTitle className="text-black">Next Seminar</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="border border-blue-200 rounded-lg p-4">
+                  <p className="text-blue-900 font-medium mb-2">
+                    {seminarTimingService.formatDateWithDay(seminarTimingService.getNextSeminarDate())}
+                  </p>
+                  <p className="text-blue-700 text-sm mb-3">
+                    Selection at {seminarTimingService.getBookingWindowConfig().selectionTime}
+                  </p>
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <p className="text-blue-800 text-sm font-medium mb-1">📅 Booking Schedule:</p>
+                    <p className="text-blue-700 text-xs mb-2">
+                      {seminarTimingService.getSeminarScheduleInfo().scheduleDescription}
+                    </p>
+                    <p className="text-green-700 text-xs font-medium">
+                      ✅ Sunday booking enabled - Saturday & Sunday both book for Monday
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           
 
             {/* User's Previous Selections */}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { emailService } from '../../../../lib/emailService';
+import { seminarTimingService } from '../../../../lib/seminarTimingService';
 
 interface BookingWithStudent {
   id: string;
@@ -26,22 +27,16 @@ export async function POST(request: NextRequest) {
       console.log('Cron job request detected, proceeding with auto-selection');
     }
     
-    // Get next working day (skip Sunday as it's a holiday)
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    // If tomorrow is Sunday (0), skip to Monday (add 1 more day)
-    if (tomorrow.getDay() === 0) {
-      tomorrow.setDate(tomorrow.getDate() + 1);
-    }
-    
-    const seminarDate = tomorrow.toISOString().split('T')[0];
-    const dayName = tomorrow.toLocaleDateString('en-US', { weekday: 'long' });
+    // Get next seminar date (supports Sunday booking for Monday seminars)
+    const seminarDate = seminarTimingService.getNextSeminarDate();
+    const dayName = new Date(seminarDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' });
 
     console.log('Starting auto-selection for date:', seminarDate, '(' + dayName + ')');
 
-    // Ensure we never schedule on Sunday
-    if (tomorrow.getDay() === 0) {
+    // Note: Sunday is a holiday - no seminars are scheduled on Sunday
+    // But Sunday bookings target Monday seminars, so we allow Sunday cron execution
+    const seminarDay = new Date(seminarDate + 'T12:00:00').getDay();
+    if (seminarDay === 0) {
       return NextResponse.json(
         { error: 'Cannot schedule seminar on Sunday (holiday)', date: seminarDate },
         { status: 400 }
@@ -88,11 +83,14 @@ export async function POST(request: NextRequest) {
 
     console.log(`Found ${bookings.length} bookings for selection`);
 
-    // Get all previously selected students to exclude them from future selections
+    // Get today's previous selections to avoid duplicate selections on the same day
+    // Only consider selections made today for today's seminar date
+    const today = new Date().toISOString().split('T')[0];
+    
     const { data: previousSelections, error: previousSelectionsError } = await supabase
       .from('unified_seminar_selections')
       .select('student_id')
-      .neq('seminar_date', seminarDate); // Exclude today's selections if any exist
+      .eq('seminar_date', seminarDate); // Only get selections for the same seminar date
 
     if (previousSelectionsError) {
       console.error('Error fetching previous selections:', previousSelectionsError);
@@ -102,12 +100,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create a set of previously selected student IDs for efficient lookup
+    // Create a set of recently selected student IDs for efficient lookup
     const previouslySelectedStudentIds = new Set(
       (previousSelections as any[])?.map(selection => selection.student_id) || []
     );
 
-    console.log(`Found ${previouslySelectedStudentIds.size} previously selected students to exclude`);
+    console.log(`Found ${previouslySelectedStudentIds.size} students already selected for ${seminarDate} to exclude`);
 
     // Filter out previously selected students from bookings
     const eligibleBookings = bookings.filter(booking => 
@@ -119,10 +117,11 @@ export async function POST(request: NextRequest) {
     if (eligibleBookings.length === 0) {
       return NextResponse.json(
         { 
-          message: 'No eligible students available (all have been previously selected)', 
+          message: 'No eligible students available (all have been selected for this date)', 
           date: seminarDate,
           total_bookings: bookings.length,
-          previously_selected_count: previouslySelectedStudentIds.size
+          already_selected_count: previouslySelectedStudentIds.size,
+          selection_basis: 'same-day bookings only'
         },
         { status: 200 }
       );
@@ -144,7 +143,7 @@ export async function POST(request: NextRequest) {
       selectedStudents.push({ booking: selectedBooking, student: selectedBooking.unified_students });
       console.log('Selected II-IT student:', selectedBooking.unified_students.register_number);
     } else {
-      console.log('No eligible II-IT students available (all previously selected or no bookings)');
+      console.log('No eligible II-IT students available (all already selected for this date or no bookings)');
     }
 
     // Select one student from III-IT class if available
@@ -154,7 +153,7 @@ export async function POST(request: NextRequest) {
       selectedStudents.push({ booking: selectedBooking, student: selectedBooking.unified_students });
       console.log('Selected III-IT student:', selectedBooking.unified_students.register_number);
     } else {
-      console.log('No eligible III-IT students available (all previously selected or no bookings)');
+      console.log('No eligible III-IT students available (all already selected for this date or no bookings)');
     }
 
     if (selectedStudents.length === 0) {
@@ -188,7 +187,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Format the seminar date for email
-    const formattedDate = tomorrow.toLocaleDateString('en-US', {
+    const formattedDate = new Date(seminarDate + 'T12:00:00').toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -257,7 +256,10 @@ export async function POST(request: NextRequest) {
       summary: {
         total_bookings: bookings.length,
         eligible_bookings: eligibleBookings.length,
-        previously_selected_excluded: previouslySelectedStudentIds.size,
+        already_selected_excluded: previouslySelectedStudentIds.size,
+        selection_basis: 'same-day bookings only',
+        booking_date: today,
+        seminar_date: seminarDate,
         ii_it_bookings: iiItBookings.length,
         iii_it_bookings: iiiItBookings.length,
         selected_count: selectedStudents.length

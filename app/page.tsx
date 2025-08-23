@@ -1,9 +1,9 @@
 'use client'
 
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '../contexts/AuthContext'
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '../components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { GraduationCap, BookOpen, Calendar, LogIn, Loader2, Users, Award, LogOut } from 'lucide-react'
 import Link from 'next/link'
 
@@ -13,16 +13,74 @@ export default function HomePage() {
   const [isLogging, setIsLogging] = useState(false)
   const [error, setError] = useState('')
 
+  // Function to validate if register number belongs to IT department
+  const validateITDepartment = (regNumber: string): boolean => {
+    // Check if register number has exactly 12 digits
+    if (regNumber.length !== 12) {
+      return false
+    }
+    
+    // Check if all characters are digits
+    if (!/^\d{12}$/.test(regNumber)) {
+      return false
+    }
+    
+    // Extract positions 6-7-8 (indices 5-6-7) for department code
+    // Example: 620123205001 -> positions 6-7-8 are indices 5-6-7 = "320"
+    // Wait, let me recalculate: 620123205001
+    // Position: 123456789012
+    // For positions 6-7-8, we need indices 5-6-7 which gives "320"
+    // But we want "205", so let me check what positions contain "205"
+    // 620123205001: positions 7-8-9 (indices 6-7-8) contain "205"
+    const departmentCode = regNumber.substring(6, 9)
+    return departmentCode === '205'
+  }
+
+  // Function to check if login should be disabled
+  const isLoginDisabled = (): boolean => {
+    return isLogging || !registerNumber || !validateITDepartment(registerNumber)
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLogging(true)
     setError('')
+
+    // Validate IT department first
+    if (!validateITDepartment(registerNumber)) {
+      setError('This is only for IT department')
+      setIsLogging(false)
+      return
+    }
 
     const result = await login(registerNumber)
     if (!result.success) {
       setError(result.error || 'Login failed')
     }
     setIsLogging(false)
+  }
+
+  const handleRegisterNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    
+    // Only allow digits
+    if (value && !/^\d*$/.test(value)) {
+      return // Don't update if non-digits are entered
+    }
+    
+    setRegisterNumber(value)
+    
+    // Clear previous errors
+    setError('')
+    
+    // Show validation message for various invalid cases
+    if (value.length > 0) {
+      if (value.length !== 12) {
+        setError('Register number must be exactly 12 digits')
+      } else if (!validateITDepartment(value)) {
+        setError('This is only for IT department')
+      }
+    }
   }
 
   if (loading) {
@@ -62,10 +120,11 @@ export default function HomePage() {
                   <input
                     type="text"
                     required
+                    maxLength={12}
                     value={registerNumber}
-                    onChange={(e) => setRegisterNumber(e.target.value)}
+                    onChange={handleRegisterNumberChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter your registration number"
+                    placeholder="Enter your 12-digit register number"
                   />
                 </div>
 
@@ -77,14 +136,18 @@ export default function HomePage() {
 
                 <Button
                   type="submit"
-                  disabled={isLogging}
-                  className="w-full text-white bg-blue-600 hover:bg-blue-700"
+                  disabled={isLoginDisabled()}
+                  className="w-full text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {isLogging ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
                       Logging in...
                     </>
+                  ) : !registerNumber ? (
+                    'Enter Register Number'
+                  ) : !validateITDepartment(registerNumber) ? (
+                    'Invalid Register Number'
                   ) : (
                     'Login'
                   )}
