@@ -636,7 +636,7 @@ export default function NPTELPage() {
                     <div className="text-sm text-black">Overall Progress</div>
                   </div>
                 </div>
-                <Progress value={overallProgress} className="mt-4" />
+            
               </CardHeader>
             </Card>
 

@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { 
   FileText, 
   Upload, 
-  Download, 
   CheckCircle, 
   Clock, 
   ArrowLeft,
@@ -104,6 +103,14 @@ export default function AssignmentsPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, assignmentId: string) => {
     const file = e.target.files?.[0]
     if (file) {
+      // Debug: Log file information
+      console.log('File selected:', {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        lastModified: file.lastModified
+      })
+      
       // Validate file type
       if (file.type !== 'application/pdf') {
         setUploadMessage('Please select a PDF file only.')
@@ -129,12 +136,24 @@ export default function AssignmentsPage() {
     setUploadMessage('Uploading your assignment...')
 
     try {
+      // Debug: Log submission information
+      console.log('Starting file submission:', {
+        fileName: selectedFile.name,
+        fileType: selectedFile.type,
+        fileSize: selectedFile.size,
+        assignmentId,
+        studentId: user.id,
+        registerNumber: user.register_number,
+        studentName: user.name
+      })
+      
       // Create FormData for file upload
       const formData = new FormData()
       formData.append('file', selectedFile)
       formData.append('assignment_id', assignmentId)
       formData.append('student_id', user.id)
       formData.append('register_number', user.register_number || '')
+      formData.append('student_name', user.name || '')
 
       // Submit via API route (handles both upload and database insertion)
       const response = await fetch('/api/assignments/submit', {
@@ -165,16 +184,6 @@ export default function AssignmentsPage() {
     } finally {
       setIsUploading(false)
     }
-  }
-
-  const downloadFile = (fileUrl: string, fileName: string) => {
-    const link = document.createElement('a')
-    link.href = fileUrl
-    link.download = fileName
-    link.target = '_blank'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
   }
 
   const formatDate = (dateString: string) => {
@@ -342,32 +351,21 @@ export default function AssignmentsPage() {
                     </div>
                   </CardTitle>
                   <CardDescription>
-                    <span className="flex items-center justify-between text-sm">
-                      <span>Due: {formatDate(assignment.due_date)}</span>
+                    <span className="flex items-center mt-2 justify-between text-red-500 text-sm">
+                      <span >Due: {formatDate(assignment.due_date)}</span>
                    
                     </span>
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-1">
                     {assignment.submission ? (
                       // Already submitted
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                          <span className="text-sm text-black">
-                            Submitted: {assignment.submission.file_name} at {formatDate(assignment.submission.submitted_at)}
-                          </span>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => downloadFile(assignment.submission!.file_url, assignment.submission!.file_name)}
-                          className="bg-transparent border border-purple-600 text-purple-600 hover:bg-purple-50"
-                        >
-                          <Download className="h-4 w-fit " />
-                          Download
-                        </Button>
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <span className="text-sm text-black">
+                          Submitted: {assignment.submission.file_name.substring(0, 13)}... at {formatDate(assignment.submission.submitted_at)}
+                        </span>
                       </div>
                     ) : !isOverdue(assignment.due_date) ? (
                       // Can submit
@@ -383,7 +381,7 @@ export default function AssignmentsPage() {
                         </div>
                         {selectedFile && currentAssignmentId === assignment.id && (
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-black">Ready to submit: {selectedFile.name}</span>
+                            <span className="text-sm text-black">Ready to submit</span>
                             <Button
                               onClick={() => handleSubmission(assignment.id)}
                               disabled={isUploading}

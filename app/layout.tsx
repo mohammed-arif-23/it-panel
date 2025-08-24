@@ -4,7 +4,7 @@ import "./globals.css";
 import { AuthProvider } from '../contexts/AuthContext';
 
 export const metadata: Metadata = {
-  title: "Unified College App",
+  title: "Department of IT - AVSEC",
   description: "NPTEL Course Tracking and Seminar Booking System",
 };
 
@@ -18,6 +18,7 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="icon"  href="https://www.avsenggcollege.ac.in/img/logo.jpg"/>
         <link
           href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
@@ -36,7 +37,7 @@ export default function RootLayout({
             fill 
             priority 
             className="object-cover" 
-            quality={50}
+            
           />
         </div>
 

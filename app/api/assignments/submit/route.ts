@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { cloudinaryStorage } from '../../../../lib/cloudinaryStorage'
 
 // Use service role key to bypass RLS
 const supabase = createClient(
@@ -20,32 +21,38 @@ export async function POST(request: NextRequest) {
     const assignmentId = formData.get('assignment_id') as string
     const studentId = formData.get('student_id') as string
     const registerNumber = formData.get('register_number') as string
+    const studentName = formData.get('student_name') as string
 
     if (!file || !assignmentId || !studentId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Generate unique filename
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${registerNumber}_${assignmentId}_${Date.now()}.${fileExt}`
+    // Generate filename: studentName_studentRegisterNumber_timestamp.pdf
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'pdf' // Default to pdf if no extension
+    const timestamp = Date.now()
+    const sanitizedName = (studentName || 'Student').replace(/[^a-zA-Z0-9]/g, '') // Remove special characters
+    const fileName = `${sanitizedName}_${registerNumber}_${timestamp}.${fileExt}`
 
-    // Upload file to Supabase storage using service role
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('assignments')
-      .upload(fileName, file)
+    console.log('File processing:', {
+      originalName: file.name,
+      extractedExtension: fileExt,
+      generatedFileName: fileName,
+      fileType: file.type
+    })
 
-    if (uploadError) {
-      console.error('Upload error:', uploadError)
-      return NextResponse.json({ error: uploadError.message }, { status: 500 })
+    // Upload file to Cloudinary storage
+    let uploadResult
+    try {
+      // Convert file to buffer for Cloudinary
+      const fileBuffer = Buffer.from(await file.arrayBuffer())
+      uploadResult = await cloudinaryStorage.uploadFile(fileBuffer, fileName)
+    } catch (uploadError) {
+      console.error('Cloudinary upload error:', uploadError)
+      return NextResponse.json({ error: uploadError instanceof Error ? uploadError.message : 'Upload failed' }, { status: 500 })
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('assignments')
-      .getPublicUrl(fileName)
-
-    // Generate random marks (80-90 out of 100, which is 8/9 out of 10)
-    const randomMarks = (Math.floor(Math.random() * 11) + 80)/10
+    // Generate random marks (8 or 9 out of 10)
+    const randomMarks = Math.floor(Math.random() * 2) + 8
 
     // Insert submission using service role (bypasses RLS)
     const { data, error } = await supabase
@@ -53,7 +60,7 @@ export async function POST(request: NextRequest) {
       .insert({
         assignment_id: assignmentId,
         student_id: studentId,
-        file_url: urlData.publicUrl,
+        file_url: uploadResult.publicUrl,
         file_name: file.name,
         marks: randomMarks,
         status: 'graded'

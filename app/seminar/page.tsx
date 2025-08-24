@@ -467,18 +467,10 @@ export default function SeminarPage() {
                   <p className="text-blue-900 font-medium mb-2">
                     {seminarTimingService.formatDateWithDay(seminarTimingService.getNextSeminarDate())}
                   </p>
-                  <p className="text-blue-700 text-sm mb-3">
+                  <p className="text-blue-700 text-sm">
                     Selection at {seminarTimingService.getBookingWindowConfig().selectionTime}
                   </p>
-                  <div className="bg-blue-50 rounded-lg p-3">
-                    <p className="text-blue-800 text-sm font-medium mb-1">📅 Booking Schedule:</p>
-                    <p className="text-blue-700 text-xs mb-2">
-                      {seminarTimingService.getSeminarScheduleInfo().scheduleDescription}
-                    </p>
-                    <p className="text-green-700 text-xs font-medium">
-                      ✅ Sunday booking enabled - Saturday & Sunday both book for Monday
-                    </p>
-                  </div>
+                 
                 </div>
               </CardContent>
             </Card>
