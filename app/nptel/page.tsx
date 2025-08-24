@@ -446,7 +446,7 @@ export default function NPTELPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screenflex items-center justify-center">
+      <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#F7F7E7'}}>
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
           <p className="mt-2 text-black">Loading your NPTEL data...</p>
@@ -462,7 +462,24 @@ export default function NPTELPage() {
   // Registration Form
   if (showRegistration) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen" style={{backgroundColor: '#F7F7E7'}}>
+        {/* Header with Back Button */}
+        <div className="backdrop-blur-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-4">
+              <Button variant="ghost" asChild className="text-black hover:bg-white/20">
+                <Link href="/">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  
+                </Link>
+              </Button>
+              <div className="flex flex-col items-end">
+                <h1 className="text-xl font-semibold text-black">NPTEL Registration</h1>
+                <p className="text-sm text-black">Register for NPTEL courses</p>
+              </div>
+              </div>
+          </div>
+        </div>
        
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Card>
@@ -603,14 +620,20 @@ export default function NPTELPage() {
   const overallProgress = calculateOverallProgress()
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <div className="backdrop-blur-sm ">
+    <div className="min-h-screen" style={{backgroundColor: '#F7F7E7'}}>
+      {/* Header with Back Button */}
+      <div className="backdrop-blur-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center items-center py-4">
-            <div className="flex flex-col items-center">        
-                <p className="text-2xl font-medium text-black">{user.name}</p>
-                <p className="text-xs text-black">{user.register_number || 'Student'}</p>
+          <div className="flex justify-between items-center py-4">
+            <Button variant="ghost" asChild className="text-black hover:bg-white/20">
+              <Link href="/">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                
+              </Link>
+            </Button>
+            <div className="flex flex-col items-end">
+              <p className="text-xl font-medium text-black">{user.name}</p>
+              <p className="text-xs text-black">{user.register_number || 'Student'}</p>
             </div>
           </div>
         </div>

@@ -124,7 +124,7 @@ class EmailService {
               </tr>
               <tr>
                 <td style="padding: 8px 0;"><strong>By:</strong></td>
-                <td style="padding: 8px 0;">'Department of Information Technology - AVSEC'</td>
+                <td style="padding: 8px 0;">Department of Information Technology - AVSEC</td>
               </tr>
             </table>
           </div>

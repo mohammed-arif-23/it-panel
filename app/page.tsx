@@ -1,7 +1,8 @@
 'use client'
 
 import { useAuth } from '../contexts/AuthContext'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { GraduationCap, BookOpen, Calendar, LogIn, Loader2, Users, Award, LogOut, FileText } from 'lucide-react'
@@ -9,9 +10,54 @@ import Link from 'next/link'
 
 export default function HomePage() {
   const { user, loading, login, logout, hasRegistration } = useAuth()
+  const router = useRouter()
   const [registerNumber, setRegisterNumber] = useState('')
   const [isLogging, setIsLogging] = useState(false)
   const [error, setError] = useState('')
+  const [isRedirecting, setIsRedirecting] = useState(false)
+
+  // Check if user profile is complete
+  const isProfileComplete = (user: any) => {
+    if (!user) return false
+    
+    // Required fields: name, email, mobile, class_year
+    const requiredFields = {
+      name: user.name?.trim(),
+      email: user.email?.trim(),
+      mobile: user.mobile?.trim(),
+      class_year: user.class_year?.trim()
+    }
+    
+    // Check if all required fields are present and not empty
+    return Object.values(requiredFields).every(field => field && field.length > 0)
+  }
+
+  // Redirect to profile if profile is incomplete
+  useEffect(() => {
+    console.log('Profile check - Loading:', loading, 'User:', user)
+    if (user) {
+      console.log('User details:', {
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
+        class_year: user.class_year
+      })
+      console.log('Profile complete:', isProfileComplete(user))
+    }
+    
+    // Only check profile completeness after loading is done and user exists
+    if (!loading && user) {
+      const profileComplete = isProfileComplete(user)
+      console.log('Profile complete result:', profileComplete)
+      
+      if (!profileComplete) {
+        console.log('Redirecting to profile - incomplete profile detected')
+        setIsRedirecting(true)
+        router.push('/profile')
+        return
+      }
+    }
+  }, [user, loading, router])
 
   // Function to validate if register number belongs to IT department
   const validateITDepartment = (regNumber: string): boolean => {
@@ -77,14 +123,16 @@ export default function HomePage() {
     }
   }
 
-  if (loading) {
+  if (loading || isRedirecting) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center">
+      <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#F7F7E7'}}>
         <div className="text-center">
           {/* Loading */}
           <div className="flex items-center justify-center space-x-2">
             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-            <span className="text-gray-600">Loading...</span>
+            <span className="text-gray-600">
+              {isRedirecting ? 'Redirecting to profile...' : 'Loading...'}
+            </span>
           </div>
         </div>
       </div>
@@ -93,19 +141,33 @@ export default function HomePage() {
 
   if (!user) {
     return (
-      <div className="min-h-[90%] flex items-center justify-center p-6">
+      <div className="min-h-[50vh] flex flex-col items-center justify-center p-6" style={{backgroundColor: '#F7F7E7'}}>
         <div className="w-full max-w-md">
           <div className="text-center mb-8">        
             <h1 className="text-xl font-bold text-gray-900">Department of Information Technology</h1>
           </div>
 
-          <Card>
+          {/* Video Container */}
+          <div className="mb-6 rounded-lg overflow-hidden">
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-59 object-contain"
+              style={{ pointerEvents: 'none' }}
+            >
+              <source src="https://media.tenor.com/E3V-yufyU4UAAAPo/cartoon-student-walking.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+
+          <Card className="backdrop-blur-sm ">
             <CardHeader className="text-center">
-              <CardTitle className="flex  items-center justify-center gap-2">
-                <LogIn className="h-5 w-5 " />
+              <CardTitle className="flex items-center justify-center gap-2">
+                <LogIn className="h-5 w-5" />
                 Student Login
               </CardTitle>
-          
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4">
@@ -150,7 +212,6 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-        
         </div>
       </div>
     )
@@ -158,7 +219,7 @@ export default function HomePage() {
 
   // User is logged in - show dashboard navigation
   return (
-    <div className="min-h-screen pt-4">
+    <div className="min-h-[50dvh] " style={{backgroundColor: '#F7F7E7'}}>
         <div className="text-center mb-8">
           <h2 className="text-xl font-bold text-black mb-4">
             Department of Information Technology

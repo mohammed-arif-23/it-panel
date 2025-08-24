@@ -29,19 +29,8 @@ export default function RootLayout({
           }
         `}</style>
       </head>
-      <body className="bg-white text-black font-['Poppins'] pt-[150px] relative">
-        <div className="fixed inset-0 z-[-1] opacity-20">
-          <Image 
-            src="/bg.jpg" 
-            alt="Background" 
-            fill 
-            priority 
-            className="object-cover" 
-            
-          />
-        </div>
-
-        <header className="fixed top-0 left-0 w-full  backdrop-blur-sm z-60 flex justify-center items-center py-4">
+      <body className="text-black font-['Poppins'] pt-[110px] relative" style={{backgroundColor: '#F7F7E7'}}>
+<header className="fixed top-0 left-0 w-full  backdrop-blur-sm z-60 flex justify-center items-center py-4">
           <div className="flex flex-col items-center">
             <Image 
               src="/logo.png" 

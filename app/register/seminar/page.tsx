@@ -61,7 +61,7 @@ export default function SeminarRegistrationPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{backgroundColor: '#F7F7E7'}}>
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-6">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
@@ -79,7 +79,7 @@ export default function SeminarRegistrationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{backgroundColor: '#F7F7E7'}}>
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

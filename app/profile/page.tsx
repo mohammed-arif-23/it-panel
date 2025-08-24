@@ -1,13 +1,13 @@
 'use client'
 
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '../../contexts/AuthContext'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '../../components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { ArrowLeft, User, Save, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
-import { dbHelpers } from '@/lib/supabase'
+import { dbHelpers } from '../../lib/supabase'
 
 export default function ProfilePage() {
   const { user, loading, refreshUser } = useAuth()
@@ -104,7 +104,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#F7F7E7'}}>
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
           <p className="mt-2 text-black">Loading profile...</p>
@@ -118,7 +118,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" style={{backgroundColor: '#F7F7E7'}}>
     
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

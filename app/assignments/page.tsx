@@ -202,7 +202,7 @@ export default function AssignmentsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center">
+      <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#F7F7E7'}}>
         <div className="text-center">
           <div className="flex items-center justify-center space-x-2">
             <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
@@ -214,7 +214,7 @@ export default function AssignmentsPage() {
   }
 
   return (
-    <div className="min-h-[70vh] ">
+    <div className="min-h-[70vh]" style={{backgroundColor: '#F7F7E7'}}>
       {/* Header */}
       <div className="text-center mb-8">
         <h2 className="text-xl font-bold text-black mb-4">
@@ -377,6 +377,7 @@ export default function AssignmentsPage() {
                             onChange={(e) => handleFileSelect(e, assignment.id)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           />
+                          
                           <p className="text-xs text-gray-500 mt-1">Only PDF files up to 10MB are allowed</p>
                         </div>
                         {selectedFile && currentAssignmentId === assignment.id && (

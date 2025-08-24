@@ -26,8 +26,20 @@ interface TodaySelection {
     id: string
     register_number: string
     name: string
+    class_year?: string
   }
   selectedAt: string
+}
+
+interface TomorrowSelection {
+  student: {
+    id: string
+    register_number: string
+    name: string
+    class_year?: string
+  }
+  selectedAt: string
+  seminarDate: string
 }
 
 interface Selection {
@@ -113,7 +125,18 @@ const seminarDbHelpers = {
         unified_students(*)
       `)
       .eq('seminar_date', seminarDate)
-      .single()
+    
+    return { data, error }
+  },
+
+  async getSelectionsForDate(seminarDate: string) {
+    const { data, error } = await supabase
+      .from('unified_seminar_selections')
+      .select(`
+        *,
+        unified_students(*)
+      `)
+      .eq('seminar_date', seminarDate)
     
     return { data, error }
   },
@@ -154,11 +177,12 @@ export default function SeminarPage() {
   const [seminarStudent, setSeminarStudent] = useState<SeminarStudent | null>(null)
   const [windowInfo, setWindowInfo] = useState<BookingWindowInfo>({ isOpen: false })
   const [todaySelection, setTodaySelection] = useState<TodaySelection | null>(null)
+  const [tomorrowSelections, setTomorrowSelections] = useState<TomorrowSelection[]>([])
   const [hasBookedToday, setHasBookedToday] = useState(false)
   const [isBooking, setIsBooking] = useState(false)
   const [bookingMessage, setBookingMessage] = useState('')
-  const [userSelections, setUserSelections] = useState<Selection[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingSelections, setIsLoadingSelections] = useState(false)
   const [autoSelectionTriggered, setAutoSelectionTriggered] = useState(false)
   const [selectionMessage, setSelectionMessage] = useState('')
   const [seminarTopic, setSeminarTopic] = useState('')
@@ -248,31 +272,55 @@ export default function SeminarPage() {
   const loadDashboardData = async () => {
     if (!seminarStudent) return
 
+    setIsLoadingSelections(true)
     try {
       // Check if user has booked for next seminar
       const nextSeminarDate = seminarTimingService.getNextSeminarDate()
       const { data: booking } = await seminarDbHelpers.getStudentBooking(seminarStudent.id, nextSeminarDate)
       setHasBookedToday(!!booking)
 
-      // Get today's selection
+      // Get today's selection (can be multiple, but show first one for today's display)
       const todayDate = seminarTimingService.getTodayDate()
-      const { data: selection } = await seminarDbHelpers.getSelectionForDate(todayDate)
-      if (selection) {
+      const { data: todaySelections } = await seminarDbHelpers.getSelectionsForDate(todayDate)
+      if (todaySelections && todaySelections.length > 0) {
+        const firstSelection = todaySelections[0]
         setTodaySelection({
           student: {
-            id: (selection as any).unified_students.id,
-            register_number: (selection as any).unified_students.register_number,
-            name: (selection as any).unified_students.name || (selection as any).unified_students.register_number
+            id: (firstSelection as any).unified_students.id,
+            register_number: (firstSelection as any).unified_students.register_number,
+            name: (firstSelection as any).unified_students.name || (firstSelection as any).unified_students.register_number,
+            class_year: (firstSelection as any).unified_students.class_year
           },
-          selectedAt: (selection as any).selected_at
+          selectedAt: (firstSelection as any).selected_at
         })
       }
 
-      // Get user's previous selections
-      const { data: selections } = await seminarDbHelpers.getAllSelectionsForStudent(seminarStudent.id)
-      setUserSelections(selections || [])
+      // Get tomorrow's selections (should be 2 students)
+      const { data: tomorrowSelectionsData } = await seminarDbHelpers.getSelectionsForDate(nextSeminarDate)
+      if (tomorrowSelectionsData && tomorrowSelectionsData.length > 0) {
+        const allSelections = tomorrowSelectionsData.map((selection: any) => ({
+          student: {
+            id: selection.unified_students.id,
+            register_number: selection.unified_students.register_number,
+            name: selection.unified_students.name || selection.unified_students.register_number,
+            class_year: selection.unified_students.class_year
+          },
+          selectedAt: selection.selected_at,
+          seminarDate: nextSeminarDate
+        }))
+        
+        // Filter selections to only show students from the same class as logged-in user
+        const filteredSelections = user ? allSelections.filter((selection: TomorrowSelection) => 
+          selection.student.class_year === user.class_year
+        ) : allSelections
+        setTomorrowSelections(filteredSelections)
+      } else {
+        setTomorrowSelections([])
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
+    } finally {
+      setIsLoadingSelections(false)
     }
   }
 
@@ -315,7 +363,7 @@ export default function SeminarPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#F7F7E7'}}>
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
           <p className="mt-2 text-black">Loading Seminar system...</p>
@@ -329,23 +377,31 @@ export default function SeminarPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      {/* User Info Bar */}
-      <div className="backdrop-blur-sm ">
+    <div className="min-h-[70vh]" style={{backgroundColor: '#F7F7E7'}}>
+      {/* Header with Back Button */}
+      <div className="backdrop-blur-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center items-center py-4">
-            <div className="flex flex-col items-center ">
-              
-                  <h1 className="text-2xl font-semibold text-black">Seminar Booking</h1>
-                  <p className="text-sm text-black">Book your seminar slots</p>
-               
+          <div className="flex justify-between items-center py-4">
+            <Button variant="ghost" asChild className="text-black hover:bg-white/20">
+              <Link href="/">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+              </Link>
+            </Button>
+            <div className="flex flex-col items-end">
+              <p className="text-xl font-medium text-black">{user.name}</p>
+              <p className="text-xs text-black">{user.register_number || 'Student'}</p>
             </div>
-
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Page Title Section */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-black mb-2">Seminar Booking</h1>
+          <p className="text-gray-600">Book your seminar slots and track your selections</p>
+        </div>
+        
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Booking Section */}
           <div className="lg:col-span-2 space-y-6">
@@ -443,18 +499,10 @@ export default function SeminarPage() {
                  
                   </div>
                 )}
-
-                
-               
               </CardContent>
             </Card>
-
-
           </div>
-
-          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Next Seminar Info */}
             <Card>
               <CardHeader>
                 <div className="flex items-center space-x-3">
@@ -463,7 +511,7 @@ export default function SeminarPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="border border-blue-200 rounded-lg p-4">
+                <div className="text-center rounded-lg p-4">
                   <p className="text-blue-900 font-medium mb-2">
                     {seminarTimingService.formatDateWithDay(seminarTimingService.getNextSeminarDate())}
                   </p>
@@ -476,37 +524,47 @@ export default function SeminarPage() {
             </Card>
           
 
-            {/* User's Previous Selections */}
+            {/* Tomorrow's Selection */}
             <Card>
               <CardHeader>
                 <div className="flex items-center space-x-3">
-                  <Trophy className="h-6 w-6 text-green-600" />
-                  <CardTitle className="text-black">Your Selections</CardTitle>
+                  <User className="h-6 w-6 text-purple-600" />
+                  <CardTitle className="text-black">Tomorrow's Selection ({user?.class_year || 'Your Class'})</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                {userSelections.length > 0 ? (
+                {isLoadingSelections ? (
+                  <div className="text-center py-6">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-purple-600 mb-2" />
+                    <p className="text-sm text-gray-500">Loading selections...</p>
+                  </div>
+                ) : tomorrowSelections.length > 0 ? (
                   <div className="space-y-3">
-                    {userSelections.slice(0, 5).map((selection) => (
-                      <div key={selection.id} className="bg-green-50 border border-green-200 rounded-lg p-3">
-                        <p className="font-medium text-green-900">
-                          {seminarTimingService.formatDate(selection.seminar_date)}
-                        </p>
-                        <p className="text-sm text-green-700">
-                          Selected at {seminarTimingService.formatTime12Hour(new Date(selection.selected_at))}
-                        </p>
+                    {tomorrowSelections.map((selection, index) => (
+                      <div key={index} className="  rounded-lg p-4">
+                        <div className="text-center">
+                          <h3 className="font-semibold text-purple-900 text-lg mb-1">
+                            {selection.student.name} 
+                            
+                          </h3>
+                          <p className="text-purple-700 text-sm mb-2">
+                            {selection.student.class_year || 'IT Department'}
+                          </p>
+                          <p className="text-purple-600 text-xs">
+                            Selected at: {seminarTimingService.formatTime12Hour(new Date(selection.selectedAt))}
+                          </p>
+                        </div>
                       </div>
                     ))}
-                    {userSelections.length > 5 && (
-                      <p className="text-sm text-gray-500 text-center">
-                        +{userSelections.length - 5} more selections
-                      </p>
-                    )}
+                  
                   </div>
                 ) : (
-                  <div className="text-center text-gray-500">
-                    <Calendar className="h-8 w-8 mx-auto mb-2" />
-                    <p>No previous selections</p>
+                  <div className="text-center text-gray-500 py-4">
+                    <User className="h-8 w-8 mx-auto mb-2" />
+                    <p className="text-sm">No {user?.class_year || 'your class'} student selected yet</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Selection will be made at {seminarTimingService.getBookingWindowConfig().selectionTime}
+                    </p>
                   </div>
                 )}
               </CardContent>
