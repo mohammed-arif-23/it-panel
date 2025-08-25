@@ -65,11 +65,8 @@ interface BookingWindowInfo {
 }
 
 
-
-// Database helpers for seminar system
 const seminarDbHelpers = {
   async findSeminarStudentByRegNumber(regNumber: string) {
-    // Use the unified_students table from the compatible schema
     const { data, error } = await supabase
       .from('unified_students')
       .select('*')
