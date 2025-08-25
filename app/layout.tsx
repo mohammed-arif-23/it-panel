@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import "./globals.css";
 import { AuthProvider } from '../contexts/AuthContext';
 
@@ -18,7 +17,6 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="icon"  href="https://www.avsenggcollege.ac.in/img/logo.jpg"/>
         <link
           href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
@@ -29,17 +27,17 @@ export default function RootLayout({
           }
         `}</style>
       </head>
-      <body className="text-black font-['Poppins'] pt-[110px] relative" style={{backgroundColor: '#F7F7E7'}}>
-<header className="fixed top-0 left-0 w-full  backdrop-blur-sm z-60 flex justify-center items-center py-4">
+      <body className="text-black font-['Poppins'] pt-[110px] relative" style={{backgroundColor: '#FFFFFF'}}>
+        <header className="fixed top-0 left-0 w-full backdrop-blur-md bg-white/90  z-60 flex justify-center items-center py-4 ">
           <div className="flex flex-col items-center">
-            <Image 
-              src="/logo.png" 
-              alt="Department of IT" 
+            <img 
+              src="logo.png" 
+              alt="A.V.S. Engineering College" 
               width={500} 
               height={150} 
               className="object-contain"
             />
-             </div>
+          </div>
         </header>
         
         <AuthProvider>

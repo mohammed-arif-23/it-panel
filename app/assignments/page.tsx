@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
+import { Badge } from '../../components/ui/badge'
 import { 
   FileText, 
   Upload, 
@@ -16,10 +17,12 @@ import {
   RefreshCw,
   AlertCircle,
   Calendar,
-  Lock
+  Lock,
+  Users
 } from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import Alert from '@/components/ui/alert'
 
 interface Assignment {
   id: string
@@ -202,247 +205,170 @@ export default function AssignmentsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#F7F7E7'}}>
+      <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#FFFFFF'}}>
         <div className="text-center">
-          <div className="flex items-center justify-center space-x-2">
-            <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
-            <span className="text-gray-600">Loading assignments...</span>
-          </div>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
+          <p className="mt-2 text-black">Loading assignments...</p>
         </div>
       </div>
     )
   }
 
+  if (!user) {
+    return <div>Redirecting...</div>
+  }
+
   return (
-    <div className="min-h-[70vh]" style={{backgroundColor: '#F7F7E7'}}>
-      {/* Header */}
-      <div className="text-center mb-8">
-        <h2 className="text-xl font-bold text-black mb-4">
-          Assignment Submission Portal
-        </h2>
+    <div className="min-h-screen relative" style={{backgroundColor: '#FFFFFF'}}>
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundSize: '60px 60px'
+        }}></div>
       </div>
-
-      {/* Navigation */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
-        <Button variant="outline" asChild className="bg-transparent hover:bg-gray-50 border border-gray-300">
-          <Link href="/" className="text-gray-700">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Link>
-        </Button>
-      </div>
-
-      {/* User Info */}
-      <div className="backdrop-blur-sm">
+      
+      {/* Header with Back Button */}
+      <div className="backdrop-blur-md border-b bg-white relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center items-center">
-            {user?.name ? (
-              <div className="text-center">
-                <h2 className="text-xl font-semibold text-black">
-                  Welcome, {user.name}
-                </h2>
-                <p className="text-sm text-black">
-                  {user.register_number || ''} {user.register_number && user.class_year ? '•' : ''} {user.class_year || ''}
-                </p>
-              </div>
-            ) : (
-              <div className="text-center">
-                <p className="text-red-500 text-sm">Please update your profile</p>
-              </div>
-            )}
+          <div className="flex justify-between items-center py-6">
+            <Button variant="ghost" asChild className="text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-300 hover:shadow-xl rounded-xl px-6 py-3   hover:border-blue-300">
+              <Link href="/">
+                <ArrowLeft className="h-5 w-5 mr-2" />
+           
+              </Link>
+            </Button>
+            <div className="flex flex-col items-end bg-white rounded-2xl px-6 py-3 ">
+              <p className="text-xl font-bold text-gray-800">{user.name}</p>
+              <p className="text-sm text-gray-600 font-medium">{user.register_number || 'Student'}</p>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Upload Message */}
-        {uploadMessage && (
-          <Card className="mb-6 bg-transparent">
-            <CardContent className="pt-6">
-              <div className={`flex items-center space-x-2 ${
-                uploadMessage.includes('successfully') || uploadMessage.includes('marks') 
-                  ? 'text-green-600' 
-                  : uploadMessage.includes('Failed') 
-                  ? 'text-red-600' 
-                  : 'text-blue-600'
-              }`}>
-                {isUploading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : uploadMessage.includes('successfully') ? (
-                  <CheckCircle className="h-5 w-5" />
-                ) : uploadMessage.includes('Failed') ? (
-                  <AlertCircle className="h-5 w-5" />
-                ) : (
-                  <AlertCircle className="h-5 w-5" />
-                )}
-                <span>{uploadMessage}</span>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+        {/* Page Title Section */}
+        <div className="mb-8 text-center">
+          <div className="bg-white rounded-2xl p-2 mx-auto max-w-2xl">
+            <h1 className="text-xl font-bold text-gray-800 mb-3">Assignments</h1>
+            <p className="text-gray-600 text-sm">View and submit your NPTEL course assignments</p>
+          </div>
+        </div>
+        
+        {isLoading ? (
+          <div className="text-center py-12 bg-white rounded-2xl shadow-xl border border-gray-200">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-600 mb-4" />
+            <p className="text-gray-700 font-medium">Loading assignments...</p>
+          </div>
+        ) : assignments.length === 0 ? (
+          <Card className="bg-white shadow-2xl border-2 border-gray-200">
+            <CardContent className="p-8 text-center">
+              <div className="mx-auto h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <FileText className="h-8 w-8 text-gray-400" />
               </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No assignments available</h3>
+              <p className="text-gray-500">There are currently no assignments for your class.</p>
             </CardContent>
           </Card>
-        )}
-
-        {/* Assignments List */}
-        <div className="space-y-6">
-          {assignments.length === 0 ? (
-            <Card className="hover:shadow-lg transition-shadow bg-transparent">
-              <CardContent className="text-center py-12">
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-black mb-2">No Assignments Available</h3>
-                <p className="text-sm text-gray-600">Check back later for new assignments.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            assignments.map((assignment) => (
-              <Card key={assignment.id} className={`transition-shadow bg-transparent ${
-                isOverdue(assignment.due_date) && !assignment.submission 
-                  ? 'opacity-75 border-red-200 hover:shadow-md' 
-                  : 'hover:shadow-lg'
-              }`}>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`h-12 w-12 rounded-lg flex items-center justify-center relative ${
-                        isOverdue(assignment.due_date) ? 'bg-red-100' : 'bg-purple-100'
-                      }`}>
-                        <FileText className={`h-6 w-6 ${
-                          isOverdue(assignment.due_date) ? 'text-red-600' : 'text-purple-600'
-                        }`} />
-                        {isOverdue(assignment.due_date) && !assignment.submission && (
-                          <div className="absolute -top-1 -right-1 bg-red-500 rounded-full p-1">
-                            <Lock className="h-3 w-3 text-white" />
-                          </div>
-                        )}
+        ) : (
+          <div className="grid gap-6">
+            {assignments.map((assignment) => (
+              <Card key={assignment.id} className="bg-white shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
+                <CardHeader className="bg-blue-50 rounded-t-lg border-b border-gray-200">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-gray-800 text-xl font-bold">{assignment.title}</CardTitle>
+                      <CardDescription className="text-gray-600 mt-1">
+                        {assignment.description}
+                      </CardDescription>
+                    </div>
+                    <Badge variant={assignment.submission ? "default" : "secondary"}>
+                      {assignment.submission ? 'Submitted' : 'Pending'}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Due: {formatDate(assignment.due_date)}
                       </div>
-                      <div>
-                        <h3 className={`text-xl font-semibold ${
-                          isOverdue(assignment.due_date) && !assignment.submission ? 'text-gray-500' : 'text-black'
-                        }`}>{assignment.title}</h3>
-                        <p className={`text-sm ${
-                          isOverdue(assignment.due_date) && !assignment.submission ? 'text-gray-400' : 'text-gray-600'
-                        }`}>{assignment.description}</p>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Users className="h-4 w-4 mr-2" />
+                        {assignment.class_year}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    
+                    <div className="flex flex-col items-end justify-between">
                       {assignment.submission ? (
-                        assignment.submission.status === 'graded' ? (
-                          <div className="flex items-center space-x-2">
-                            <Trophy className="h-5 w-5 text-yellow-500" />
-                            <span className="text-sm font-medium text-green-600">
-                              {assignment.submission.marks}/10 marks
-                            </span>
+                        <div className="text-right">
+                          <div className="flex items-center justify-end text-green-600 font-medium mb-1">
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Submitted
                           </div>
-                        ) : (
-                          <div className="flex items-center space-x-1">
-                            <Clock className="h-4 w-4 text-yellow-500" />
-                            <span className="text-sm text-yellow-600">Submitted</span>
+                          <div className="text-sm text-gray-600">
+                            {formatDate(assignment.submission.submitted_at)}
                           </div>
-                        )
+                          {assignment.submission.marks !== null && (
+                            <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                              Marks: {assignment.submission.marks}
+                            </div>
+                          )}
+                        </div>
                       ) : isOverdue(assignment.due_date) ? (
-                        <div className="flex items-center space-x-1 bg-red-50 px-3 py-1 rounded-full border border-red-200">
-                          <Lock className="h-4 w-4 text-red-600" />
-                          <span className="text-sm font-medium text-red-700">Locked</span>
+                        <div className="text-red-600 flex items-center">
+                          <Lock className="h-4 w-4 mr-1" />
+                          Overdue
                         </div>
                       ) : (
-                        <div className="flex items-center space-x-1 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-                          <Calendar className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm font-medium text-blue-700">Open</span>
+                        <div className="space-y-3 w-full">
+                          <input
+                            type="file"
+                            accept="application/pdf"
+                            onChange={(e) => handleFileSelect(e, assignment.id)}
+                            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:cursor-pointer file:shadow-lg file:hover:shadow-xl file:transition-all file:duration-300"
+                          />
+                          <Button
+                            onClick={() => handleSubmission(assignment.id)}
+                            disabled={!selectedFile || currentAssignmentId !== assignment.id || isUploading}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700"
+                          >
+                            {isUploading && currentAssignmentId === assignment.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Submit Assignment
+                              </>
+                            )}
+                          </Button>
                         </div>
                       )}
                     </div>
-                  </CardTitle>
-                  <CardDescription>
-                    <span className="flex items-center mt-2 justify-between text-red-500 text-sm">
-                      <span >Due: {formatDate(assignment.due_date)}</span>
-                   
-                    </span>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-1">
-                    {assignment.submission ? (
-                      // Already submitted
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <span className="text-sm text-black">
-                          Submitted: {assignment.submission.file_name.substring(0, 13)}... at {formatDate(assignment.submission.submitted_at)}
-                        </span>
-                      </div>
-                    ) : !isOverdue(assignment.due_date) ? (
-                      // Can submit
-                      <div className="space-y-3">
-                        <div>
-                          <input
-                            type="file"
-                            accept=".pdf"
-                            onChange={(e) => handleFileSelect(e, assignment.id)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          />
-                          
-                          <p className="text-xs text-gray-500 mt-1">Only PDF files up to 10MB are allowed</p>
-                        </div>
-                        {selectedFile && currentAssignmentId === assignment.id && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-black">Ready to submit</span>
-                            <Button
-                              onClick={() => handleSubmission(assignment.id)}
-                              disabled={isUploading}
-                              className="bg-purple-600 text-white border border-purple-600 hover:bg-purple-700"
-                            >
-                              {isUploading ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                  Uploading...
-                                </>
-                              ) : (
-                                <>
-                                  <Upload className="h-4 w-4 mr-2" />
-                                  Submit
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      // Locked/Overdue
-                      <div className="text-center py-6 bg-red-50 rounded-lg border-2 border-red-200">
-                        <div className="flex items-center justify-center space-x-2 mb-3">
-                          <Lock className="h-8 w-8 text-red-500" />
-                          <AlertCircle className="h-8 w-8 text-red-500" />
-                        </div>
-                        <h4 className="text-lg font-semibold text-red-700 mb-2">Assignment Locked</h4>
-                        <p className="text-sm text-red-600 mb-1">This assignment is past its due date and cannot be submitted.</p>
-                        <p className="text-xs text-red-500">Due date was: {formatDate(assignment.due_date)}</p>
-                      </div>
-                    )}
                   </div>
+                  
+                  {uploadMessage && currentAssignmentId === assignment.id && (
+                    <Alert 
+                      variant={
+                        uploadMessage === 'Uploading your assignment...' 
+                          ? 'warning' 
+                          : uploadMessage.includes('successfully') 
+                            ? 'success' 
+                            : 'error'
+                      } 
+                      message={uploadMessage} 
+                      className="mt-4"
+                    />
+                  )}
                 </CardContent>
               </Card>
-            ))
-          )}
-        </div>
-
-        {/* Refresh Button */}
-        <div className="text-center mt-8">
-          <Button
-            variant="outline"
-            onClick={loadAssignments}
-            disabled={isLoading}
-            className="bg-transparent border border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Loading...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh Assignments
-              </>
-            )}
-          </Button>
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

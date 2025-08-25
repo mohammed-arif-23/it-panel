@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { BookOpen, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { dbHelpers } from '@/lib/supabase'
+import Alert from '@/components/ui/alert'
 
 export default function NPTELRegistrationPage() {
   const { user, registerForService, hasRegistration } = useAuth()
@@ -83,15 +84,15 @@ export default function NPTELRegistrationPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{backgroundColor: '#F7F7E7'}}>
-        <Card className="w-full max-w-md text-center">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{backgroundColor: '#FFFFFF'}}>
+        <Card className="w-full max-w-md text-center bg-white shadow-2xl border-2 border-gray-200">
           <CardContent className="pt-6">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-black mb-2">Registration Successful!</h2>
-            <p className="text-black mb-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Registration Successful!</h2>
+            <p className="text-gray-700 mb-4">
               You have been successfully registered for NPTEL courses.
             </p>
-            <p className="text-sm text-black">
+            <p className="text-sm text-gray-600">
               Redirecting to your NPTEL dashboard...
             </p>
           </CardContent>
@@ -101,45 +102,54 @@ export default function NPTELRegistrationPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#F7F7E7'}}>
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+    <div className="min-h-screen relative" style={{backgroundColor: '#FFFFFF'}}>
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundSize: '60px 60px'
+        }}></div>
+      </div>
+      
+      {/* Header with Back Button */}
+      <div className="backdrop-blur-md border-b bg-white shadow-xl relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center py-4">
-            <Button variant="ghost" asChild className="mr-4">
+          <div className="flex justify-between items-center py-6">
+            <Button variant="ghost" asChild className="text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl rounded-xl px-6 py-3 border border-gray-200 hover:border-blue-300">
               <Link href="/">
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="h-5 w-5 mr-2" />
                 Back to Dashboard
               </Link>
             </Button>
-            <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <BookOpen className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-black">
-                  NPTEL Course Registration
-                </h1>
-                <p className="text-sm text-gray-700">Register for NPTEL courses</p>
-              </div>
+            <div className="flex flex-col items-end bg-white rounded-2xl px-6 py-3 border border-gray-200">
+              <p className="text-xl font-bold text-gray-800">{user?.name}</p>
+              <p className="text-sm text-gray-600 font-medium">{user?.register_number || 'Student'}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+        {/* Page Title Section */}
+        <div className="mb-8 text-center">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mx-auto max-w-2xl">
+            <h1 className="text-4xl font-bold text-gray-800 mb-3">NPTEL Registration</h1>
+            <p className="text-gray-600 text-md">Register for NPTEL courses to track your progress</p>
+          </div>
+        </div>
+        
         {/* Registration Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Register for NPTEL Courses</CardTitle>
-            <CardDescription>
+        <Card className="bg-white shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
+          <CardHeader className="bg-blue-50 rounded-t-lg border-b border-gray-200">
+            <CardTitle className="text-gray-800 text-xl font-bold">Register for NPTEL Courses</CardTitle>
+            <CardDescription className="text-gray-600">
               Enter your course details to start tracking your NPTEL progress
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <form onSubmit={handleRegistration} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block text-sm font-bold text-gray-700 mb-3">
                   NPTEL Course Name *
                 </label>
                 <input
@@ -150,13 +160,13 @@ export default function NPTELRegistrationPage() {
                     ...prev, 
                     courseName: e.target.value 
                   }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
                   placeholder="e.g., Programming, Data Structures and Algorithms using Python"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block text-sm font-bold text-gray-700 mb-3">
                   Course ID *
                 </label>
                 <input
@@ -167,13 +177,13 @@ export default function NPTELRegistrationPage() {
                     ...prev, 
                     courseId: e.target.value 
                   }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
                   placeholder="e.g., NPTEL23CS04"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block text-sm font-bold text-gray-700 mb-3">
                   Course Duration (weeks)
                 </label>
                 <select
@@ -182,7 +192,7 @@ export default function NPTELRegistrationPage() {
                     ...prev, 
                     duration: Number(e.target.value) 
                   }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
                 >
                   <option value={8}>8 weeks</option>
                   <option value={12}>12 weeks</option>
@@ -191,65 +201,40 @@ export default function NPTELRegistrationPage() {
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
-                  {error}
-                </div>
+                <Alert 
+                  variant="error" 
+                  message={error} 
+                  className="mt-4"
+                />
               )}
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-medium text-blue-900 mb-2">What you'll get:</h4>
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                <h4 className="font-bold text-blue-900 mb-2">What you'll get:</h4>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Weekly assignment progress tracking</li>
-                  <li>• Visual progress indicators</li>
-                  <li>• Time-based week unlocking system</li>
-                  <li>• Performance analytics and insights</li>
+                  <li>• Weekly progress tracking</li>
+                  <li>• Automated assignment unlocking</li>
+                  <li>• Visual completion indicators</li>
+                  <li>• Performance analytics</li>
                 </ul>
               </div>
 
               <Button
                 type="submit"
                 disabled={isRegistering}
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700"
               >
                 {isRegistering ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="h-5 w-5 animate-spin mr-3" />
                     Registering...
                   </>
                 ) : (
-                  'Register for NPTEL'
+                  "Register for NPTEL Course"
                 )}
               </Button>
             </form>
           </CardContent>
         </Card>
-
-        {/* Information Cards */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">About NPTEL</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-black">
-                NPTEL (National Programme on Technology Enhanced Learning) is a joint initiative 
-                by IITs and IISc to offer online courses in engineering, science, and management.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Progress Tracking</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-black">
-                Track your weekly assignments, monitor progress with visual indicators, 
-                and stay on schedule with our time-based unlocking system.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   )

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import Alert from '@/components/ui/alert'
 
 interface NPTELRegistrationData {
   register_number: string
@@ -446,7 +447,7 @@ export default function NPTELPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#F7F7E7'}}>
+      <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#FFFFFF'}}>
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
           <p className="mt-2 text-black">Loading your NPTEL data...</p>
@@ -462,87 +463,111 @@ export default function NPTELPage() {
   // Registration Form
   if (showRegistration) {
     return (
-      <div className="min-h-screen" style={{backgroundColor: '#F7F7E7'}}>
+      <div className="min-h-screen relative" style={{backgroundColor: '#FFFFFF'}}>
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            backgroundSize: '60px 60px'
+          }}></div>
+        </div>
+      
         {/* Header with Back Button */}
-        <div className="backdrop-blur-sm border-b">
+        <div className="backdrop-blur-md border-b bg-white shadow-xl relative z-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <Button variant="ghost" asChild className="text-black hover:bg-white/20">
+            <div className="flex justify-between items-center py-6">
+              <Button variant="ghost" asChild className="text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl rounded-xl px-6 py-3 border border-gray-200 hover:border-blue-300">
                 <Link href="/">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  
+                  <ArrowLeft className="h-5 w-5 mr-2" />
+                  Back to Dashboard
                 </Link>
               </Button>
-              <div className="flex flex-col items-end">
-                <h1 className="text-xl font-semibold text-black">NPTEL Registration</h1>
-                <p className="text-sm text-black">Register for NPTEL courses</p>
+              <div className="flex flex-col items-end bg-white rounded-2xl px-6 py-3 border border-gray-200">
+                <p className="text-xl font-bold text-gray-800">{user.name}</p>
+                <p className="text-sm text-gray-600 font-medium">{user.register_number || 'Student'}</p>
               </div>
-              </div>
+            </div>
           </div>
         </div>
-       
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Register for NPTEL Courses</CardTitle>
-              
+     
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+          <div className="mb-8 text-center">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mx-auto max-w-2xl">
+              <h1 className="text-4xl font-bold text-gray-800 mb-3">NPTEL Registration</h1>
+              <p className="text-gray-600 text-md">Register for NPTEL courses to track your progress</p>
+            </div>
+          </div>
+          
+          <Card className="bg-white shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
+            <CardHeader className="bg-blue-50 rounded-t-lg border-b border-gray-200">
+              <CardTitle className="text-gray-800 text-xl font-bold">Register for NPTEL Courses</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <form onSubmit={handleRegistration} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-black mb-2">Register Number</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-3">
+                    Register Number
+                  </label>
                   <input
                     type="text"
                     disabled
                     value={user.register_number}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black cursor-not-allowed"
+                    className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-gray-800 cursor-not-allowed bg-white shadow-inner font-medium"
                   />
-                  <p className="text-xs text-gray-600 mt-1">Register number cannot be changed as it's linked to your account</p>
+                  <p className="text-xs text-gray-600 mt-2">Register number cannot be changed as it's linked to your account</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-black mb-2">Name</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-3">
+                    Name
+                  </label>
                   <input
                     type="text"
                     required
                     value={registrationData.name}
                     onChange={(e) => setRegistrationData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
                     placeholder="Enter your full name"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-black mb-2">Email</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-3">
+                    Email
+                  </label>
                   <input
                     type="email"
                     required
                     value={registrationData.email}
                     onChange={(e) => setRegistrationData(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
                     placeholder="Enter your email address"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-black mb-2">Mobile Number</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-3">
+                    Mobile Number
+                  </label>
                   <input
                     type="tel"
                     required
                     value={registrationData.mobile}
                     onChange={(e) => setRegistrationData(prev => ({ ...prev, mobile: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
                     placeholder="Enter your mobile number"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-black mb-2">Class</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-3">
+                    Class
+                  </label>
                   <select
                     required
                     value={registrationData.class_name}
                     onChange={(e) => setRegistrationData(prev => ({ ...prev, class_name: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
                   >
                     <option value="">Select your class</option>
                     <option value="II-IT">II-IT</option>
@@ -551,59 +576,67 @@ export default function NPTELPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-black mb-2">NPTEL Course Name</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-3">
+                    NPTEL Course Name
+                  </label>
                   <input
                     type="text"
                     required
                     value={registrationData.nptel_course_name}
                     onChange={(e) => setRegistrationData(prev => ({ ...prev, nptel_course_name: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
                     placeholder="Enter NPTEL course name"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-black mb-2">NPTEL Course ID</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-3">
+                    NPTEL Course ID
+                  </label>
                   <input
                     type="text"
                     required
                     value={registrationData.nptel_course_id}
                     onChange={(e) => setRegistrationData(prev => ({ ...prev, nptel_course_id: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
                     placeholder="Enter NPTEL course ID"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-black mb-2">Course Duration(in weeks)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-3">
+                    Course Duration (in weeks)
+                  </label>
                   <input
                     type="text"
                     required
                     value={registrationData.course_duration}
                     onChange={(e) => setRegistrationData(prev => ({ ...prev, course_duration: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
                     placeholder="e.g., 12 weeks, 8 weeks"
                   />
                 </div>
 
                 {registrationError && (
-                  <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
-                    {registrationError}
-                  </div>
+                  <Alert 
+                    variant="error" 
+                    message={registrationError} 
+                    className="mt-4"
+                  />
                 )}
 
                 <Button
                   type="submit"
                   disabled={isRegistering}
-                  className="w-full text-white bg-blue-600 hover:bg-blue-700"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700"
                 >
                   {isRegistering ? (
                     <>
-                      <Loader2 className="h-4 w-4 text-white animate-spin mr-2" />
+                      <Loader2 className="h-5 w-5 animate-spin mr-3" />
                       Registering...
                     </>
                   ) : (
-                    'Register for NPTEL'
+                    "Register for NPTEL Course"
                   )}
                 </Button>
               </form>
@@ -614,65 +647,78 @@ export default function NPTELPage() {
     )
   }
 
-  // Dashboard
-  const courseDuration = Number.parseInt(student?.course_duration || '12')
-  const currentWeek = getCurrentWeek()
-  const overallProgress = calculateOverallProgress()
-
+  // Main NPTEL Dashboard
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#F7F7E7'}}>
+    <div className="min-h-screen relative" style={{backgroundColor: '#FFFFFF'}}>
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundSize: '60px 60px'
+        }}></div>
+      </div>
+      
       {/* Header with Back Button */}
-      <div className="backdrop-blur-sm border-b">
+      <div className="backdrop-blur-md border-b bg-white relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <Button variant="ghost" asChild className="text-black hover:bg-white/20">
+          <div className="flex justify-between items-center py-6">
+            <Button variant="ghost" asChild className="text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-300  hover:shadow-xl rounded-xl px-6 py-3 hover:border-blue-300">
               <Link href="/">
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="h-5 w-5 mr-2" />
                 
               </Link>
             </Button>
-            <div className="flex flex-col items-end">
-              <p className="text-xl font-medium text-black">{user.name}</p>
-              <p className="text-xs text-black">{user.register_number || 'Student'}</p>
+            <div className="flex flex-col items-end bg-white rounded-2xl px-6 py-3 ">
+              <p className="text-xl font-bold text-gray-800">{user?.name || 'Student'}</p>
+              <p className="text-sm text-gray-600 font-medium">{user?.register_number || 'Register Number'}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {student && (
-          <div className="space-y-8">
+      <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+        {/* Page Title Section */}
+        <div className="mb-8 text-center">
+          <div className="bg-white rounded-2xl p-2 mx-auto max-w-2xl">
+            <h1 className="text-2xl font-bold text-gray-800 mb-3">NPTEL Dashboard</h1>
+            <p className="text-gray-600 text-sm">Track your NPTEL course progress and weekly assignments</p>
+          </div>
+        </div>
+        
+        {student ? (
+          <>
             {/* Course Overview */}
-            <Card>
-              <CardHeader>
-             
+            <Card className="bg-white mb-6 shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
+              <CardHeader className="bg-blue-50 rounded-t-lg border-b border-gray-200">
+                <CardTitle className="text-gray-800 text-xl font-bold">Course Overview</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
                 <div className="flex justify-between items-start">
                   <div>
-                     <CardDescription className="text-black">
+                    <CardDescription className="text-gray-800">
                       Course ID: {student.nptel_course_id} • {student.course_duration} weeks
                       <br />
                       Course Name : {student.nptel_course_name}
                     </CardDescription>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-blue-600">{overallProgress}%</div>
-                    <div className="text-sm text-black">Overall Progress</div>
+                    <div className="text-2xl font-bold text-blue-600">{calculateOverallProgress()}%</div>
+                    <div className="text-sm text-gray-800">Overall Progress</div>
                   </div>
                 </div>
-            
-              </CardHeader>
+              </CardContent>
             </Card>
 
             {/* Current Week Status */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-black">Current Week Status</CardTitle>
+            <Card className="bg-white mb-6 shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
+              <CardHeader className="bg-blue-50 rounded-t-lg border-b border-gray-200">
+                <CardTitle className="text-gray-800 text-xl font-bold">Current Week Status</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between p-4  rounded-lg">
                   <div>
-                    <p className="text-lg font-semibold text-black">Week {currentWeek}</p>
-                    <p className="text-sm text-black">{weekAccessStatus.timeRemaining}</p>
+                    <p className="text-lg font-semibold text-gray-800">Week {getCurrentWeek()}</p>
+                    <p className="text-sm text-gray-800">{weekAccessStatus.timeRemaining}</p>
                   </div>
                   <div className="flex items-center space-x-4">
                     {weekAccessStatus.isOpen ? (
@@ -680,27 +726,27 @@ export default function NPTELPage() {
                     ) : (
                       <Lock className="h-6 w-6 text-red-600" />
                     )}
-                    {getStatusBadge(student[`week_${currentWeek}_status` as keyof StudentData] as string)}
+                    {getStatusBadge(student[`week_${getCurrentWeek()}_status` as keyof StudentData] as string)}
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Weekly Progress */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-black">Weekly Progress</CardTitle>
-                <CardDescription className="text-black">
+            <Card className="bg-white shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
+              <CardHeader className="bg-blue-50 rounded-t-lg border-b border-gray-200">
+                <CardTitle className="text-gray-800 text-xl font-bold">Weekly Progress</CardTitle>
+                <CardDescription className="text-gray-800">
                   Update your weekly assignment status
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {Array.from({ length: courseDuration }, (_, index) => {
+                  {Array.from({ length: Number.parseInt(student.course_duration) || 12 }, (_, index) => {
                     const weekNumber = index + 1
                     const status = student[`week_${weekNumber}_status` as keyof StudentData] as string
-                    const isCurrentWeek = weekNumber === currentWeek
-                    const isLocked = weekNumber > currentWeek
+                    const isCurrentWeek = weekNumber === getCurrentWeek()
+                    const isLocked = weekNumber > getCurrentWeek()
                     const canUpdate = isCurrentWeek && weekAccessStatus.isOpen && status !== 'completed'
 
                     return (
@@ -711,7 +757,7 @@ export default function NPTELPage() {
                       }`}>
                         <CardHeader className="pb-3">
                           <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm text-black">Week {weekNumber}</CardTitle>
+                            <CardTitle className="text-sm text-gray-800">Week {weekNumber}</CardTitle>
                             {isLocked ? (
                               <Lock className="h-4 w-4 text-gray-400" />
                             ) : (
@@ -752,6 +798,11 @@ export default function NPTELPage() {
                 </div>
               </CardContent>
             </Card>
+          </>
+        ) : (
+          <div className="text-center py-12 bg-white rounded-2xl shadow-xl border border-gray-200">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-600 mb-4" />
+            <p className="text-gray-700 font-medium">Loading course data...</p>
           </div>
         )}
       </div>

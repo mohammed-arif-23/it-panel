@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Calendar, ArrowLeft, CheckCircle, Loader2, Clock, Users } from 'lucide-react'
 import Link from 'next/link'
+import Alert from '@/components/ui/alert'
 
 export default function SeminarRegistrationPage() {
   const { user, registerForService, hasRegistration } = useAuth()
@@ -61,15 +62,15 @@ export default function SeminarRegistrationPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{backgroundColor: '#F7F7E7'}}>
-        <Card className="w-full max-w-md text-center">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{backgroundColor: '#FFFFFF'}}>
+        <Card className="w-full max-w-md text-center bg-white shadow-2xl border-2 border-gray-200">
           <CardContent className="pt-6">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-black mb-2">Registration Successful!</h2>
-            <p className="text-black mb-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Registration Successful!</h2>
+            <p className="text-gray-700 mb-4">
               You have been successfully registered for seminar booking.
             </p>
-            <p className="text-sm text-black">
+            <p className="text-sm text-gray-600">
               Redirecting to your seminar dashboard...
             </p>
           </CardContent>
@@ -79,65 +80,74 @@ export default function SeminarRegistrationPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#F7F7E7'}}>
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+    <div className="min-h-screen relative" style={{backgroundColor: '#FFFFFF'}}>
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundSize: '60px 60px'
+        }}></div>
+      </div>
+      
+      {/* Header with Back Button */}
+      <div className="backdrop-blur-md border-b bg-white shadow-xl relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center py-4">
-            <Button variant="ghost" asChild className="mr-4">
+          <div className="flex justify-between items-center py-6">
+            <Button variant="ghost" asChild className="text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl rounded-xl px-6 py-3 border border-gray-200 hover:border-blue-300">
               <Link href="/">
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="h-5 w-5 mr-2" />
                 Back to Dashboard
               </Link>
             </Button>
-            <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-black">
-                  Seminar Booking Registration
-                </h1>
-                <p className="text-sm text-black">Register for seminar booking system</p>
-              </div>
+            <div className="flex flex-col items-end bg-white rounded-2xl px-6 py-3 border border-gray-200">
+              <p className="text-xl font-bold text-gray-800">{user?.name}</p>
+              <p className="text-sm text-gray-600 font-medium">{user?.register_number || 'Student'}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+        {/* Page Title Section */}
+        <div className="mb-8 text-center">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mx-auto max-w-2xl">
+            <h1 className="text-4xl font-bold text-gray-800 mb-3">Seminar Registration</h1>
+            <p className="text-gray-600 text-md">Register for seminar booking to present your work</p>
+          </div>
+        </div>
+        
         {/* Registration Card */}
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle>Register for Seminar Booking</CardTitle>
-            <CardDescription>
+        <Card className="bg-white shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
+          <CardHeader className="bg-green-50 rounded-t-lg border-b border-gray-200 text-center">
+            <CardTitle className="text-gray-800 text-xl font-bold">Register for Seminar Booking</CardTitle>
+            <CardDescription className="text-gray-600">
               Join the seminar booking system to reserve your presentation slots
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="space-y-6">
               {/* Student Info */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-medium text-black mb-2">Your Information</h4>
+              <div className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200">
+                <h4 className="font-bold text-gray-800 mb-3">Your Information</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-black">Registration Number:</span>
-                    <span className="font-medium">{user.register_number}</span>
+                    <span className="text-gray-700">Registration Number:</span>
+                    <span className="font-medium text-gray-800">{user?.register_number}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-black">Name:</span>
-                    <span className="font-medium">{user.name || 'Not provided'}</span>
+                    <span className="text-gray-700">Name:</span>
+                    <span className="font-medium text-gray-800">{user?.name || 'Not provided'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-black">Class:</span>
-                    <span className="font-medium">{user.class_year || 'Not specified'}</span>
+                    <span className="text-gray-700">Class:</span>
+                    <span className="font-medium text-gray-800">{user?.class_year || 'Not specified'}</span>
                   </div>
                 </div>
               </div>
 
               {/* Features */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h4 className="font-medium text-green-900 mb-3">Seminar Booking Features:</h4>
+              <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
+                <h4 className="font-bold text-green-900 mb-3">Seminar Booking Features:</h4>
                 <div className="space-y-3">
                   <div className="flex items-start space-x-3">
                     <Clock className="h-5 w-5 text-green-600 mt-0.5" />
@@ -164,8 +174,8 @@ export default function SeminarRegistrationPage() {
               </div>
 
               {/* Booking Schedule */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-medium text-blue-900 mb-3">How Booking Works:</h4>
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                <h4 className="font-bold text-blue-900 mb-3">How Booking Works:</h4>
                 <div className="space-y-2 text-sm text-blue-800">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
@@ -183,60 +193,30 @@ export default function SeminarRegistrationPage() {
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
-                  {error}
-                </div>
+                <Alert 
+                  variant="error" 
+                  message={error} 
+                  className="mt-4"
+                />
               )}
 
               <Button
                 onClick={handleRegistration}
                 disabled={isRegistering}
-                className="w-full bg-green-600 hover:bg-green-700"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-green-600 hover:border-green-700"
               >
                 {isRegistering ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="h-5 w-5 animate-spin mr-3" />
                     Registering...
                   </>
                 ) : (
-                  'Register for Seminar Booking'
+                  "Register for Seminar Booking"
                 )}
               </Button>
-
-              <p className="text-xs text-center text-black">
-                By registering, you agree to participate in the seminar booking system 
-                and present when selected.
-              </p>
             </div>
           </CardContent>
         </Card>
-
-        {/* Information Cards */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Fair Selection</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-black">
-                Our random selection system ensures every student has an equal opportunity 
-                to present, making the process fair and transparent.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Easy Booking</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-black">
-                Simple one-click booking during the daily window. No complex forms 
-                or lengthy processes - just book and wait for selection results.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   )

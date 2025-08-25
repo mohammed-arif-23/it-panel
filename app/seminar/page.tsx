@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
+import Alert from '../../components/ui/alert'
 import { 
   Calendar, 
   Clock, 
@@ -360,7 +361,7 @@ export default function SeminarPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#F7F7E7'}}>
+      <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#FFFFFF'}}>
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
           <p className="mt-2 text-black">Loading Seminar system...</p>
@@ -374,70 +375,87 @@ export default function SeminarPage() {
   }
 
   return (
-    <div className="min-h-[70vh]" style={{backgroundColor: '#F7F7E7'}}>
+    <div className="min-h-screen relative" style={{backgroundColor: '#FFFFFF'}}>
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundSize: '60px 60px'
+        }}></div>
+      </div>
+      
       {/* Header with Back Button */}
-      <div className="backdrop-blur-sm border-b">
+      <div className="backdrop-blur-md border-b bg-white relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <Button variant="ghost" asChild className="text-black hover:bg-white/20">
+          <div className="flex justify-between items-center py-6">
+            <Button variant="ghost" asChild className="text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-300  hover:shadow-xl rounded-xl px-6 py-3 borderhover:border-blue-300">
               <Link href="/">
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="h-5 w-5 mr-2" />
+              
               </Link>
             </Button>
-            <div className="flex flex-col items-end">
-              <p className="text-xl font-medium text-black">{user.name}</p>
-              <p className="text-xs text-black">{user.register_number || 'Student'}</p>
+            <div className="flex flex-col items-end bg-white rounded-2xl px-6 py-3 ">
+              <p className="text-xl font-bold text-gray-800">{user.name}</p>
+              <p className="text-sm text-gray-600 font-medium">{user.register_number || 'Student'}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         {/* Page Title Section */}
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-black mb-2">Seminar Booking</h1>
-          <p className="text-gray-600">Book your seminar slots and track your selections</p>
+          <div className="bg-white rounded-2xl  p-2 mx-auto max-w-2xl">
+            <h1 className="text-2xl font-bold text-gray-800 mb-3">Seminar Booking</h1>
+            <p className="text-gray-600 text-sm">Book your seminar slots and track your selections</p>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Booking Section */}
           <div className="lg:col-span-2 space-y-6">
             {/* Booking Window Status */}
-            <Card>
-              <CardHeader>
+            <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
+              <CardHeader className="bg-blue-50/50 rounded-t-lg border-b border-gray-200">
                 <div className="flex items-center space-x-3">
-                  <Clock className="h-6 w-6 text-blue-600" />
-                  <CardTitle className="text-black">Booking Window</CardTitle>
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Clock className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <CardTitle className="text-gray-800 text-xl font-bold">Booking Window</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 {windowInfo.isOpen ? (
-                  <div className="border bg border-green-200 rounded-lg p-4">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <span className="font-medium text-green-800">Booking Window is OPEN</span>
+                  <div className="bg-green-50/60 backdrop-blur-sm border-2 border-green-200 rounded-xl p-6 shadow-lg">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <CheckCircle className="h-6 w-6 text-green-600" />
+                      </div>
+                      <span className="font-bold text-green-800 text-lg">Booking Window is OPEN</span>
                     </div>
-                    <p className="text-green-700 mb-2">
-                      Time remaining: {windowInfo.timeUntilClose ? seminarTimingService.formatTimeRemaining(windowInfo.timeUntilClose) : 'Unknown'}
-                    </p>
-                    {windowInfo.timeUntilSelection !== undefined && windowInfo.timeUntilSelection > 0 && (
-                      <p className="text-blue-700 mb-3">
-                        Selection in: {seminarTimingService.formatTimeRemaining(windowInfo.timeUntilSelection)}
+                    <div className="space-y-3 mb-4">
+                      <p className="text-green-700 font-medium">
+                        Time remaining: {windowInfo.timeUntilClose ? seminarTimingService.formatTimeRemaining(windowInfo.timeUntilClose) : 'Unknown'}
                       </p>
-                    )}
+                      {windowInfo.timeUntilSelection !== undefined && windowInfo.timeUntilSelection > 0 && (
+                        <p className="text-blue-700 font-medium">
+                          Selection in: {seminarTimingService.formatTimeRemaining(windowInfo.timeUntilSelection)}
+                        </p>
+                      )}
+                    </div>
                     
                     {hasBookedToday ? (
-                      <div className="border border-blue-200 rounded-lg p-3">
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="h-5 w-5 text-blue-600" />
-                          <span className="text-blue-800 font-medium">Already booked for tomorrow!</span>
-                        </div>
-                      </div>
+                      <Alert 
+                        variant="success" 
+                        title="Booking Confirmed!" 
+                        message="You have successfully booked for tomorrow's seminar!" 
+                        className="mb-4"
+                      />
                     ) : (
                       <>
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-bold text-gray-700 mb-3">
                               Seminar Topic Title
                             </label>
                             <input
@@ -450,27 +468,31 @@ export default function SeminarPage() {
                                   setTopicError('')
                                 }
                               }}
-                              className={`w-full px-4 py-3 border ${topicError ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                              className={`w-full px-4 py-4 border-2 ${topicError ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-white/70 backdrop-blur-sm shadow-inner text-gray-800 font-medium`}
                               placeholder="Enter your seminar topic title"
                             />
                             {topicError && (
-                              <div className="text-red-600 text-sm mt-1">{topicError}</div>
+                              <Alert 
+                                variant="error" 
+                                message={topicError} 
+                                className="mt-3"
+                              />
                             )}
                           </div>
                           
                           <Button
                             onClick={handleBooking}
                             disabled={isBooking}
-                            className="w-full bg-blue-600 hover:bg-blue-700"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700"
                           >
                             {isBooking ? (
                               <>
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                <Loader2 className="h-5 w-5 animate-spin mr-3" />
                                 Booking...
                               </>
                             ) : (
                               <>  
-                                <Calendar className="h-4 w-4 mr-2" />
+                                <Calendar className="h-5 w-5 mr-3" />
                                 Book Next Seminar ({seminarTimingService.formatDateWithDay(seminarTimingService.getNextSeminarDate()).split(',')[0]})
                               </>
                             )}
@@ -478,88 +500,105 @@ export default function SeminarPage() {
                         </div>
                       </>
                     )}
+                    {bookingMessage && (
+                      <Alert 
+                        variant={bookingMessage.includes('Successfully') ? 'success' : bookingMessage.includes('already booked') ? 'info' : 'error'} 
+                        message={bookingMessage} 
+                        className="mt-4"
+                        onClose={() => setBookingMessage('')}
+                      />
+                    )}
                   </div>
                 ) : (
-                  <div className="rounded-lg p-4">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <XCircle className="h-5 w-5 text-red-500" />
-                      <span className="font-medium text-black">Booking Window is CLOSED</span>
+                  <div className="bg-red-50/60 backdrop-blur-sm border-2 border-red-200 rounded-xl p-6 shadow-lg">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="p-2 bg-red-100 rounded-lg">
+                        <XCircle className="h-6 w-6 text-red-500" />
+                      </div>
+                      <span className="font-bold text-red-800 text-lg">Booking Window is CLOSED</span>
                     </div>
-                    <p className="text-black mb-2">
-                      Next opens in: {windowInfo.timeUntilOpen ? seminarTimingService.formatTimeRemaining(windowInfo.timeUntilOpen) : 'Unknown'}
-                    </p>
-                    {windowInfo.timeUntilSelection !== undefined && windowInfo.timeUntilSelection > 0 && (
-                      <p className="text-blue-700 mb-2">
-                        Selection in: {seminarTimingService.formatTimeRemaining(windowInfo.timeUntilSelection)}
+                    <div className="space-y-3">
+                      <p className="text-red-700 font-medium">
+                        Next opens in: {windowInfo.timeUntilOpen ? seminarTimingService.formatTimeRemaining(windowInfo.timeUntilOpen) : 'Unknown'}
                       </p>
-                    )}
-                 
+                      {windowInfo.timeUntilSelection !== undefined && windowInfo.timeUntilSelection > 0 && (
+                        <p className="text-blue-700 font-medium">
+                          Selection in: {seminarTimingService.formatTimeRemaining(windowInfo.timeUntilSelection)}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
+            <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
+              <CardHeader className="bg-blue-50/50 rounded-t-lg border-b border-gray-200">
                 <div className="flex items-center space-x-3">
-                  <Calendar className="h-6 w-6 text-blue-600" />
-                  <CardTitle className="text-black">Next Seminar</CardTitle>
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Calendar className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <CardTitle className="text-gray-800 text-xl font-bold">Next Seminar</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-center rounded-lg p-4">
-                  <p className="text-blue-900 font-medium mb-2">
+              <CardContent className="p-6">
+                <div className="text-center bg-blue-50/60 backdrop-blur-sm rounded-xl p-6 border-2 border-blue-200 shadow-inner">
+                  <p className="text-blue-900 font-bold text-lg mb-2">
                     {seminarTimingService.formatDateWithDay(seminarTimingService.getNextSeminarDate())}
                   </p>
-                  <p className="text-blue-700 text-sm">
+                  <p className="text-blue-700 text-sm font-medium">
                     Selection at {seminarTimingService.getBookingWindowConfig().selectionTime}
                   </p>
-                 
                 </div>
               </CardContent>
             </Card>
           
 
             {/* Tomorrow's Selection */}
-            <Card>
-              <CardHeader>
+            <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
+              <CardHeader className="bg-purple-50/50 rounded-t-lg border-b border-gray-200">
                 <div className="flex items-center space-x-3">
-                  <User className="h-6 w-6 text-purple-600" />
-                  <CardTitle className="text-black">Tomorrow's Selection ({user?.class_year || 'Your Class'})</CardTitle>
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <User className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <CardTitle className="text-gray-800 text-xl font-bold">Tomorrow's Selection ({user?.class_year || 'Your Class'})</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 {isLoadingSelections ? (
-                  <div className="text-center py-6">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-purple-600 mb-2" />
-                    <p className="text-sm text-gray-500">Loading selections...</p>
+                  <div className="text-center py-8 bg-purple-50/60 backdrop-blur-sm rounded-xl border-2 border-purple-200">
+                    <Loader2 className="h-10 w-10 animate-spin mx-auto text-purple-600 mb-3" />
+                    <p className="text-sm text-purple-600 font-medium">Loading selections...</p>
                   </div>
                 ) : tomorrowSelections.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {tomorrowSelections.map((selection, index) => (
-                      <div key={index} className="  rounded-lg p-4">
+                      <div key={index} className="bg-purple-50/70 backdrop-blur-sm border-2 border-purple-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
                         <div className="text-center">
-                          <h3 className="font-semibold text-purple-900 text-lg mb-1">
+                          <h3 className="font-bold text-purple-900 text-xl mb-2">
                             {selection.student.name} 
-                            
                           </h3>
-                          <p className="text-purple-700 text-sm mb-2">
+                          <p className="text-purple-700 text-sm font-medium mb-3 bg-purple-100 rounded-lg px-3 py-1 inline-block">
                             {selection.student.class_year || 'IT Department'}
                           </p>
-                          <p className="text-purple-600 text-xs">
+                          <p className="text-purple-600 text-sm font-medium">
                             Selected at: {seminarTimingService.formatTime12Hour(new Date(selection.selectedAt))}
                           </p>
                         </div>
                       </div>
                     ))}
-                  
+                    <div className="text-center text-purple-600 text-sm font-bold mt-4 bg-purple-100/60 rounded-lg py-2">
+                      {tomorrowSelections.length} student{tomorrowSelections.length > 1 ? 's' : ''} from {user?.class_year || 'your class'} selected
+                    </div>
                   </div>
                 ) : (
-                  <div className="text-center text-gray-500 py-4">
-                    <User className="h-8 w-8 mx-auto mb-2" />
-                    <p className="text-sm">No {user?.class_year || 'your class'} student selected yet</p>
-                    <p className="text-xs text-gray-400 mt-1">
+                  <div className="text-center text-gray-500 py-8 bg-gray-50/60 backdrop-blur-sm rounded-xl border-2 border-gray-200">
+                    <div className="p-3 bg-gray-100 rounded-lg inline-block mb-3">
+                      <User className="h-10 w-10 mx-auto text-gray-400" />
+                    </div>
+                    <p className="text-sm font-medium mb-2">No {user?.class_year || 'your class'} student selected yet</p>
+                    <p className="text-xs text-gray-400">
                       Selection will be made at {seminarTimingService.getBookingWindowConfig().selectionTime}
                     </p>
                   </div>
@@ -568,27 +607,32 @@ export default function SeminarPage() {
             </Card>
 
             {/* Booking Window Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-black">System Info</CardTitle>
+            <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
+              <CardHeader className="bg-gray-50/50 rounded-t-lg border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-gray-100 rounded-lg">
+                    <AlertCircle className="h-6 w-6 text-gray-600" />
+                  </div>
+                  <CardTitle className="text-gray-800 text-xl font-bold">System Info</CardTitle>
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-black">Booking Window:</span>
-                    <span className="text-black font-medium">
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center p-3 bg-gray-50/60 backdrop-blur-sm rounded-lg border border-gray-200">
+                    <span className="text-gray-700 font-medium">Booking Window:</span>
+                    <span className="text-gray-800 font-bold text-sm">
                       {seminarTimingService.getBookingWindowConfig().startTime} - {seminarTimingService.getBookingWindowConfig().endTime}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-black">Selection Time:</span>
-                    <span className="text-black font-medium">
+                  <div className="flex justify-between items-center p-3 bg-gray-50/60 backdrop-blur-sm rounded-lg border border-gray-200">
+                    <span className="text-gray-700 font-medium">Selection Time:</span>
+                    <span className="text-gray-800 font-bold text-sm">
                       {seminarTimingService.getBookingWindowConfig().selectionTime}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-black">Your Status:</span>
-                    <span className={`font-medium ${hasBookedToday ? 'text-green-600' : 'text-black'}`}>
+                  <div className="flex justify-between items-center p-3 bg-gray-50/60 backdrop-blur-sm rounded-lg border border-gray-200">
+                    <span className="text-gray-700 font-medium">Your Status:</span>
+                    <span className={`font-bold text-sm px-3 py-1 rounded-lg ${hasBookedToday ? 'text-green-700 bg-green-100' : 'text-orange-700 bg-orange-100'}`}>
                       {hasBookedToday ? 'Booked' : 'Not Booked'}
                     </span>
                   </div>
