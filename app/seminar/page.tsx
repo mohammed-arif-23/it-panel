@@ -493,7 +493,7 @@ export default function SeminarPage() {
                             ) : (
                               <>  
                                 <Calendar className="h-5 w-5 mr-3" />
-                                Book Next Seminar ({seminarTimingService.formatDateWithDay(seminarTimingService.getNextSeminarDate()).split(',')[0]})
+                                Book Next Seminar
                               </>
                             )}
                           </Button>
