@@ -69,6 +69,13 @@ class SeminarTimingService {
     return tomorrow.toISOString().split('T')[0];
   }
 
+  // Holiday-aware seminar date calculation (will be enhanced by holiday service)
+  async getHolidayAwareNextSeminarDate(): Promise<string> {
+    // This method can be called by holiday service for enhanced functionality
+    // For now, it returns the basic calculation - holiday service will enhance it
+    return this.getNextSeminarDate();
+  }
+
   // Get descriptive information about seminar scheduling
   getSeminarScheduleInfo(): { nextSeminarDate: string; scheduleDescription: string } {
     const today = new Date();

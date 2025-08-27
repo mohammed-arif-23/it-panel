@@ -148,6 +148,44 @@ export interface Database {
           selected_at?: string
         }
       }
+      unified_seminar_attendance: {
+        Row: {
+          id: string
+          student_id: string
+          seminar_date: string
+          attendance_status: 'present' | 'absent' | 'excused' | 'pending'
+          attendance_time: string | null
+          notes: string | null
+          seminar_topic: string | null
+          marked_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          student_id: string
+          seminar_date: string
+          attendance_status?: 'present' | 'absent' | 'excused' | 'pending'
+          attendance_time?: string | null
+          notes?: string | null
+          seminar_topic?: string | null
+          marked_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          student_id?: string
+          seminar_date?: string
+          attendance_status?: 'present' | 'absent' | 'excused' | 'pending'
+          attendance_time?: string | null
+          notes?: string | null
+          seminar_topic?: string | null
+          marked_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       assignments: {
         Row: {
           id: string
@@ -489,6 +527,445 @@ export interface Database {
           student_id?: string
           seminar_date?: string
           selected_at?: string
+        }
+      }
+      // Admin and system tables
+      unified_student_fines: {
+        Row: {
+          id: string
+          student_id: string
+          fine_type: string
+          reference_id: string | null
+          reference_date: string
+          base_amount: number
+          daily_increment: number
+          days_overdue: number
+          payment_status: 'pending' | 'paid' | 'waived'
+          paid_amount: number | null
+          paid_at: string | null
+          waived_by: string | null
+          waived_reason: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          student_id: string
+          fine_type: string
+          reference_id?: string | null
+          reference_date: string
+          base_amount?: number
+          daily_increment?: number
+          days_overdue?: number
+          payment_status?: 'pending' | 'paid' | 'waived'
+          paid_amount?: number | null
+          paid_at?: string | null
+          waived_by?: string | null
+          waived_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          student_id?: string
+          fine_type?: string
+          reference_id?: string | null
+          reference_date?: string
+          base_amount?: number
+          daily_increment?: number
+          days_overdue?: number
+          payment_status?: 'pending' | 'paid' | 'waived'
+          paid_amount?: number | null
+          paid_at?: string | null
+          waived_by?: string | null
+          waived_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      unified_holidays: {
+        Row: {
+          id: string
+          holiday_name: string
+          holiday_date: string
+          holiday_type: string
+          description: string | null
+          is_announced: boolean
+          announced_date: string | null
+          created_by: string
+          affects_seminars: boolean
+          affects_assignments: boolean
+          affects_exams: boolean
+          reschedule_rules: any | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          holiday_name: string
+          holiday_date: string
+          holiday_type: string
+          description?: string | null
+          is_announced?: boolean
+          announced_date?: string | null
+          created_by: string
+          affects_seminars?: boolean
+          affects_assignments?: boolean
+          affects_exams?: boolean
+          reschedule_rules?: any | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          holiday_name?: string
+          holiday_date?: string
+          holiday_type?: string
+          description?: string | null
+          is_announced?: boolean
+          announced_date?: string | null
+          created_by?: string
+          affects_seminars?: boolean
+          affects_assignments?: boolean
+          affects_exams?: boolean
+          reschedule_rules?: any | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      unified_blocked_registrations: {
+        Row: {
+          id: string
+          register_number: string | null
+          email: string | null
+          mobile: string | null
+          block_type: string
+          block_reason: string
+          blocked_until: string | null
+          is_permanent: boolean
+          appeal_status: string | null
+          ip_address: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          register_number?: string | null
+          email?: string | null
+          mobile?: string | null
+          block_type: string
+          block_reason: string
+          blocked_until?: string | null
+          is_permanent?: boolean
+          appeal_status?: string | null
+          ip_address?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          register_number?: string | null
+          email?: string | null
+          mobile?: string | null
+          block_type?: string
+          block_reason?: string
+          blocked_until?: string | null
+          is_permanent?: boolean
+          appeal_status?: string | null
+          ip_address?: string | null
+          created_at?: string
+        }
+      }
+      unified_registration_attempts: {
+        Row: {
+          id: string
+          register_number: string
+          email: string | null
+          mobile: string | null
+          name: string | null
+          class_year: string | null
+          attempt_status: string
+          otp_verification_id: string | null
+          final_student_id: string | null
+          ip_address: string | null
+          user_agent: string | null
+          browser_fingerprint: string | null
+          device_info: any | null
+          completed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          register_number: string
+          email?: string | null
+          mobile?: string | null
+          name?: string | null
+          class_year?: string | null
+          attempt_status: string
+          otp_verification_id?: string | null
+          final_student_id?: string | null
+          ip_address?: string | null
+          user_agent?: string | null
+          browser_fingerprint?: string | null
+          device_info?: any | null
+          completed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          register_number?: string
+          email?: string | null
+          mobile?: string | null
+          name?: string | null
+          class_year?: string | null
+          attempt_status?: string
+          otp_verification_id?: string | null
+          final_student_id?: string | null
+          ip_address?: string | null
+          user_agent?: string | null
+          browser_fingerprint?: string | null
+          device_info?: any | null
+          completed_at?: string | null
+          created_at?: string
+        }
+      }
+      unified_email_change_history: {
+        Row: {
+          id: string
+          student_id: string
+          new_email: string
+          change_reason: string
+          verification_method: string
+          otp_verification_id: string | null
+          ip_address: string | null
+          user_agent: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          student_id: string
+          new_email: string
+          change_reason: string
+          verification_method: string
+          otp_verification_id?: string | null
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          student_id?: string
+          new_email?: string
+          change_reason?: string
+          verification_method?: string
+          otp_verification_id?: string | null
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+      }
+      unified_duplicate_detection_logs: {
+        Row: {
+          id: string
+          register_number: string
+          email: string | null
+          mobile: string | null
+          detection_type: string
+          attempted_registration_data: any
+          action_taken: string
+          ip_address: string | null
+          user_agent: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          register_number: string
+          email?: string | null
+          mobile?: string | null
+          detection_type: string
+          attempted_registration_data: any
+          action_taken: string
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          register_number?: string
+          email?: string | null
+          mobile?: string | null
+          detection_type?: string
+          attempted_registration_data?: any
+          action_taken?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+      }
+      // Holiday and calendar management tables
+      unified_academic_calendar: {
+        Row: {
+          id: string
+          event_name: string
+          event_type: string
+          start_date: string
+          end_date: string | null
+          class_year: string | null
+          department: string
+          is_fixed: boolean
+          priority_level: number
+          description: string | null
+          recurring_pattern: string | null
+          created_by: string
+          status: string
+          approved_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          event_name: string
+          event_type: string
+          start_date: string
+          end_date?: string | null
+          class_year?: string | null
+          department?: string
+          is_fixed?: boolean
+          priority_level?: number
+          description?: string | null
+          recurring_pattern?: string | null
+          created_by: string
+          status?: string
+          approved_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          event_name?: string
+          event_type?: string
+          start_date?: string
+          end_date?: string | null
+          class_year?: string | null
+          department?: string
+          is_fixed?: boolean
+          priority_level?: number
+          description?: string | null
+          recurring_pattern?: string | null
+          created_by?: string
+          status?: string
+          approved_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      unified_holiday_impact_assessments: {
+        Row: {
+          id: string
+          holiday_id: string
+          impact_type: string
+          affected_count: number
+          impact_severity: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          holiday_id: string
+          impact_type: string
+          affected_count: number
+          impact_severity: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          holiday_id?: string
+          impact_type?: string
+          affected_count?: number
+          impact_severity?: string
+          created_at?: string
+        }
+      }
+      unified_seminar_reschedule_history: {
+        Row: {
+          id: string
+          holiday_id: string | null
+          original_date: string
+          new_date: string
+          seminar_topic: string
+          class_year: string
+          reschedule_reason: string
+          reschedule_type: string
+          affected_students_count: number
+          affected_bookings_count: number
+          status: string
+          rescheduled_by: string
+          auto_reschedule_rules: any | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          holiday_id?: string | null
+          original_date: string
+          new_date: string
+          seminar_topic: string
+          class_year: string
+          reschedule_reason: string
+          reschedule_type: string
+          affected_students_count: number
+          affected_bookings_count: number
+          status?: string
+          rescheduled_by: string
+          auto_reschedule_rules?: any | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          holiday_id?: string | null
+          original_date?: string
+          new_date?: string
+          seminar_topic?: string
+          class_year?: string
+          reschedule_reason?: string
+          reschedule_type?: string
+          affected_students_count?: number
+          affected_bookings_count?: number
+          status?: string
+          rescheduled_by?: string
+          auto_reschedule_rules?: any | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      unified_auto_reschedule_rules: {
+        Row: {
+          id: string
+          rule_name: string
+          rule_type: string
+          priority: number
+          reschedule_logic: any
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          rule_name: string
+          rule_type: string
+          priority: number
+          reschedule_logic: any
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          rule_name?: string
+          rule_type?: string
+          priority?: number
+          reschedule_logic?: any
+          is_active?: boolean
+          created_at?: string
         }
       }
     }

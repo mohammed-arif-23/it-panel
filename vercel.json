@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/direct-select",
-      "schedule": "0 9 * * 0-6"
-    }
-  ]
-}

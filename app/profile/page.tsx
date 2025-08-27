@@ -155,107 +155,149 @@ export default function ProfilePage() {
           </div>
         </div>
       
-        <Card className="bg-white shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
-          <CardHeader className="bg-blue-50 rounded-t-lg border-b border-gray-200">
-            <CardTitle className="text-gray-800 text-xl font-bold">Profile Details</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Registration Number (Read-only) */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-3">
-                  Register Number (As per Anna University)
-                </label>
-                <input
-                  type="text"
-                  value={user.register_number}
-                  disabled
-                  className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-gray-800 cursor-not-allowed bg-white shadow-inner font-medium"
-                />
-                <p className="text-xs text-gray-600 mt-2">Register number cannot be modified</p>
+        <Card className="group relative overflow-hidden bg-white shadow-2xl border-0 hover:shadow-3xl transition-all duration-500">
+          {/* Gradient Border Effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl"></div>
+          <div className="relative bg-white m-1 rounded-xl">
+            <CardHeader className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-t-xl border-b border-indigo-100">
+              {/* Header Background Pattern */}
+              <div className="absolute inset-0 opacity-5 rounded-t-xl">
+                <div className="absolute inset-0" style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Cpath d='M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z'/%3E%3C/g%3E%3C/svg%3E")`
+                }}></div>
               </div>
+              <div className="relative z-10">
+                <CardTitle className="flex items-center space-x-3">
+                  <div className="p-3 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl shadow-lg">
+                    <User className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800">Profile Details</h2>
+                    <p className="text-gray-600 font-medium mt-1">Update your profile information to ensure accurate records</p>
+                  </div>
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-8">
+              <form onSubmit={handleSubmit} className="space-y-8">
+                {/* Registration Number (Read-only) */}
+                <div className="p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200">
+                  <label className="block text-sm font-bold text-gray-700 mb-3">
+                    Register Number (As per Anna University)
+                  </label>
+                  <input
+                    type="text"
+                    value={user.register_number}
+                    disabled
+                    className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-gray-800 cursor-not-allowed bg-gray-100 shadow-inner font-medium"
+                  />
+                  <p className="text-xs text-gray-600 mt-2 flex items-center">
+                    <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
+                    Register number cannot be modified
+                  </p>
+                </div>
 
-              {/* Name */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-3">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  disabled={!!user?.name}
-                  className={`w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium ${user?.name ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                  placeholder="Enter your full name"
-                />
-                {user?.name && (
-                  <p className="text-xs text-gray-600 mt-2">This field is already filled and cannot be modified</p>
-                )}
-              </div>
+                {/* Name */}
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
+                  <label className="block text-sm font-bold text-blue-600 uppercase tracking-wider mb-3">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    disabled={!!user?.name}
+                    className={`w-full px-4 py-4 border-2 border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium transition-all duration-300 ${user?.name ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-blue-300'}`}
+                    placeholder="Enter your full name"
+                  />
+                  {user?.name ? (
+                    <p className="text-xs text-blue-600 mt-2 flex items-center">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      This field is already filled and cannot be modified
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-600 mt-2">Enter your full name as per official records</p>
+                  )}
+                </div>
 
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-3">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  disabled={!!user?.email}
-                  className={`w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium ${user?.email ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                  placeholder="Enter your email address"
-                />
-                {user?.email && (
-                  <p className="text-xs text-gray-600 mt-2">This field is already filled and cannot be modified</p>
-                )}
-              </div>
+                {/* Email */}
+                <div className="p-4 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-100">
+                  <label className="block text-sm font-bold text-cyan-600 uppercase tracking-wider mb-3">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    disabled={!!user?.email}
+                    className={`w-full px-4 py-4 border-2 border-cyan-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium transition-all duration-300 ${user?.email ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-cyan-300'}`}
+                    placeholder="Enter your email address"
+                  />
+                  {user?.email ? (
+                    <p className="text-xs text-cyan-600 mt-2 flex items-center">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      This field is already filled and cannot be modified
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-600 mt-2">Enter your college or personal email address</p>
+                  )}
+                </div>
 
-              {/* Mobile */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-3">
-                  Mobile Number
-                </label>
-                <input
-                  type="tel"
-                  name="mobile"
-                  required
-                  value={formData.mobile}
-                  onChange={handleInputChange}
-                  disabled={!!user?.mobile}
-                  className={`w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium ${user?.mobile ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                  placeholder="Enter your mobile number"
-                />
-                {user?.mobile && (
-                  <p className="text-xs text-gray-600 mt-2">This field is already filled and cannot be modified</p>
-                )}
-              </div>
+                {/* Mobile */}
+                <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                  <label className="block text-sm font-bold text-green-600 uppercase tracking-wider mb-3">
+                    Mobile Number
+                  </label>
+                  <input
+                    type="tel"
+                    name="mobile"
+                    required
+                    value={formData.mobile}
+                    onChange={handleInputChange}
+                    disabled={!!user?.mobile}
+                    className={`w-full px-4 py-4 border-2 border-green-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium transition-all duration-300 ${user?.mobile ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-green-300'}`}
+                    placeholder="Enter your mobile number"
+                  />
+                  {user?.mobile ? (
+                    <p className="text-xs text-green-600 mt-2 flex items-center">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      This field is already filled and cannot be modified
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-600 mt-2">Enter your 10-digit mobile number</p>
+                  )}
+                </div>
 
-              {/* Class Year */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-3">
-                  Class Year
-                </label>
-                <select
-                  name="class_year"
-                  required
-                  value={formData.class_year}
-                  onChange={handleInputChange}
-                  disabled={!!user?.class_year}
-                  className={`w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium ${user?.class_year ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                >
-                  <option value="">Select your class year</option>
-                  <option value="II-IT">II-IT</option>
-                  <option value="III-IT">III-IT</option>
-                </select>
-                {user?.class_year && (
-                  <p className="text-xs text-gray-600 mt-2">This field is already filled and cannot be modified</p>
-                )}
-              </div>
+                {/* Class Year */}
+                <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
+                  <label className="block text-sm font-bold text-purple-600 uppercase tracking-wider mb-3">
+                    Class Year
+                  </label>
+                  <select
+                    name="class_year"
+                    required
+                    value={formData.class_year}
+                    onChange={handleInputChange}
+                    disabled={!!user?.class_year}
+                    className={`w-full px-4 py-4 border-2 border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium transition-all duration-300 ${user?.class_year ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-purple-300'}`}
+                  >
+                    <option value="">Select your class year</option>
+                    <option value="II-IT">II-IT</option>
+                    <option value="III-IT">III-IT</option>
+                  </select>
+                  {user?.class_year ? (
+                    <p className="text-xs text-purple-600 mt-2 flex items-center">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      This field is already filled and cannot be modified
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-600 mt-2">Select your current academic year</p>
+                  )}
+                </div>
 
               {message && (
                 <Alert 
@@ -265,27 +307,29 @@ export default function ProfilePage() {
                 />
               )}
 
-              <Button
-                type="submit"
-                disabled={isUpdating}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700"
-              >
-                {isUpdating ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin mr-3" />
-                    Updating Profile...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-5 w-5 mr-3" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
+                <Button
+                  type="submit"
+                  disabled={isUpdating}
+                  className="w-full h-14 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  {isUpdating ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin mr-3" />
+                      Updating Profile...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-5 w-5 mr-3" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
             </form>
           </CardContent>
+          </div>
         </Card>
       </div>
+    
     </div>
   )
 }

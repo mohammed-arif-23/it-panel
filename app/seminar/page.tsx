@@ -16,10 +16,13 @@ import {
   ArrowLeft,
   Trophy,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  CalendarX,
+  Info
 } from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { holidayService } from '../../lib/holidayService'
 import { seminarTimingService } from '../../lib/seminarTimingService'
 
 interface TodaySelection {
@@ -63,6 +66,20 @@ interface BookingWindowInfo {
   timeUntilSelection?: number
   nextOpenTime?: Date
   selectionTime?: Date
+}
+
+interface HolidayInfo {
+  isHoliday: boolean
+  holidayName?: string
+  holidayDate?: string
+  rescheduledDate?: string
+}
+
+interface RescheduleNotification {
+  originalDate: string
+  newDate: string
+  holidayName: string
+  show: boolean
 }
 
 
@@ -185,6 +202,14 @@ export default function SeminarPage() {
   const [selectionMessage, setSelectionMessage] = useState('')
   const [seminarTopic, setSeminarTopic] = useState('')
   const [topicError, setTopicError] = useState('')
+  const [holidayInfo, setHolidayInfo] = useState<HolidayInfo>({ isHoliday: false })
+  const [rescheduleNotification, setRescheduleNotification] = useState<RescheduleNotification | null>(null)
+  const [rescheduleNotificationDismissed, setRescheduleNotificationDismissed] = useState(false)
+  const [nextSeminarDate, setNextSeminarDate] = useState('')
+  const [isSelectionInProgress, setIsSelectionInProgress] = useState(false)
+  const [presenterHistory, setPresenterHistory] = useState<TomorrowSelection[]>([])
+  const [isTodayHoliday, setIsTodayHoliday] = useState(false)
+  const [todayHolidayInfo, setTodayHolidayInfo] = useState<{ holidayName?: string }>({})
 
   useEffect(() => {
     if (!user) {
@@ -195,15 +220,58 @@ export default function SeminarPage() {
     initializeSeminarStudent()
   }, [user, router])
 
-  // Real-time updates with auto-selection
+  // Real-time updates with auto-selection and holiday checking
   useEffect(() => {
     const updateWindowInfo = async () => {
       const info = seminarTimingService.getBookingWindowInfo()
       setWindowInfo(info)
       
+      // Check if today is a holiday
+      const today = new Date().toISOString().split('T')[0]
+      const { isHoliday: isTodayHolidayCheck, holiday: todayHoliday } = await holidayService.isHoliday(today)
+      setIsTodayHoliday(isTodayHolidayCheck)
+      if (isTodayHolidayCheck && todayHoliday) {
+        setTodayHolidayInfo({ holidayName: todayHoliday.holiday_name })
+      } else {
+        setTodayHolidayInfo({})
+      }
+      
+      // Get holiday-aware next seminar date
+      const holidayAwareSeminarDate = await holidayService.getHolidayAwareNextSeminarDate()
+      setNextSeminarDate(holidayAwareSeminarDate)
+      
+      // Check if the originally calculated seminar date is a holiday
+      const originalDate = seminarTimingService.getNextSeminarDate()
+      const { isHoliday, holiday } = await holidayService.isHoliday(originalDate)
+      
+      if (isHoliday && holiday) {
+        setHolidayInfo({
+          isHoliday: true,
+          holidayName: holiday.holiday_name,
+          holidayDate: originalDate,
+          rescheduledDate: holidayAwareSeminarDate
+        })
+        
+        // Show reschedule notification if dates are different and not dismissed
+        if (originalDate !== holidayAwareSeminarDate && !rescheduleNotificationDismissed) {
+          setRescheduleNotification({
+            originalDate,
+            newDate: holidayAwareSeminarDate,
+            holidayName: holiday.holiday_name,
+            show: true
+          })
+        }
+      } else {
+        setHolidayInfo({ isHoliday: false })
+        // Reset notification if no holiday
+        setRescheduleNotification(null)
+        setRescheduleNotificationDismissed(false)
+      }
+      
       // Check if we should trigger auto-selection
       if (seminarTimingService.shouldTriggerAutoSelection() && !autoSelectionTriggered) {
         setAutoSelectionTriggered(true)
+        setIsSelectionInProgress(true)
         setSelectionMessage('Triggering automatic selection...')
         
         try {
@@ -220,14 +288,21 @@ export default function SeminarPage() {
         } catch (error) {
           console.error('Auto-selection error:', error)
           setSelectionMessage('Failed to trigger automatic selection')
+        } finally {
+          setIsSelectionInProgress(false)
         }
+      }
+      
+      // Check if selection time has passed to reset the flag
+      if (windowInfo.timeUntilSelection !== undefined && windowInfo.timeUntilSelection <= 0) {
+        setIsSelectionInProgress(false)
       }
     }
 
     updateWindowInfo()
     const interval = setInterval(updateWindowInfo, 1000)
     return () => clearInterval(interval)
-  }, [autoSelectionTriggered, seminarStudent])
+  }, [autoSelectionTriggered, seminarStudent, rescheduleNotificationDismissed])
 
   // Load data when seminar student is set
   useEffect(() => {
@@ -272,31 +347,62 @@ export default function SeminarPage() {
 
     setIsLoadingSelections(true)
     try {
+      // Get holiday-aware next seminar date
+      const holidayAwareDate = nextSeminarDate || await holidayService.getHolidayAwareNextSeminarDate()
+      
       // Check if user has booked for next seminar
-      const nextSeminarDate = seminarTimingService.getNextSeminarDate()
-      const { data: booking } = await seminarDbHelpers.getStudentBooking(seminarStudent.id, nextSeminarDate)
+      const { data: booking } = await seminarDbHelpers.getStudentBooking(seminarStudent.id, holidayAwareDate)
       setHasBookedToday(!!booking)
 
-      // Get today's selection (can be multiple, but show first one for today's display)
-      const todayDate = seminarTimingService.getTodayDate()
-      const { data: todaySelections } = await seminarDbHelpers.getSelectionsForDate(todayDate)
-      if (todaySelections && todaySelections.length > 0) {
-        const firstSelection = todaySelections[0]
-        setTodaySelection({
-          student: {
-            id: (firstSelection as any).unified_students.id,
-            register_number: (firstSelection as any).unified_students.register_number,
-            name: (firstSelection as any).unified_students.name || (firstSelection as any).unified_students.register_number,
-            class_year: (firstSelection as any).unified_students.class_year
-          },
-          selectedAt: (firstSelection as any).selected_at
-        })
+      // Get date references for selection lookup
+      const today = seminarTimingService.getTodayDate()
+      const tomorrow = seminarTimingService.getNextSeminarDate()
+
+      // Try to find selections for multiple possible dates
+      const datesToCheck = [holidayAwareDate, tomorrow, today]
+      let foundSelections = null
+      let foundSelectionsDate = null
+
+      // Check each date until we find selections
+      for (const dateToCheck of datesToCheck) {
+        const { data: selections } = await seminarDbHelpers.getSelectionsForDate(dateToCheck)
+        if (selections && selections.length > 0) {
+          foundSelections = selections
+          foundSelectionsDate = dateToCheck
+          break
+        }
       }
 
-      // Get tomorrow's selections (should be 2 students)
-      const { data: tomorrowSelectionsData } = await seminarDbHelpers.getSelectionsForDate(nextSeminarDate)
-      if (tomorrowSelectionsData && tomorrowSelectionsData.length > 0) {
-        const allSelections = tomorrowSelectionsData.map((selection: any) => ({
+      // Process today's selection from found selections
+      if (foundSelections && foundSelections.length > 0) {
+        // Find selections from the user's class only
+        const userClassSelections = foundSelections.filter((selection: any) => 
+          (selection as any).unified_students.class_year === user?.class_year
+        )
+        
+        if (userClassSelections.length > 0) {
+          // Sort by selection time (most recent first) and show the latest
+          const sortedSelections = userClassSelections.sort((a: any, b: any) => 
+            new Date((b as any).selected_at).getTime() - new Date((a as any).selected_at).getTime()
+          )
+          
+          const latestSelection = sortedSelections[0]
+          
+          setTodaySelection({
+            student: {
+              id: (latestSelection as any).unified_students.id,
+              register_number: (latestSelection as any).unified_students.register_number,
+              name: (latestSelection as any).unified_students.name || (latestSelection as any).unified_students.register_number,
+              class_year: (latestSelection as any).unified_students.class_year
+            },
+            selectedAt: (latestSelection as any).selected_at
+          })
+        } else {
+          setTodaySelection(null)
+        }
+
+        // Set tomorrow's selections (same as today since they're for the same seminar date)
+        const allSelections = foundSelections.map((selection: any) => ({
           student: {
             id: selection.unified_students.id,
             register_number: selection.unified_students.register_number,
@@ -304,21 +410,85 @@ export default function SeminarPage() {
             class_year: selection.unified_students.class_year
           },
           selectedAt: selection.selected_at,
-          seminarDate: nextSeminarDate
+          seminarDate: foundSelectionsDate || holidayAwareDate
         }))
         
         // Filter selections to only show students from the same class as logged-in user
-        const filteredSelections = user ? allSelections.filter((selection: TomorrowSelection) => 
+        const filteredSelections = user ? allSelections.filter((selection: any) => 
           selection.student.class_year === user.class_year
         ) : allSelections
-        setTomorrowSelections(filteredSelections)
+        
+        // Sort by selection time (most recent first) and show the latest selected student
+        const sortedSelections = filteredSelections.sort((a: any, b: any) => 
+          new Date(b.selectedAt).getTime() - new Date(a.selectedAt).getTime()
+        )
+        
+        // Show only the most recently selected student from the user's class
+        setTomorrowSelections(sortedSelections.slice(0, 1) as TomorrowSelection[])
+        
+        // Load presenter history (all past selections from user's class)
+        await loadPresenterHistory()
       } else {
+        setTodaySelection(null)
         setTomorrowSelections([])
+        
+        // Still load history even if no current selections
+        await loadPresenterHistory()
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
     } finally {
       setIsLoadingSelections(false)
+    }
+  }
+
+  const loadPresenterHistory = async () => {
+    if (!user) return
+
+    try {
+      // Get all past selections from user's class, ordered by date (most recent first)
+      const { data: allSelections, error } = await (supabase as any)
+        .from('unified_seminar_selections')
+        .select(`
+          *,
+          unified_students (
+            id,
+            name,
+            register_number,
+            class_year
+          )
+        `)
+        .eq('unified_students.class_year', user.class_year)
+        .order('seminar_date', { ascending: false })
+        .order('selected_at', { ascending: false })
+        .limit(20) // Limit to last 20 presentations
+
+      if (error) {
+        console.error('Error loading presenter history:', error)
+        return
+      }
+
+      if (allSelections && allSelections.length > 0) {
+        const historySelections = allSelections
+          .filter((selection: any) => selection.unified_students) // Filter out null students
+          .map((selection: any) => ({
+            student: {
+              id: selection.unified_students.id,
+              register_number: selection.unified_students.register_number,
+              name: selection.unified_students.name || selection.unified_students.register_number,
+              class_year: selection.unified_students.class_year
+            },
+            selectedAt: selection.selected_at,
+            seminarDate: selection.seminar_date
+          }))
+
+        setPresenterHistory(historySelections as TomorrowSelection[])
+      } else {
+        setPresenterHistory([])
+      }
+    } catch (error) {
+      console.error('Error loading presenter history:', error)
+      setPresenterHistory([])
     }
   }
 
@@ -337,18 +507,19 @@ export default function SeminarPage() {
     }
 
     try {
-      const nextSeminarDate = seminarTimingService.getNextSeminarDate()
-      const { data, error } = await seminarDbHelpers.createBooking(seminarStudent.id, nextSeminarDate, seminarTopic)
+      const bookingDate = nextSeminarDate || await holidayService.getHolidayAwareNextSeminarDate()
+      const { data, error } = await seminarDbHelpers.createBooking(seminarStudent.id, bookingDate, seminarTopic)
       
       if (error) {
         if (error.code === '23505') {
-          setBookingMessage(`You have already booked for next seminar (${seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0]})!`)
+          setBookingMessage(`You have already booked for the seminar on ${seminarTimingService.formatDateWithDay(bookingDate).split(',')[0]}!`)
           setHasBookedToday(true)
         } else {
           setBookingMessage('Failed to book. Please try again.')
         }
       } else {
-        setBookingMessage(`Successfully booked for next seminar (${seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0]})!`)
+        const dateDisplay = seminarTimingService.formatDateWithDay(bookingDate).split(',')[0]
+        setBookingMessage(`Successfully booked for seminar on ${dateDisplay}!`)
         setHasBookedToday(true)
       }
     } catch (error) {
@@ -411,6 +582,45 @@ export default function SeminarPage() {
           </div>
         </div>
         
+        {/* Holiday Reschedule Notification */}
+        {rescheduleNotification && rescheduleNotification.show && (
+          <Card className="mb-6 border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <div className="flex items-start space-x-3">
+                <CalendarX className="h-5 w-5 text-orange-600 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-orange-800">Seminar Rescheduled Due to Holiday</h3>
+                  <p className="text-sm text-orange-700 mt-1">
+                    The seminar originally scheduled for {new Date(rescheduleNotification.originalDate + 'T12:00:00').toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })} has been moved to {new Date(rescheduleNotification.newDate + 'T12:00:00').toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })} due to <strong>{rescheduleNotification.holidayName}</strong>.
+                  </p>
+                  <div className="mt-2 flex space-x-2">
+                    <Button 
+                      size="sm" 
+                      className="bg-orange-600 hover:bg-orange-700 text-white"
+                      onClick={() => {
+                        setRescheduleNotification(null)
+                        setRescheduleNotificationDismissed(true)
+                      }}
+                    >
+                      Got it!
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Booking Section */}
           <div className="lg:col-span-2 space-y-6">
@@ -425,7 +635,27 @@ export default function SeminarPage() {
                 </div>
               </CardHeader>
               <CardContent className="p-6">
-                {windowInfo.isOpen ? (
+                {/* Holiday Pause Message */}
+                {isTodayHoliday && (
+                  <div className="bg-orange-50/60 backdrop-blur-sm border-2 border-orange-200 rounded-xl p-6 shadow-lg mb-6">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="p-2 bg-orange-100 rounded-lg">
+                        <CalendarX className="h-6 w-6 text-orange-600" />
+                      </div>
+                      <span className="font-bold text-orange-800 text-lg">Booking Paused - Holiday</span>
+                    </div>
+                    <div className="space-y-3">
+                      <p className="text-orange-700 font-medium">
+                        Seminar booking is paused today due to {todayHolidayInfo.holidayName || 'holiday'}.
+                      </p>
+                      <p className="text-orange-600 text-sm">
+                        Booking will resume on the next working day. Next seminar is scheduled for {nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate) : 'the next working day'}.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {!isTodayHoliday && windowInfo.isOpen ? (
                   <div className="bg-green-50/60 backdrop-blur-sm border-2 border-green-200 rounded-xl p-6 shadow-lg">
                     <div className="flex items-center space-x-3 mb-4">
                       <div className="p-2 bg-green-100 rounded-lg">
@@ -448,7 +678,7 @@ export default function SeminarPage() {
                       <Alert 
                         variant="success" 
                         title="Booking Confirmed!" 
-                        message="You have successfully booked for tomorrow's seminar!" 
+                        message={`You have successfully booked for the seminar on ${nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0] : 'the next seminar date'}!`}
                         className="mb-4"
                       />
                     ) : (
@@ -509,7 +739,7 @@ export default function SeminarPage() {
                       />
                     )}
                   </div>
-                ) : (
+                ) : !isTodayHoliday ? (
                   <div className="bg-red-50/60 backdrop-blur-sm border-2 border-red-200 rounded-xl p-6 shadow-lg">
                     <div className="flex items-center space-x-3 mb-4">
                       <div className="p-2 bg-red-100 rounded-lg">
@@ -528,11 +758,67 @@ export default function SeminarPage() {
                       )}
                     </div>
                   </div>
-                )}
+                ) : null}
               </CardContent>
             </Card>
           </div>
           <div className="space-y-6">
+            {/* Today's Selection */}
+            <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
+              <CardHeader className="bg-green-50/50 rounded-t-lg border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <Trophy className="h-6 w-6 text-green-600" />
+                  </div>
+                  <CardTitle className="text-gray-800 text-xl font-bold">Today's Selection ({user?.class_year || 'Your Class'})</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {isLoadingSelections ? (
+                  <div className="text-center py-8 bg-green-50/60 backdrop-blur-sm rounded-xl border-2 border-green-200">
+                    <Loader2 className="h-10 w-10 animate-spin mx-auto text-green-600 mb-3" />
+                    <p className="text-sm text-green-600 font-medium">Loading today's selection...</p>
+                  </div>
+                ) : todaySelection ? (
+                  <div className="bg-green-50/70 backdrop-blur-sm border-2 border-green-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center space-x-2 mb-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <span className="text-xs font-bold text-green-800 bg-green-100 px-2 py-1 rounded-full">
+                          SELECTED TODAY
+                        </span>
+                      </div>
+                      <h3 className="font-bold text-green-900 text-xl mb-2">
+                        {todaySelection.student.name}
+                      </h3>
+                      <p className="text-green-700 text-sm font-medium mb-2 bg-green-100 rounded-lg px-3 py-1 inline-block">
+                        {todaySelection.student.register_number}
+                      </p>
+                      <p className="text-green-700 text-sm font-medium mb-3 bg-green-100/50 rounded-lg px-3 py-1 inline-block">
+                        {todaySelection.student.class_year || 'IT Department'}
+                      </p>
+                      <p className="text-green-600 text-sm font-medium">
+                        Selected at: {seminarTimingService.formatTime12Hour(new Date(todaySelection.selectedAt))}
+                      </p>
+                      <p className="text-green-500 text-xs mt-2">
+                        Will present on {nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0] : 'next seminar day'}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-8 bg-gray-50/60 backdrop-blur-sm rounded-xl border-2 border-gray-200">
+                    <div className="p-3 bg-gray-100 rounded-lg inline-block mb-3">
+                      <User className="h-10 w-10 mx-auto text-gray-400" />
+                    </div>
+                    <p className="text-sm font-medium mb-2">No student from {user?.class_year || 'your class'} selected today</p>
+                    <p className="text-xs text-gray-400">
+                      Selection will happen at {seminarTimingService.getBookingWindowConfig().selectionTime}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
             <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
               <CardHeader className="bg-blue-50/50 rounded-t-lg border-b border-gray-200">
                 <div className="flex items-center space-x-3">
@@ -545,61 +831,115 @@ export default function SeminarPage() {
               <CardContent className="p-6">
                 <div className="text-center bg-blue-50/60 backdrop-blur-sm rounded-xl p-6 border-2 border-blue-200 shadow-inner">
                   <p className="text-blue-900 font-bold text-lg mb-2">
-                    {seminarTimingService.formatDateWithDay(seminarTimingService.getNextSeminarDate())}
+                    {nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate) : 'Loading...'}
                   </p>
                   <p className="text-blue-700 text-sm font-medium">
                     Selection at {seminarTimingService.getBookingWindowConfig().selectionTime}
                   </p>
+                  
+                  {/* Holiday Information */}
+                  {holidayInfo.isHoliday && holidayInfo.rescheduledDate && holidayInfo.holidayDate !== holidayInfo.rescheduledDate && (
+                    <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <div className="flex items-center justify-center space-x-2 mb-2">
+                        <Info className="h-4 w-4 text-orange-600" />
+                        <span className="text-xs font-medium text-orange-800">Holiday Adjustment</span>
+                      </div>
+                      <p className="text-xs text-orange-700">
+                        Originally {seminarTimingService.formatDateWithDay(holidayInfo.holidayDate || '')} ({holidayInfo.holidayName})
+                      </p>
+                      <p className="text-xs text-orange-600 font-medium">
+                        Rescheduled to above date
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           
 
-            {/* Tomorrow's Selection */}
+            {/* Presenter History */}
             <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
               <CardHeader className="bg-purple-50/50 rounded-t-lg border-b border-gray-200">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-purple-100 rounded-lg">
                     <User className="h-6 w-6 text-purple-600" />
                   </div>
-                  <CardTitle className="text-gray-800 text-xl font-bold">Tomorrow's Selection ({user?.class_year || 'Your Class'})</CardTitle>
+                  <CardTitle className="text-gray-800 text-xl font-bold">Presenter History ({user?.class_year || 'Your Class'})</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="p-6">
                 {isLoadingSelections ? (
                   <div className="text-center py-8 bg-purple-50/60 backdrop-blur-sm rounded-xl border-2 border-purple-200">
                     <Loader2 className="h-10 w-10 animate-spin mx-auto text-purple-600 mb-3" />
-                    <p className="text-sm text-purple-600 font-medium">Loading selections...</p>
+                    <p className="text-sm text-purple-600 font-medium">Loading history...</p>
                   </div>
-                ) : tomorrowSelections.length > 0 ? (
-                  <div className="space-y-4">
-                    {tomorrowSelections.map((selection, index) => (
-                      <div key={index} className="bg-purple-50/70 backdrop-blur-sm border-2 border-purple-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-                        <div className="text-center">
-                          <h3 className="font-bold text-purple-900 text-xl mb-2">
-                            {selection.student.name} 
-                          </h3>
-                          <p className="text-purple-700 text-sm font-medium mb-3 bg-purple-100 rounded-lg px-3 py-1 inline-block">
-                            {selection.student.class_year || 'IT Department'}
-                          </p>
-                          <p className="text-purple-600 text-sm font-medium">
-                            Selected at: {seminarTimingService.formatTime12Hour(new Date(selection.selectedAt))}
-                          </p>
+                ) : presenterHistory.length > 0 ? (
+                  <div className="space-y-4 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-purple-300 scrollbar-track-purple-50">
+                    {presenterHistory.map((selection, index) => {
+                      const isUpcoming = new Date(selection.seminarDate) > new Date()
+                      const isPast = new Date(selection.seminarDate) < new Date()
+                      
+                      return (
+                        <div key={index} className={`backdrop-blur-sm border-2 rounded-xl p-4 shadow-md hover:shadow-lg transition-all duration-300 ${
+                          isUpcoming 
+                            ? 'bg-blue-50/70 border-blue-200' 
+                            : isPast 
+                            ? 'bg-gray-50/70 border-gray-200' 
+                            : 'bg-purple-50/70 border-purple-200'
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-1">
+                                {isUpcoming ? (
+                                  <span className="text-xs font-bold text-blue-800 bg-blue-100 px-2 py-1 rounded-full">
+                                    UPCOMING
+                                  </span>
+                                ) : isPast ? (
+                                  <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+                                    COMPLETED
+                                  </span>
+                                ) : (
+                                  <span className="text-xs font-bold text-purple-800 bg-purple-100 px-2 py-1 rounded-full">
+                                    TODAY
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className={`font-bold text-lg mb-1 ${
+                                isUpcoming ? 'text-blue-900' : isPast ? 'text-gray-700' : 'text-purple-900'
+                              }`}>
+                                {selection.student.name}
+                              </h4>
+                              <p className={`text-sm font-medium mb-1 rounded-lg px-2 py-1 inline-block ${
+                                isUpcoming ? 'text-blue-700 bg-blue-100' : isPast ? 'text-gray-600 bg-gray-100' : 'text-purple-700 bg-purple-100'
+                              }`}>
+                                {selection.student.register_number}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-sm font-medium ${
+                                isUpcoming ? 'text-blue-600' : isPast ? 'text-gray-500' : 'text-purple-600'
+                              }`}>
+                                {seminarTimingService.formatDateWithDay(selection.seminarDate).split(',')[0]}
+                              </p>
+                              <p className={`text-xs ${
+                                isUpcoming ? 'text-blue-500' : isPast ? 'text-gray-400' : 'text-purple-500'
+                              }`}>
+                                {seminarTimingService.formatTime12Hour(new Date(selection.selectedAt))}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                    <div className="text-center text-purple-600 text-sm font-bold mt-4 bg-purple-100/60 rounded-lg py-2">
-                      {tomorrowSelections.length} student{tomorrowSelections.length > 1 ? 's' : ''} from {user?.class_year || 'your class'} selected
-                    </div>
+                      )
+                    })}
                   </div>
                 ) : (
                   <div className="text-center text-gray-500 py-8 bg-gray-50/60 backdrop-blur-sm rounded-xl border-2 border-gray-200">
                     <div className="p-3 bg-gray-100 rounded-lg inline-block mb-3">
                       <User className="h-10 w-10 mx-auto text-gray-400" />
                     </div>
-                    <p className="text-sm font-medium mb-2">No {user?.class_year || 'your class'} student selected yet</p>
+                    <p className="text-sm font-medium mb-2">No presentation history found</p>
                     <p className="text-xs text-gray-400">
-                      Selection will be made at {seminarTimingService.getBookingWindowConfig().selectionTime}
+                      Past and upcoming presentations will appear here
                     </p>
                   </div>
                 )}
@@ -630,12 +970,8 @@ export default function SeminarPage() {
                       {seminarTimingService.getBookingWindowConfig().selectionTime}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center p-3 bg-gray-50/60 backdrop-blur-sm rounded-lg border border-gray-200">
-                    <span className="text-gray-700 font-medium">Your Status:</span>
-                    <span className={`font-bold text-sm px-3 py-1 rounded-lg ${hasBookedToday ? 'text-green-700 bg-green-100' : 'text-orange-700 bg-orange-100'}`}>
-                      {hasBookedToday ? 'Booked' : 'Not Booked'}
-                    </span>
-                  </div>
+              
+                
                 </div>
               </CardContent>
             </Card>

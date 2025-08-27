@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import { GraduationCap, BookOpen, Calendar, LogIn, Loader2, Users, Award, LogOut, FileText, User, Info } from 'lucide-react'
+import { GraduationCap, BookOpen, Calendar, LogIn, Loader2, Users, Award, LogOut, FileText, User, AlertTriangle, IndianRupee } from 'lucide-react'
 import Link from 'next/link'
 import Alert from '../components/ui/alert'
 
@@ -16,6 +16,10 @@ export default function HomePage() {
   const [isLogging, setIsLogging] = useState(false)
   const [error, setError] = useState('')
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const [dashboardData, setDashboardData] = useState<any>(null)
+  const [finesData, setFinesData] = useState<any>(null)
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false)
+  const [isLoadingFines, setIsLoadingFines] = useState(false)
 
   // Check if user profile is complete
   const isProfileComplete = (user: any) => {
@@ -59,6 +63,51 @@ export default function HomePage() {
       }
     }
   }, [user, loading, router])
+
+  // Fetch dashboard data when user is authenticated
+  useEffect(() => {
+    if (user && !loading && isProfileComplete(user)) {
+      fetchDashboardData()
+    }
+  }, [user, loading])
+
+  const fetchDashboardData = async () => {
+    if (!user?.id) return
+    
+    setIsLoadingDashboard(true)
+    setIsLoadingFines(true)
+    
+    try {
+      // Fetch both dashboard and fines data concurrently
+      const [dashboardResponse, finesResponse] = await Promise.all([
+        fetch(`/api/dashboard?studentId=${user.id}`),
+        fetch(`/api/dashboard/fines?studentId=${user.id}`)
+      ])
+      
+      const [dashboardData, finesData] = await Promise.all([
+        dashboardResponse.json(),
+        finesResponse.json()
+      ])
+      
+      if (dashboardData.success) {
+        setDashboardData(dashboardData.data)
+      } else {
+        console.error('Failed to fetch dashboard data:', dashboardData.error)
+      }
+      
+      if (finesData.success) {
+        setFinesData(finesData.data)
+      } else {
+        console.error('Failed to fetch fines data:', finesData.error)
+      }
+      
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+    } finally {
+      setIsLoadingDashboard(false)
+      setIsLoadingFines(false)
+    }
+  }
 
   // Function to validate if register number belongs to IT department
   const validateITDepartment = (regNumber: string): boolean => {
@@ -213,6 +262,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
         </div>
+        <p className="text-gray-600 text-center mt-8">Today App is under Maintenance. But still you can use all Features</p>
       </div>
     </div>
   )}
@@ -228,152 +278,350 @@ export default function HomePage() {
         }}></div>
       </div>
     
-      {/* Header */}
-      <div className="backdrop-blur-md border-b bg-white relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-3">
-              <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center shadow-lg">
-                <GraduationCap className="h-6 w-6 text-blue-600" />
+      {/* Clean Professional Header */}
+      <div className="relative overflow-hidden bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-2 py-3 relative z-10">
+          <div className="flex flex-col lg:flex-row items-center justify-between">
+            {/* Welcome Section */}
+            <div className="text-center lg:text-left lg:mb-0">
+              <div className="flex items-center justify-center lg:justify-start mb-4">
+               
+                <div>
+                  <h2 className="text-xl lg:text-4xl font-bold text-gray-800 mb-1">
+                    Department of Information Technology
+                  </h2>
+                
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-800">Department of IT</h1>
-                <p className="text-sm text-gray-600">{user?.class_year}</p>
+              <p className="text-gray-500 max-w-md text-sm">
+                 <span className="font-bold text-md text-gray-700">{user?.name || 'Student'}</span> •  <span className="font-bold text-md text-gray-700">{user?.class_year || 'IT'}</span>             
+          •  <span className="font-bold text-md text-gray-700">{user?.register_number || 'IT'}</span>              </p>
               </div>
-            </div>
-            <div className="flex flex-col items-end bg-white rounded-2xl px-6 py-3 ">
-              <p className="text-md font-bold text-gray-800">{user?.name || 'Student'}</p>
-              <p className="text-sm text-gray-600 font-medium">{user?.register_number || 'Register Number'}</p>
-            </div>
+            
+        
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-       
-      
-        {/* Dashboard Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* NPTEL Card */}
-          <Card className="bg-white shadow-xl border border-gray-200 hover:shadow-2xl transition-all duration-300">
-            <CardHeader className="bg-blue-50 rounded-t-lg">
-              <CardTitle className="flex items-center text-gray-800">
-                <BookOpen className="h-5 w-5 mr-2 text-blue-600" />
-                NPTEL Courses
-              </CardTitle>
-              <CardDescription className="text-gray-600">
-                Track your course progress and assignments
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center text-sm text-gray-600">
-                  <Users className="h-4 w-4 mr-2" />
-                  <span>View and manage your courses</span>
-                </div>
-                <Button asChild className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                  <Link href="/nptel">
-                    Access NPTEL Dashboard
-                  </Link>
-                </Button>
+        {/* Loading State - Show loading until both dashboard and fines data are loaded */}
+        {(isLoadingDashboard || isLoadingFines) ? (
+          <div className="text-center py-12">
+            <div className="flex flex-col items-center space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium text-gray-900">One Sec..</h3>
+                <p className="text-sm text-gray-600">It's Loading, Be Patient😅...</p>
               </div>
-            </CardContent>
+            </div>
+          </div>
+        ) : (
+          <>
+        {/* Modern Dashboard Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+          <p className="text-gray-600 text-center mt-3">Today App is under Maintenance. But still you can access all features.</p>
+          {/* NPTEL Card - Enhanced Design */}
+          <Card className="group relative overflow-hidden bg-white shadow-xl border-0 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+            {/* Gradient Border Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+            <div className="relative bg-white m-1 rounded-lg">
+              <CardHeader className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-t-lg border-b border-blue-100 pb-6">
+                <div className="flex items-center justify-between">
+                  <div className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg">
+                    <BookOpen className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                      COURSES
+                    </span>
+                  </div>
+                </div>
+                <CardTitle className="text-xl font-bold text-gray-800 mt-4">
+                  NPTEL Courses
+                </CardTitle>
+                <CardDescription className="text-gray-600 font-medium">
+                  Track progress, submit assignments, and manage your learning journey
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
+                    <div className="flex items-center">
+                      <Users className="h-4 w-4 mr-2 text-blue-600" />
+                      <span className="text-sm font-medium text-gray-700">Course Management</span>
+                    </div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  </div>
+                  <Button asChild className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
+                    <Link href="/nptel">
+                      Access NPTEL Dashboard
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </div>
           </Card>
 
-          {/* Seminar Card */}
-          <Card className="bg-white shadow-xl border border-gray-200 hover:shadow-2xl transition-all duration-300">
-            <CardHeader className="bg-green-50 rounded-t-lg">
-              <CardTitle className="flex items-center text-gray-800">
-                <Calendar className="h-5 w-5 mr-2 text-green-600" />
-                Seminar Booking
-              </CardTitle>
-              <CardDescription className="text-gray-600">
-                Book your seminar slots and view selections
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center text-sm text-gray-600">
-                  <Award className="h-4 w-4 mr-2" />
-                  <span>Book and track your presentations</span>
+          {/* Seminar Card - Enhanced Design */}
+          <Card className="group relative overflow-hidden bg-white shadow-xl border-0 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+            {/* Gradient Border Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+            <div className="relative bg-white m-1 rounded-lg">
+              <CardHeader className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-t-lg border-b border-green-100 pb-6">
+                <div className="flex items-center justify-between">
+                  <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl shadow-lg">
+                    <Calendar className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                      SEMINARS
+                    </span>
+                  </div>
                 </div>
-                <Button asChild className="w-full bg-green-600 hover:bg-green-700 text-white">
-                  <Link href="/seminar">
-                    Access Seminar Dashboard
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
+                <CardTitle className="text-xl font-bold text-gray-800 mt-4">
+                  Seminar Booking
+                </CardTitle>
+                <CardDescription className="text-gray-600 font-medium">
+                  Book presentation slots, view selections, and manage seminars
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
+                    <div className="flex items-center">
+                      <Award className="h-4 w-4 mr-2 text-green-600" />
+                      <span className="text-sm font-medium text-gray-700">Presentation Tracking</span>
+                    </div>
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  </div>
+                  <Button asChild className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
+                    <Link href="/seminar">
+                      Access Seminar Dashboard
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </div>
           </Card>
 
-          {/* Assignments Card */}
-          <Card className="bg-white shadow-xl border border-gray-200 hover:shadow-2xl transition-all duration-300">
-            <CardHeader className="bg-purple-50 rounded-t-lg">
-              <CardTitle className="flex items-center text-gray-800">
-                <FileText className="h-5 w-5 mr-2 text-purple-600" />
-                Assignments
-              </CardTitle>
-              <CardDescription className="text-gray-600">
-                View and submit your assignments
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center text-sm text-gray-600">
-                  <FileText className="h-4 w-4 mr-2" />
-                  <span>Submit and track assignments</span>
+          {/* Assignments Card - Enhanced Design */}
+          <Card className="group relative overflow-hidden bg-white shadow-xl border-0 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+            {/* Gradient Border Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+            <div className="relative bg-white m-1 rounded-lg">
+              <CardHeader className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-t-lg border-b border-purple-100 pb-6">
+                <div className="flex items-center justify-between">
+                  <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg">
+                    <FileText className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-semibold text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
+                      ASSIGNMENTS
+                    </span>
+                  </div>
                 </div>
-                <Button asChild className="w-full bg-purple-600 hover:bg-purple-700 text-white">
-                  <Link href="/assignments">
-                    View Assignments
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
+                <CardTitle className="text-xl font-bold text-gray-800 mt-4">
+                  Assignments
+                </CardTitle>
+                <CardDescription className="text-gray-600 font-medium">
+                  Submit work, track deadlines, and monitor your progress
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-xl">
+                    <div className="flex items-center">
+                      <FileText className="h-4 w-4 mr-2 text-purple-600" />
+                      <span className="text-sm font-medium text-gray-700">Submission Portal</span>
+                    </div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                  </div>
+                  <Button asChild className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
+                    <Link href="/assignments">
+                      View Assignments
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </div>
           </Card>
         </div>
 
-        {/* Profile and About Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          {/* Profile Card */}
-          <Card className="bg-white shadow-xl border border-gray-200 hover:shadow-2xl transition-all duration-300">
-            <CardHeader className="bg-gray-50 rounded-t-lg">
-              <CardTitle className="flex items-center text-gray-800">
-                <User className="h-5 w-5 mr-2 text-gray-600" />
-                My Profile
-              </CardTitle>
-              <CardDescription className="text-gray-600">
-                Update your personal information
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center text-sm text-gray-600">
-                  <User className="h-4 w-4 mr-2" />
-                  <span>Manage your profile details</span>
+        {/* Enhanced Profile Section */}
+        <div className="max-w-4xl mx-auto">
+          <Card className="group relative overflow-hidden bg-white shadow-2xl border-0 hover:shadow-3xl transition-all duration-500">
+            {/* Gradient Border Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl"></div>
+            <div className="relative bg-white m-1 rounded-xl">
+              <CardHeader className={`rounded-t-xl relative overflow-hidden ${
+                finesData && finesData.stats.totalFines > 0 
+                  ? 'bg-gradient-to-br from-red-50 via-pink-50 to-red-100' 
+                  : 'bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100'
+              }`}>
+                {/* Header Background Pattern */}
+                <div className="absolute inset-0 opacity-5">
+                  <div className="absolute inset-0" style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Cpath d='M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z'/%3E%3C/g%3E%3C/svg%3E")`
+                  }}></div>
                 </div>
-                <Button asChild variant="outline" className="w-full">
-                  <Link href="/profile">
-                    Edit Profile
-                  </Link>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full flex text-red border border-red items-center justify-center"
-                  onClick={async () => {
-                    await logout();
-                    router.push('/');
-                  }}
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between ">
+                    <div className="flex items-center space-x-3">
+                      <div className={`p-3 rounded-xl shadow-lg ${
+                        finesData && finesData.stats.totalFines > 0 
+                          ? 'bg-gradient-to-r from-red-500 to-pink-500' 
+                          : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                      }`}>
+                        <User className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-2xl font-bold text-gray-800">
+                          My Profile
+                        </CardTitle>
+                      </div>
+                    </div>
+                    {finesData && finesData.stats.totalFines > 0 && (
+                      <div className="flex items-center space-x-2 bg-red-100 px-3 py-2 rounded-xl border border-red-200">
+                        <AlertTriangle className="h-5 w-5 text-red-600" />
+                        <span className="text-sm font-bold text-red-600">Fine Alert</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              
+              <CardContent className="p-8">
+                <div className="space-y-8">
+                  {/* Enhanced Profile Information */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Personal Details */}
+                    <div className="space-y-6">
+                      <h3 className="text-md font-bold text-gray-800 flex items-center">
+                        <div className="w-4 h-4 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mr-3"></div>
+                        Personal Information
+                      </h3>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
+                          <label className="text-xs font-bold text-blue-600 uppercase tracking-wider">Full Name</label>
+                          <p className="text-md font-semibold text-gray-800 mt-1">{user?.name || 'Not provided'}</p>
+                        </div>
+                        <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-100">
+                          <label className="text-xs font-bold text-green-600 uppercase tracking-wider">Register Number</label>
+                          <p className="text-md font-semibold text-gray-800 mt-1">{user?.register_number || 'Not provided'}</p>
+                        </div>
+                        <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
+                          <label className="text-xs font-bold text-purple-600 uppercase tracking-wider">Class Year</label>
+                          <p className="text-md font-semibold text-gray-800 mt-1">{user?.class_year || 'Not provided'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Contact Details */}
+                    <div className="space-y-6">
+                      <h3 className="text-lg font-bold text-gray-800 flex items-center">
+                        <div className="w-4 h-4 bg-gradient-to-r from-green-500 to-blue-500 rounded-full mr-3"></div>
+                        Contact Information
+                      </h3>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-100">
+                          <label className="text-xs font-bold text-cyan-600 uppercase tracking-wider">Email Address</label>
+                          <p className="text-md font-semibold text-gray-800 mt-1 break-all">{user?.email || 'Not provided'}</p>
+                        </div>
+                        <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
+                          <label className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Mobile Number</label>
+                          <p className="text-md font-semibold text-gray-800 mt-1">{user?.mobile || 'Not provided'}</p>
+                        </div>
+                       
+                      </div>
+                    </div>
+                  </div>
 
-         
+                  {/* Enhanced Financial Status */}
+                  <div className={`relative p-6 rounded-2xl border-2 shadow-lg ${
+                    finesData && finesData.stats.totalFines > 0 
+                      ? 'bg-gradient-to-br from-red-50 via-pink-50 to-red-100 border-red-200' 
+                      : 'bg-gradient-to-br from-green-50 via-emerald-50 to-green-100 border-green-200'
+                  }`}>
+                    {/* Background pattern */}
+                    <div className="absolute inset-0 opacity-5 rounded-2xl">
+                      <div className="absolute inset-0" style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='30' height='30' viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='15' cy='15' r='1'/%3E%3C/g%3E%3C/svg%3E")`
+                      }}></div>
+                    </div>
+                    
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between ">
+                        <div className="flex items-center space-x-3">
+                          <div className={`p-3 rounded-xl shadow-lg ${
+                            finesData && finesData.stats.totalFines > 0 
+                              ? 'bg-gradient-to-r from-red-500 to-pink-500' 
+                              : 'bg-gradient-to-r from-green-500 to-emerald-500'
+                          }`}>
+                            {finesData && finesData.stats.totalFines > 0 ? (
+                              <AlertTriangle className="h-6 w-6 text-white" />
+                            ) : (
+                              <IndianRupee className="h-6 w-6 text-white" />
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="text-md font-bold text-gray-800">Fine Details</h3>
+                            <p className={`text-sm font-medium ${
+                              finesData && finesData.stats.totalFines > 0 ? 'text-red-600' : 'text-green-600'
+                            }`}>
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`text-2xl font-bold ${
+                            finesData && finesData.stats.totalFines > 0 ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            ₹{finesData ? finesData.stats.totalFines : 0}
+                          </p>
+                        </div>
+                      </div>
+                    
+                      {finesData && finesData.stats.totalFines > 0 && (
+                        <div className="mt-4 p-4 bg-red-100 rounded-xl border border-red-200">
+                          <p className="text-sm text-red-700 font-medium mb-2 flex items-center">
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Action Required
+                          </p>
+                          <p className="text-xs text-red-600">
+                            You are failed to book for seminar.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Enhanced Action Buttons */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Button asChild className="h-14 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
+                      <Link href="/profile">
+                        <User className="h-5 w-5 mr-2" />
+                        Edit Profile
+                      </Link>
+                    </Button>
+                    <Button 
+                      className="h-14 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                      onClick={async () => {
+                        await logout();
+                        router.push('/');
+                      }}
+                    >
+                      <LogOut className="h-5 w-5 mr-2" />
+                      Logout
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </div>
+          </Card>
         </div>
+
+        </>
+        )}
       </div>
     </div>
   )
