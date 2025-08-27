@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { cloudinaryStorage } from '../../../../lib/cloudinaryStorage'
 
+// Configure body size limit for this route (9MB to stay under Vercel's limit)
+export const maxDuration = 30 // 30 seconds timeout
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 // Use service role key to bypass RLS
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +21,21 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
+    // Check content length before processing
+    const contentLength = request.headers.get('content-length')
+    const maxSize = 9 * 1024 * 1024 // 9MB in bytes
+    
+    if (contentLength && parseInt(contentLength) > maxSize) {
+      return NextResponse.json(
+        { 
+          error: 'File too large. Maximum file size is 9MB.',
+          maxSize: '9MB',
+          receivedSize: `${(parseInt(contentLength) / 1024 / 1024).toFixed(2)}MB`
+        }, 
+        { status: 413 }
+      )
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File
     const assignmentId = formData.get('assignment_id') as string
@@ -25,6 +45,26 @@ export async function POST(request: NextRequest) {
 
     if (!file || !assignmentId || !studentId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Double-check file size after FormData parsing
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        { 
+          error: 'File too large. Maximum file size is 9MB.',
+          maxSize: '9MB',
+          receivedSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`
+        }, 
+        { status: 413 }
+      )
+    }
+
+    // Validate file type
+    if (file.type !== 'application/pdf') {
+      return NextResponse.json(
+        { error: 'Invalid file type. Only PDF files are allowed.' }, 
+        { status: 400 }
+      )
     }
 
     // Generate filename: studentName_studentRegisterNumber_timestamp.pdf
@@ -76,6 +116,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ data, marks: randomMarks })
   } catch (error) {
     console.error('Server error:', error)
+    
+    // Handle specific error types
+    if (error instanceof Error) {
+      // Check for body size limit errors
+      if (error.message.includes('PayloadTooLargeError') || error.message.includes('Entity too large')) {
+        return NextResponse.json(
+          { 
+            error: 'File too large. Maximum file size is 9MB.',
+            maxSize: '9MB'
+          }, 
+          { status: 413 }
+        )
+      }
+      
+      // Check for timeout errors
+      if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
+        return NextResponse.json(
+          { error: 'Upload timeout. Please try again with a smaller file.' }, 
+          { status: 408 }
+        )
+      }
+    }
+    
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

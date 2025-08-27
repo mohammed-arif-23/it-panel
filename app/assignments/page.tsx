@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
+import { Progress } from '../../components/ui/progress'
 import { 
   FileText, 
   Upload, 
@@ -23,6 +24,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { formatFileSize, validateFileSize, validateFileType } from '../../lib/utils'
+import { directCloudinaryUpload, CloudinaryUploadProgress } from '../../lib/directCloudinaryUpload'
 import Alert from '@/components/ui/alert'
 
 interface Assignment {
@@ -58,6 +61,7 @@ export default function AssignmentsPage() {
   const [uploadMessage, setUploadMessage] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [currentAssignmentId, setCurrentAssignmentId] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number>(0)
 
   useEffect(() => {
     if (!user) {
@@ -112,18 +116,14 @@ export default function AssignmentsPage() {
         name: file.name,
         type: file.type,
         size: file.size,
+        sizeFormatted: formatFileSize(file.size),
         lastModified: file.lastModified
       })
       
-      // Validate file type
-      if (file.type !== 'application/pdf') {
-        setUploadMessage('Please select a PDF file only.')
-        return
-      }
-      
-      // Validate file size (max 25MB)
-      if (file.size > 25 * 1024 * 1024) {
-        setUploadMessage('File size must be less than 25MB.')
+      // Use Cloudinary's validation
+      const validation = directCloudinaryUpload.validateFile(file)
+      if (!validation.isValid) {
+        setUploadMessage(validation.error || 'Invalid file selected.')
         return
       }
 
@@ -137,54 +137,80 @@ export default function AssignmentsPage() {
     if (!selectedFile || !user) return
 
     setIsUploading(true)
-    setUploadMessage('Uploading your assignment...')
+    setUploadProgress(0)
+    setUploadMessage('Uploading your assignment to cloud storage...')
 
     try {
       // Debug: Log submission information
-      console.log('Starting file submission:', {
+      console.log('Starting direct upload:', {
         fileName: selectedFile.name,
         fileType: selectedFile.type,
         fileSize: selectedFile.size,
+        fileSizeFormatted: formatFileSize(selectedFile.size),
         assignmentId,
         studentId: user.id,
         registerNumber: user.register_number,
         studentName: user.name
       })
-      
-      // Create FormData for file upload
-      const formData = new FormData()
-      formData.append('file', selectedFile)
-      formData.append('assignment_id', assignmentId)
-      formData.append('student_id', user.id)
-      formData.append('register_number', user.register_number || '')
-      formData.append('student_name', user.name || '')
 
-      // Submit via API route (handles both upload and database insertion)
-      const response = await fetch('/api/assignments/submit', {
+      // Step 1: Upload directly to Cloudinary
+      const uploadResult = await directCloudinaryUpload.uploadFile(
+        selectedFile,
+        (progress) => {
+          setUploadProgress(progress.percentage)
+          setUploadMessage(`Uploading... ${progress.percentage}% (${formatFileSize(progress.loaded)} / ${formatFileSize(progress.total)})`)
+        }
+      )
+
+      console.log('Cloudinary upload successful:', uploadResult)
+      setUploadMessage('File uploaded successfully! Saving submission...')
+
+      // Step 2: Submit to database with Cloudinary URL
+      const response = await fetch('/api/assignments/submit-direct', {
         method: 'POST',
-        body: formData // Don't set Content-Type header for FormData
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          assignment_id: assignmentId,
+          student_id: user.id,
+          file_url: uploadResult.secure_url,
+          file_name: selectedFile.name,
+          file_size: selectedFile.size,
+          cloudinary_public_id: uploadResult.public_id
+        })
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to submit assignment')
+        let errorMessage = 'Failed to save assignment submission'
+        
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch (parseError) {
+          errorMessage = `Server error (${response.status}). Please try again.`
+        }
+        
+        throw new Error(errorMessage)
       }
 
       const { data, marks } = await response.json()
 
-      setUploadMessage(`Assignment submitted successfully! You got ${marks} marks.`)
+      setUploadMessage(`🎉 Assignment submitted successfully! You got ${marks} marks.`)
       setSelectedFile(null)
       setCurrentAssignmentId(null)
+      setUploadProgress(0)
       
       // Reload assignments to show updated status
       setTimeout(() => {
         loadAssignments()
         setUploadMessage('')
-      }, 2000)
+      }, 3000)
 
     } catch (error) {
-      console.error('Error submitting assignment:', error)
-      setUploadMessage('Failed to submit assignment. Please try again.')
+      console.error('Error in assignment submission:', error)
+      setUploadMessage(`❌ ${error instanceof Error ? error.message : 'Failed to submit assignment. Please try again.'}`)
+      setUploadProgress(0)
     } finally {
       setIsUploading(false)
     }
@@ -351,7 +377,7 @@ export default function AssignmentsPage() {
                             <div className="space-y-4">
                               <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
                                 <label className="block text-sm font-bold text-blue-600 mb-3 uppercase tracking-wider">
-                                  Upload Assignment (PDF only, max 25MB)
+                                  Upload Assignment (PDF only, up to 100MB)
                                 </label>
                                 <input
                                   type="file"
@@ -383,14 +409,25 @@ export default function AssignmentsPage() {
                       </div>
                   
                       {uploadMessage && currentAssignmentId === assignment.id && (
-                        <div className="mt-6">
+                        <div className="mt-6 space-y-3">
+                          {isUploading && uploadProgress > 0 && (
+                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-blue-700">Upload Progress</span>
+                                <span className="text-sm font-bold text-blue-700">{uploadProgress}%</span>
+                              </div>
+                              <Progress value={uploadProgress} className="h-3" />
+                            </div>
+                          )}
                           <Alert 
                             variant={
-                              uploadMessage === 'Uploading your assignment...' 
+                              uploadMessage.includes('Uploading') || uploadMessage.includes('Saving') 
                                 ? 'warning' 
-                                : uploadMessage.includes('successfully') 
+                                : uploadMessage.includes('successfully') || uploadMessage.includes('🎉')
                                   ? 'success' 
-                                  : 'error'
+                                  : uploadMessage.includes('❌')
+                                    ? 'error'
+                                    : 'info'
                             } 
                             message={uploadMessage} 
                             className="border-2"
