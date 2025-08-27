@@ -305,8 +305,8 @@ export default function HomePage() {
             <div className="flex flex-col items-center space-y-4">
               <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
               <div className="space-y-2">
-                <h3 className="text-lg font-medium text-gray-900">One Sec..</h3>
-                <p className="text-sm text-gray-600">It's Loading, Be Patient😅...</p>
+                <h3 className="text-lg font-medium text-gray-900">Wait a Moment..</h3>
+                <p className="text-sm text-gray-600">It's Loading😅...</p>
               </div>
             </div>
           </div>
