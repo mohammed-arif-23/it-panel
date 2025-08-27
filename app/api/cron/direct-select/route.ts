@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 import { seminarTimingService } from '../../../../lib/seminarTimingService';
 import { holidayService } from '../../../../lib/holidayService';
+import { fineService } from '../../../../lib/fineService';
 
 interface BookingWithStudent {
   id: string;
@@ -290,6 +291,29 @@ export async function GET(request: NextRequest) {
     // Log successful selections
     for (const { student: selectedStudent } of finalSelectedStudents) {
       console.log('Successfully selected student:', selectedStudent.register_number, 'for seminar date:', seminarDate);
+    }
+
+    // Format the seminar date for logging
+    const formattedDate = new Date(seminarDate + 'T12:00:00').toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    // Log successful selections with formatted date
+    for (const { student: selectedStudent } of finalSelectedStudents) {
+      console.log('Successfully selected student:', selectedStudent.register_number, 'for', formattedDate);
+    }
+
+    // Create fines for students who didn't book for this seminar
+    console.log('Creating fines for non-booked students for date:', seminarDate);
+    try {
+      const fineResult = await fineService.createFinesForNonBookedStudents(seminarDate);
+      console.log('Fine creation result:', fineResult);
+    } catch (fineError) {
+      console.error('Error creating fines for non-booked students:', fineError);
+      // Don't fail the selection process if fine creation fails
     }
 
     console.log('Direct cron selection completed successfully');

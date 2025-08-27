@@ -1,23 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
-import { holidayService } from '../../../../lib/holidayService';
-import { fineService } from '../../../../lib/fineService';
+import { supabaseAdmin } from '../../../../lib/supabase';
 
 // Check admin authentication
 function checkAdminAuth(request: NextRequest) {
   const adminSession = request.cookies.get('admin-session');
   return adminSession?.value === 'authenticated';
-}
-
-// Calculate fine amount for the new simple system: fixed amount per day
-async function calculateFineAmount(baseAmount: number, dailyIncrement: number, referenceDate: string): Promise<number> {
-  // New system: Just return the base amount (₹10 per day)
-  return baseAmount;
-}
-
-// For compatibility, keep this function but it's not used in new system
-async function calculateWorkingDaysOverdue(referenceDate: string): Promise<number> {
-  return 1; // Always 1 day in the new system
 }
 
 // GET - Fetch fines with filters
@@ -27,6 +14,36 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Check if Supabase is properly configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://your-project.supabase.co') {
+      return NextResponse.json({
+        success: true,
+        data: {
+          fines: [],
+          summary: {
+            total_fines: 0,
+            pending_fines: 0,
+            paid_fines: 0,
+            waived_fines: 0,
+            total_amount: 0,
+            pending_amount: 0,
+            collected_amount: 0,
+            by_type: {
+              seminar_no_booking: 0,
+              assignment_late: 0,
+              attendance_absent: 0
+            },
+            by_class: {
+              'II-IT': 0,
+              'III-IT': 0
+            }
+          }
+        },
+        message: 'Supabase not configured. Please set up your Supabase environment variables.',
+        timestamp: new Date().toISOString()
+      });
+    }
+
     const { searchParams } = new URL(request.url);
     const classYear = searchParams.get('class') || 'all';
     const status = searchParams.get('status') || 'all';
@@ -34,12 +51,56 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get('from');
     const dateTo = searchParams.get('to');
 
+    // Check if the fines table exists
+    let finesExist = false;
+    try {
+      const { data: tableTest, error: tableCheckError } = await supabaseAdmin
+        .from('unified_student_fines')
+        .select('id')
+        .limit(1);
+      
+      finesExist = !tableCheckError;
+    } catch (error) {
+      console.log('unified_student_fines table does not exist or is not accessible');
+      finesExist = false;
+    }
+
+    if (!finesExist) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          fines: [],
+          summary: {
+            total_fines: 0,
+            pending_fines: 0,
+            paid_fines: 0,
+            waived_fines: 0,
+            total_amount: 0,
+            pending_amount: 0,
+            collected_amount: 0,
+            by_type: {
+              seminar_no_booking: 0,
+              assignment_late: 0,
+              attendance_absent: 0
+            },
+            by_class: {
+              'II-IT': 0,
+              'III-IT': 0
+            }
+          }
+        },
+        message: 'Fines table not found. Please create the table first.',
+        filters: { classYear, status, fineType, dateFrom, dateTo },
+        timestamp: new Date().toISOString()
+      });
+    }
+
     // Build query for fines with student details
-    let finesQuery = (supabase as any)
+    let finesQuery = (supabaseAdmin as any)
       .from('unified_student_fines')
       .select(`
         *,
-        unified_students!inner(
+        unified_students!student_id(
           id,
           register_number,
           name,
@@ -80,9 +141,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Process fines with updated calculations (simplified system)
-    const processedFines = await Promise.all((fines || []).map(async (fine: any) => {
-      // In new system: fine amount is just the base_amount (₹10 per day)
+    // Process fines with simplified system (₹10 per day)
+    const processedFines = (fines || []).map((fine: any) => {
       const currentAmount = fine.base_amount || 10.00;
 
       return {
@@ -91,7 +151,7 @@ export async function GET(request: NextRequest) {
         current_total_amount: currentAmount,
         needs_update: false // No updates needed in simplified system
       };
-    }));
+    });
 
     // Calculate summary statistics
     const summary = {
@@ -150,10 +210,6 @@ export async function POST(request: NextRequest) {
         return await createFine(data);
       case 'update_fine':
         return await updateFine(data);
-      case 'bulk_create':
-        return await bulkCreateFines(data);
-      case 'auto_calculate':
-        return await autoCalculateOverdueFines();
       case 'create_manual_fine':
         return await createManualFine(data);
       case 'update_status':
@@ -182,7 +238,6 @@ async function createFine(data: any) {
     referenceId,
     referenceDate,
     baseAmount = 10.00, // Fixed ₹10 per day
-    dailyIncrement = 0.00, // No increments in new system
     reason
   } = data;
 
@@ -195,7 +250,7 @@ async function createFine(data: any) {
 
   // Check if fine already exists for this reference
   if (referenceId) {
-    const { data: existingFine } = await (supabase as any)
+    const { data: existingFine } = await (supabaseAdmin as any)
       .from('unified_student_fines')
       .select('id')
       .eq('student_id', studentId)
@@ -211,7 +266,7 @@ async function createFine(data: any) {
     }
   }
 
-  const { data: fine, error } = await (supabase as any)
+  const { data: fine, error } = await (supabaseAdmin as any)
     .from('unified_student_fines')
     .insert({
       student_id: studentId,
@@ -219,13 +274,18 @@ async function createFine(data: any) {
       reference_id: referenceId,
       reference_date: referenceDate,
       base_amount: baseAmount,
-      daily_increment: dailyIncrement,
+      daily_increment: 0.00, // No increments in new system
       days_overdue: 1, // Always 1 day in new system
       payment_status: 'pending'
     })
     .select(`
       *,
-      unified_students(id, register_number, name, class_year)
+      unified_students!student_id(
+        id,
+        register_number,
+        name,
+        class_year
+      )
     `)
     .single();
 
@@ -247,8 +307,7 @@ async function updateFine(data: any) {
     paymentStatus,
     paidAmount,
     waivedBy,
-    waivedReason,
-    notes
+    waivedReason
   } = data;
 
   if (!fineId) {
@@ -257,11 +316,19 @@ async function updateFine(data: any) {
 
   const updateData: any = {};
 
+  // Update base amount if paidAmount is provided and we're not marking as paid
+  if (paidAmount !== undefined && paymentStatus !== 'paid') {
+    updateData.base_amount = paidAmount;
+  }
+
   if (paymentStatus) {
     updateData.payment_status = paymentStatus;
     
-    if (paymentStatus === 'paid' && paidAmount !== undefined) {
-      updateData.paid_amount = paidAmount;
+    if (paymentStatus === 'paid') {
+      // When marking as paid, use paidAmount or current base_amount
+      if (paidAmount !== undefined) {
+        updateData.paid_amount = paidAmount;
+      }
       updateData.paid_at = new Date().toISOString();
     }
     
@@ -274,13 +341,18 @@ async function updateFine(data: any) {
 
   updateData.updated_at = new Date().toISOString();
 
-  const { data: fine, error } = await (supabase as any)
+  const { data: fine, error } = await (supabaseAdmin as any)
     .from('unified_student_fines')
     .update(updateData)
     .eq('id', fineId)
     .select(`
       *,
-      unified_students(id, register_number, name, class_year)
+      unified_students!student_id(
+        id,
+        register_number,
+        name,
+        class_year
+      )
     `)
     .single();
 
@@ -295,155 +367,7 @@ async function updateFine(data: any) {
   });
 }
 
-// Bulk create fines for students who haven't booked seminars (simplified system)
-async function bulkCreateFines(data: any) {
-  const { seminarDate, excludeStudentIds = [] } = data;
-
-  if (!seminarDate) {
-    return NextResponse.json({ error: 'Seminar date is required' }, { status: 400 });
-  }
-
-  try {
-    // Get all students who haven't booked for the seminar date
-    const { data: allStudents, error: studentsError } = await (supabase as any)
-      .from('unified_students')
-      .select('id, register_number, name, class_year');
-
-    if (studentsError) throw studentsError;
-
-    const { data: bookings, error: bookingsError } = await (supabase as any)
-      .from('unified_seminar_bookings')
-      .select('student_id')
-      .eq('booking_date', seminarDate);
-
-    if (bookingsError) throw bookingsError;
-
-    // Find students who haven't booked
-    const bookedStudentIds = new Set(bookings?.map((b: any) => b.student_id) || []);
-    const excludeIds = new Set(excludeStudentIds);
-    
-    const nonBookedStudents = (allStudents || []).filter((student: any) => 
-      !bookedStudentIds.has(student.id) && !excludeIds.has(student.id)
-    );
-
-    // Create fines for non-booked students
-    const results = [];
-    const errors = [];
-
-    for (const student of nonBookedStudents) {
-      try {
-        // Check if fine already exists
-        const { data: existingFine } = await (supabase as any)
-          .from('unified_student_fines')
-          .select('id')
-          .eq('student_id', (student as any).id)
-          .eq('fine_type', 'seminar_no_booking')
-          .eq('reference_date', seminarDate)
-          .single();
-
-        if (!existingFine) {
-          const { data: fine, error } = await (supabase as any)
-            .from('unified_student_fines')
-            .insert({
-              student_id: (student as any).id,
-              fine_type: 'seminar_no_booking',
-              reference_date: seminarDate,
-              base_amount: 10.00, // Fixed ₹10 per day
-              daily_increment: 0.00, // No increments
-              days_overdue: 1, // Always 1 day
-              payment_status: 'pending'
-            })
-            .select()
-            .single();
-
-          if (error) throw error;
-          results.push({ studentId: (student as any).id, fineId: (fine as any).id, action: 'created' });
-        } else {
-          results.push({ studentId: (student as any).id, fineId: (existingFine as any).id, action: 'existing' });
-        }
-      } catch (error) {
-        errors.push({ 
-          studentId: (student as any).id, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
-        });
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        processed: results.length,
-        created: results.filter(r => r.action === 'created').length,
-        existing: results.filter(r => r.action === 'existing').length,
-        errorCount: errors.length,
-        results,
-        errorDetails: errors
-      },
-      message: `Processed ${results.length} students, created ${results.filter(r => r.action === 'created').length} new ₹10 daily fines`
-    });
-
-  } catch (error) {
-    return NextResponse.json({ 
-      error: 'Bulk fine creation failed', 
-      details: error instanceof Error ? error.message : 'Unknown error' 
-    }, { status: 500 });
-  }
-}
-
-// Auto-calculate and update overdue fines (not needed in simplified system)
-async function autoCalculateOverdueFines() {
-  // In the new simplified system, fines are fixed at ₹10 per day
-  // No calculation or updates needed
-  return NextResponse.json({
-    success: true,
-    data: {
-      updated: 0,
-      errorCount: 0,
-      results: [],
-      errorDetails: []
-    },
-    message: 'No updates needed - using simplified fixed daily fines (₹10 per day)'
-  });
-}
-
-// DELETE - Delete a fine
-export async function DELETE(request: NextRequest) {
-  if (!checkAdminAuth(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  try {
-    const { searchParams } = new URL(request.url);
-    const fineId = searchParams.get('id');
-
-    if (!fineId) {
-      return NextResponse.json({ error: 'Fine ID is required' }, { status: 400 });
-    }
-
-    const result = await fineService.deleteFine(fineId);
-    
-    if (!result.success) {
-      return NextResponse.json({ error: result.message }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: result.message
-    });
-
-  } catch (error) {
-    console.error('Fine deletion error:', error);
-    return NextResponse.json(
-      { 
-        error: 'Internal server error', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
-      },
-      { status: 500 }
-    );
-  }
-}
-
-// Create manual fine using fine service
+// Create manual fine
 async function createManualFine(data: any) {
   const {
     student_id,
@@ -460,27 +384,54 @@ async function createManualFine(data: any) {
     );
   }
 
-  const result = await fineService.createManualFine({
-    student_id,
-    fine_type,
-    reference_date,
-    amount,
-    payment_status: 'pending',
-    description
-  });
+  // First verify the student exists
+  const { data: student, error: studentError } = await (supabaseAdmin as any)
+    .from('unified_students')
+    .select('id, register_number, name, class_year')
+    .eq('id', student_id)
+    .single();
 
-  if (!result.success) {
-    return NextResponse.json({ error: result.message }, { status: 500 });
+  if (studentError || !student) {
+    return NextResponse.json(
+      { error: 'Student not found' },
+      { status: 404 }
+    );
   }
+
+  // Insert the fine without embedding the relationship
+  const { data: fine, error } = await (supabaseAdmin as any)
+    .from('unified_student_fines')
+    .insert({
+      student_id,
+      fine_type,
+      reference_date,
+      base_amount: amount,
+      daily_increment: 0.00,
+      days_overdue: 1,
+      payment_status: 'pending',
+      description
+    })
+    .select('*')
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Manually attach the student data
+  const fineWithStudent = {
+    ...fine,
+    unified_students: student
+  };
 
   return NextResponse.json({
     success: true,
-    data: result.fine,
-    message: result.message
+    data: fineWithStudent,
+    message: 'Manual fine created successfully'
   });
 }
 
-// Update fine status using fine service
+// Update fine status
 async function updateFineStatus(data: any) {
   const { fineId, status, notes } = data;
 
@@ -491,14 +442,41 @@ async function updateFineStatus(data: any) {
     );
   }
 
-  const result = await fineService.updateFineStatus(fineId, status, notes);
+  const updateData: any = {
+    payment_status: status,
+    updated_at: new Date().toISOString()
+  };
 
-  if (!result.success) {
-    return NextResponse.json({ error: result.message }, { status: 500 });
+  if (notes) {
+    updateData.notes = notes;
+  }
+
+  if (status === 'paid' || status === 'waived') {
+    updateData.paid_at = new Date().toISOString();
+  }
+
+  const { data: fine, error } = await (supabaseAdmin as any)
+    .from('unified_student_fines')
+    .update(updateData)
+    .eq('id', fineId)
+    .select(`
+      *,
+      unified_students!student_id(
+        id,
+        register_number,
+        name,
+        class_year
+      )
+    `)
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json({
     success: true,
-    message: result.message
+    data: fine,
+    message: 'Fine status updated successfully'
   });
 }

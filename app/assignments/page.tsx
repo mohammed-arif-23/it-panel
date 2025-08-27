@@ -77,8 +77,8 @@ export default function AssignmentsPage() {
 
     setIsLoading(true)
     try {
-      console.log('User data:', user)
-      console.log('User class_year:', user.class_year)
+      // User data loaded successfully
+      // User class year identified
       
       // Load assignments filtered by student's class year
       const response = await fetch('/api/assignments/student', {
@@ -92,17 +92,17 @@ export default function AssignmentsPage() {
         })
       })
 
-      console.log('API Response status:', response.status)
+      // API Response received successfully
       
       if (!response.ok) {
         throw new Error('Failed to load assignments')
       }
 
       const { data } = await response.json()
-      console.log('Assignments data received:', data)
+      // Assignments data received successfully
       setAssignments(data || [])
     } catch (error) {
-      console.error('Error loading assignments:', error)
+      // Error loading assignments - handling silently
     } finally {
       setIsLoading(false)
     }
@@ -111,14 +111,7 @@ export default function AssignmentsPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, assignmentId: string) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Debug: Log file information
-      console.log('File selected:', {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        sizeFormatted: formatFileSize(file.size),
-        lastModified: file.lastModified
-      })
+      // File selected for upload
       
       // Use Cloudinary's validation
       const validation = directCloudinaryUpload.validateFile(file)
@@ -141,18 +134,8 @@ export default function AssignmentsPage() {
     setUploadMessage('Uploading your assignment to cloud storage...')
 
     try {
-      // Debug: Log submission information
-      console.log('Starting direct upload:', {
-        fileName: selectedFile.name,
-        fileType: selectedFile.type,
-        fileSize: selectedFile.size,
-        fileSizeFormatted: formatFileSize(selectedFile.size),
-        assignmentId,
-        studentId: user.id,
-        registerNumber: user.register_number,
-        studentName: user.name
-      })
-
+      // Starting direct upload process
+      
       // Step 1: Upload directly to Cloudinary
       const uploadResult = await directCloudinaryUpload.uploadFile(
         selectedFile,
@@ -162,7 +145,7 @@ export default function AssignmentsPage() {
         }
       )
 
-      console.log('Cloudinary upload successful:', uploadResult)
+      // Cloudinary upload successful
       setUploadMessage('File uploaded successfully! Saving submission...')
 
       // Step 2: Submit to database with Cloudinary URL
@@ -208,7 +191,7 @@ export default function AssignmentsPage() {
       }, 3000)
 
     } catch (error) {
-      console.error('Error in assignment submission:', error)
+      // Error in assignment submission - handling silently
       setUploadMessage(`❌ ${error instanceof Error ? error.message : 'Failed to submit assignment. Please try again.'}`)
       setUploadProgress(0)
     } finally {

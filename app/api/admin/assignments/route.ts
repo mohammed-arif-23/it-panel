@@ -1,44 +1,135 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Use service role key to bypass RLS
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false
-    }
-  }
-)
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '../../../../lib/supabase';
 
 // Check admin authentication
 function checkAdminAuth(request: NextRequest) {
-  const adminSession = request.cookies.get('admin-session')
-  return adminSession?.value === 'authenticated'
+  const adminSession = request.cookies.get('admin-session');
+  return adminSession?.value === 'authenticated';
+}
+
+export async function GET(request: NextRequest) {
+  if (!checkAdminAuth(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    // Check if Supabase is properly configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://your-project.supabase.co') {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        message: 'Supabase not configured. Please set up your Supabase environment variables.',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // First check if assignments table exists
+    let assignmentsExist = false;
+    let assignments: any[] = [];
+    
+    try {
+      const { data: assignmentData, error } = await supabaseAdmin
+        .from('assignments')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      assignmentsExist = !error;
+      assignments = assignmentData || [];
+      
+      if (!assignmentsExist) {
+        // Assignment fetch error - operation failed silently
+        return NextResponse.json({
+          success: true,
+          data: [],
+          message: 'Assignments table not found or not accessible. Please check your database setup.',
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      // Error checking assignments table - operation failed silently
+      return NextResponse.json({
+        success: true,
+        data: [],
+        message: 'Could not access assignments table.',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Process assignments to calculate proper statistics
+    const processedAssignments = await Promise.all(assignments.map(async (assignment: any) => {
+      // Get submission statistics for this assignment
+      try {
+        const { data: submissions, error: submissionError } = await supabaseAdmin
+          .from('assignment_submissions')
+          .select('marks')
+          .eq('assignment_id', assignment.id);
+
+        if (submissionError) {
+          // Error fetching submissions for assignment - operation failed silently
+        }
+
+        const submissionCount = submissions?.length || 0;
+        const gradedSubmissions = submissions?.filter((sub: any) => sub.marks !== null) || [];
+        const averageMarks = gradedSubmissions.length > 0 
+          ? gradedSubmissions.reduce((sum: number, sub: any) => sum + (sub.marks || 0), 0) / gradedSubmissions.length 
+          : 0;
+
+        return {
+          ...assignment,
+          submission_count: submissionCount,
+          graded_count: gradedSubmissions.length,
+          average_marks: Math.round(averageMarks * 100) / 100 // Round to 2 decimal places
+        };
+      } catch (submissionError) {
+        // Error processing assignment submissions - operation failed silently
+        return {
+          ...assignment,
+          submission_count: 0,
+          graded_count: 0,
+          average_marks: 0
+        };
+      }
+    }));
+
+    return NextResponse.json({
+      success: true,
+      data: processedAssignments,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    // Assignments fetch error - returning error response
+    return NextResponse.json(
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
   if (!checkAdminAuth(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const { title, description, class_year, due_date } = await request.json()
+    const { title, description, class_year, due_date } = await request.json();
 
     // Validate required fields
     if (!title || !class_year || !due_date) {
-      return NextResponse.json({ error: 'Title, class year, and due date are required' }, { status: 400 })
+      return NextResponse.json({ error: 'Title, class year, and due date are required' }, { status: 400 });
     }
 
     // Validate class_year
     if (!['II-IT', 'III-IT'].includes(class_year)) {
-      return NextResponse.json({ error: 'Invalid class year. Must be "II-IT" or "III-IT"' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid class year. Must be "II-IT" or "III-IT"' }, { status: 400 });
     }
 
     // Insert new assignment using service role (bypasses RLS)
-    const { data, error } = await supabase
+    const { data, error } = await (supabaseAdmin as any)
       .from('assignments')
       .insert({
         title,
@@ -47,92 +138,47 @@ export async function POST(request: NextRequest) {
         due_date
       })
       .select()
-      .single()
+      .single();
 
     if (error) {
-      console.error('Database error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      // Database error during assignment creation
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ data })
+    return NextResponse.json({ data });
   } catch (error) {
-    console.error('Server error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
-
-export async function GET(request: NextRequest) {
-  if (!checkAdminAuth(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  try {
-    // Get all assignments with submission counts
-    const { data: assignments, error } = await supabase
-      .from('assignments')
-      .select(`
-        *,
-        assignment_submissions (
-          id,
-          status,
-          marks,
-          submitted_at
-        )
-      `)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Database error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    // Add submission statistics
-    const assignmentsWithStats = assignments?.map(assignment => {
-      const submissions = assignment.assignment_submissions || []
-      return {
-        ...assignment,
-        submission_count: submissions.length,
-        graded_count: submissions.filter((s: any) => s.status === 'graded').length,
-        average_marks: submissions.length > 0 
-          ? Math.round(submissions.reduce((sum: number, s: any) => sum + (s.marks || 0), 0) / submissions.length)
-          : 0
-      }
-    })
-
-    return NextResponse.json({ data: assignmentsWithStats })
-  } catch (error) {
-    console.error('Server error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    // Server error during assignment creation
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function DELETE(request: NextRequest) {
   if (!checkAdminAuth(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const { searchParams } = new URL(request.url)
-    const assignmentId = searchParams.get('id')
+    const { searchParams } = new URL(request.url);
+    const assignmentId = searchParams.get('id');
 
     if (!assignmentId) {
-      return NextResponse.json({ error: 'Assignment ID is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Assignment ID is required' }, { status: 400 });
     }
 
     // Delete assignment (will cascade delete submissions due to foreign key)
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('assignments')
       .delete()
-      .eq('id', assignmentId)
+      .eq('id', assignmentId);
 
     if (error) {
-      console.error('Database error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      // Database error during assignment deletion
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ message: 'Assignment deleted successfully' })
+    return NextResponse.json({ message: 'Assignment deleted successfully' });
   } catch (error) {
-    console.error('Server error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    // Server error during assignment deletion
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

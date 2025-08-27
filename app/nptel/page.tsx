@@ -157,14 +157,14 @@ export default function NPTELPage() {
           // No data found - show registration
           setShowRegistration(true)
         } else {
-          console.error('Error loading student data:', error)
+          // Error loading student data - handling silently
         }
       } else {
         setStudent(data)
         setShowRegistration(false)
       }
     } catch (error) {
-      console.error('Error loading student data:', error)
+      // Error loading student data - handling silently
     } finally {
       setLoading(false)
     }
@@ -227,7 +227,7 @@ export default function NPTELPage() {
         .eq('register_number', user.register_number)
 
       if (updateError) {
-        console.error('Error updating user profile:', updateError)
+        // Error updating user profile - handling silently
         // Continue with NPTEL registration even if profile update fails
       }
 
@@ -275,7 +275,7 @@ export default function NPTELPage() {
       setStudent(data)
       setShowRegistration(false)
     } catch (error) {
-      console.error('Registration error:', error)
+      // Registration error - handling silently
       setRegistrationError('Something went wrong. Please try again.')
     } finally {
       setIsRegistering(false)
@@ -386,7 +386,7 @@ export default function NPTELPage() {
         .single()
 
       if (error) {
-        console.error("Database update failed:", error)
+        // Database update failed - handling silently
         alert(`Failed to update status: ${error.message}`)
         return
       }
@@ -412,7 +412,7 @@ export default function NPTELPage() {
 
       alert(`Week ${week} status updated successfully!`)
     } catch (error) {
-      console.error("Update error:", error)
+      // Update error - handling silently
       alert("Failed to update status. Please try again.")
     } finally {
       setIsUpdating(false)

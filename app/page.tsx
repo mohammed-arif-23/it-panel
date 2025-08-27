@@ -39,24 +39,20 @@ export default function HomePage() {
 
   // Redirect to profile if profile is incomplete
   useEffect(() => {
-    console.log('Profile check - Loading:', loading, 'User:', user)
+    // Profile check completed
     if (user) {
-      console.log('User details:', {
-        name: user.name,
-        email: user.email,
-        mobile: user.mobile,
-        class_year: user.class_year
-      })
-      console.log('Profile complete:', isProfileComplete(user))
+      // User details verified
+      const profileComplete = isProfileComplete(user)
+      // Profile completeness check performed
     }
     
     // Only check profile completeness after loading is done and user exists
     if (!loading && user) {
       const profileComplete = isProfileComplete(user)
-      console.log('Profile complete result:', profileComplete)
+      // Profile completion status determined
       
       if (!profileComplete) {
-        console.log('Redirecting to profile - incomplete profile detected')
+        // Redirecting to profile for completion
         setIsRedirecting(true)
         router.push('/profile')
         return
@@ -92,17 +88,17 @@ export default function HomePage() {
       if (dashboardData.success) {
         setDashboardData(dashboardData.data)
       } else {
-        console.error('Failed to fetch dashboard data:', dashboardData.error)
+        // Failed to fetch dashboard data - handling silently
       }
       
       if (finesData.success) {
         setFinesData(finesData.data)
       } else {
-        console.error('Failed to fetch fines data:', finesData.error)
+        // Failed to fetch fines data - handling silently
       }
       
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
+      // Error fetching dashboard data - handling silently
     } finally {
       setIsLoadingDashboard(false)
       setIsLoadingFines(false)

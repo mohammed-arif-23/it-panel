@@ -83,7 +83,7 @@ export default function ProfilePage() {
       })
 
       if (error) {
-        console.error('Profile update error:', error)
+        // Profile update error - handling silently
         setMessage('Failed to update profile. Please try again.')
         setMessageType('error')
         return
@@ -95,7 +95,7 @@ export default function ProfilePage() {
       setMessage('Profile updated successfully!')
       setMessageType('success')
     } catch (error) {
-      console.error('Profile update error:', error)
+      // Profile update error - handling silently
       setMessage('An unexpected error occurred. Please try again.')
       setMessageType('error')
     } finally {

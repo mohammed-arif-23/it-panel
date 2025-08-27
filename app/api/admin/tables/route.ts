@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { supabaseAdmin } from '../../../../lib/supabase';
 
 // Check admin authentication
 function checkAdminAuth(request: NextRequest) {
@@ -13,57 +13,69 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Define available tables with their display names and descriptions
-    const tables = [
-      {
-        name: 'unified_students',
-        displayName: 'Students',
-        description: 'All student records',
-        type: 'unified'
-      },
-      {
-        name: 'unified_seminar_bookings',
-        displayName: 'Seminar Bookings',
-        description: 'Student seminar booking records',
-        type: 'unified'
-      },
-      {
-        name: 'unified_seminar_selections',
-        displayName: 'Seminar Selections',
-        description: 'Selected students for seminars',
-        type: 'unified'
-      },
-      {
-        name: 'assignments',
-        displayName: 'Assignments',
-        description: 'Assignment tasks and details',
-        type: 'unified'
-      },
-      {
-        name: 'assignment_submissions',
-        displayName: 'Assignment Submissions',
-        description: 'Student assignment submissions and grades',
-        type: 'unified'
-      },
-      {
-        name: 'ii_it_students',
-        displayName: 'II IT Students (Legacy)',
-        description: 'Legacy NPTEL records for II IT students',
-        type: 'legacy'
-      },
-      {
-        name: 'iii_it_students',
-        displayName: 'III IT Students (Legacy)',
-        description: 'Legacy NPTEL records for III IT students',
-        type: 'legacy'
-      }
-    ];
+    // Check if Supabase is properly configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://your-project.supabase.co') {
+      return NextResponse.json({
+        success: true,
+        tables: [
+          'unified_students',
+          'unified_student_registrations',
+          'unified_assignments',
+          'unified_submissions',
+          'unified_student_fines',
+          'unified_seminar_bookings',
+          'unified_nptel_enrollments',
+          'unified_nptel_progress'
+        ],
+        message: 'Supabase not configured. Showing default table list.',
+        timestamp: new Date().toISOString()
+      });
+    }
 
-    return NextResponse.json({ tables });
+    // Try to get list of tables - use direct queries instead of information_schema
+    let tableNames: string[] = [];
+    
+    // List of expected tables in the unified college app
+    const expectedTables = [
+      'unified_students',
+      'unified_student_registrations', 
+      'unified_assignments',
+      'unified_submissions',
+      'unified_student_fines',
+      'unified_seminar_bookings',
+      'unified_nptel_enrollments',
+      'unified_nptel_progress'
+    ];
+    
+    // Test each table to see if it exists
+    for (const tableName of expectedTables) {
+      try {
+        const { error } = await (supabaseAdmin as any)
+          .from(tableName)
+          .select('*')
+          .limit(1);
+        
+        if (!error) {
+          tableNames.push(tableName);
+        }
+      } catch (tableError) {
+        console.log(`Table ${tableName} does not exist or is not accessible`);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      tables: tableNames,
+      timestamp: new Date().toISOString()
+    });
+
   } catch (error) {
-    console.error('Error fetching tables:', error);
+    console.error('Tables fetch error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch tables' },
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

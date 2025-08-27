@@ -1,0 +1,707 @@
+'use client'
+
+import React, { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { 
+  DollarSign, 
+  Plus, 
+  Save, 
+  X, 
+  Edit, 
+  Check, 
+  RefreshCw, 
+  AlertCircle, 
+  CheckCircle,
+  Download,
+  Search,
+  User
+} from 'lucide-react'
+
+interface Fine {
+  id: string
+  student_id: string
+  fine_type: string
+  reference_date: string
+  base_amount: number
+  payment_status: string
+  paid_amount?: number
+  created_at: string
+  unified_students?: {
+    id: string
+    register_number: string
+    name: string
+    email: string
+    class_year: string
+  }
+}
+
+interface Student {
+  id: string
+  register_number: string
+  name: string
+  email: string
+  class_year: string
+}
+
+interface ModernFineManagementProps {
+  fines: Fine[]
+  isLoading: boolean
+  filters: {
+    class: string
+    status: string
+    type: string
+  }
+  onFiltersChange: (filters: any) => void
+  onRefresh: () => void
+  onAddFine: (fine: any) => Promise<void>
+  onUpdateFine: (id: string, status: string, amount?: number) => Promise<void>
+  onExport: () => void
+  formatDateTime: (date: string) => string
+}
+
+export default function ModernFineManagement({
+  fines,
+  isLoading,
+  filters,
+  onFiltersChange,
+  onRefresh,
+  onAddFine,
+  onUpdateFine,
+  onExport,
+  formatDateTime
+}: ModernFineManagementProps) {
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [editingFine, setEditingFine] = useState<string | null>(null)
+  const [editAmount, setEditAmount] = useState<number>(0)
+  const [newFine, setNewFine] = useState({
+    student_id: '',
+    fine_type: 'seminar_no_booking',
+    reference_date: new Date().toISOString().split('T')[0],
+    amount: 10
+  })
+  
+  // Student search states
+  const [students, setStudents] = useState<Student[]>([])
+  const [studentSearch, setStudentSearch] = useState('')
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false)
+  const [showStudentDropdown, setShowStudentDropdown] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+
+  // Fetch students based on search query
+  const fetchStudents = async (search: string) => {
+    if (search.length < 2) {
+      setStudents([])
+      return
+    }
+    
+    setIsLoadingStudents(true)
+    try {
+      const params = new URLSearchParams({
+        search,
+        class: 'all'
+      })
+      const response = await fetch(`/api/admin/students?${params}`)
+      const data = await response.json()
+      
+      if (data.success) {
+        setStudents(data.data || [])
+      } else {
+        console.error('Students API error:', data.error)
+        setStudents([])
+      }
+    } catch (error) {
+      console.error('Failed to fetch students:', error)
+      setStudents([])
+    } finally {
+      setIsLoadingStudents(false)
+    }
+  }
+
+  // Handle student search input change
+  useEffect(() => {
+    const delayedSearch = setTimeout(() => {
+      if (studentSearch) {
+        fetchStudents(studentSearch)
+      } else {
+        setStudents([])
+      }
+    }, 300) // 300ms delay for debouncing
+    
+    return () => clearTimeout(delayedSearch)
+  }, [studentSearch])
+
+  // Handle student selection
+  const handleStudentSelect = (student: Student) => {
+    setSelectedStudent(student)
+    setNewFine(prev => ({
+      ...prev,
+      student_id: student.id
+    }))
+    setStudentSearch(`${student.name} (${student.register_number})`)
+    setShowStudentDropdown(false)
+  }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('.student-search-container')) {
+        setShowStudentDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Use the student_id from selectedStudent if newFine.student_id is not set
+    const studentId = newFine.student_id || selectedStudent?.id
+    if (!studentId) {
+      alert('Please select a student')
+      return
+    }
+    
+    const fineToSubmit = {
+      ...newFine,
+      student_id: studentId
+    }
+    
+    try {
+      await onAddFine(fineToSubmit)
+      setNewFine({
+        student_id: '',
+        fine_type: 'seminar_no_booking',
+        reference_date: new Date().toISOString().split('T')[0],
+        amount: 10
+      })
+      setSelectedStudent(null)
+      setStudentSearch('')
+      setStudents([])
+      setShowAddForm(false)
+    } catch (error) {
+      console.error('Error adding fine:', error)
+    }
+  }, [selectedStudent, newFine, onAddFine])
+
+  const handleEditFine = (fine: Fine) => {
+    setEditingFine(fine.id)
+    setEditAmount(fine.base_amount)
+  }
+
+  const handleSaveFine = async (fineId: string, fine: Fine) => {
+    try {
+      // If amount was changed, update with pending status and new amount
+      // If it's being marked as paid, use paid status
+      const status = editAmount !== fine.base_amount ? 'pending' : 'paid'
+      await onUpdateFine(fineId, status, editAmount)
+      setEditingFine(null)
+      setEditAmount(0)
+    } catch (error) {
+      console.error('Error updating fine:', error)
+    }
+  }
+
+  const handleMarkAsPaid = async (fineId: string) => {
+    if (!confirm('Are you sure you want to mark this fine as paid?')) {
+      return
+    }
+    
+    try {
+      await onUpdateFine(fineId, 'paid', 0)
+    } catch (error) {
+      console.error('Error marking fine as paid:', error)
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'paid': return 'bg-green-100 text-green-800'
+      case 'pending': return 'bg-yellow-100 text-yellow-800'
+      case 'waived': return 'bg-gray-100 text-gray-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getFineTypeLabel = (type: string) => {
+    switch (type) {
+      case 'seminar_no_booking': return 'Seminar No Booking'
+      case 'assignment_late': return 'Assignment Late'
+      case 'attendance_absent': return 'Attendance Absent'
+      default: return type.replace('_', ' ').toUpperCase()
+    }
+  }
+
+  const totalPending = fines.filter(f => f.payment_status === 'pending').length
+  const totalPaid = fines.filter(f => f.payment_status === 'paid').length
+  const totalAmount = fines.reduce((sum, f) => sum + f.base_amount, 0)
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Fine Management</h2>
+          <p className="text-gray-600">Manage student fines and penalties</p>
+        </div>
+        <Button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Fine
+        </Button>
+      </div>
+
+      {/* Add Fine Form */}
+      {showAddForm && (
+        <Card className="border-blue-200 bg-blue-50/50">
+          <CardHeader>
+            <CardTitle className="text-blue-900">Create New Fine</CardTitle>
+            <CardDescription>Add a fine for a student</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid md:grid-cols-4 gap-4">
+                <div>
+                  <Label htmlFor="student_search">Search Student *</Label>
+                  <div className="relative student-search-container">
+                    <div className="relative">
+                      <Input
+                        id="student_search"
+                        value={studentSearch}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          setStudentSearch(value)
+                          setShowStudentDropdown(true)
+                          
+                          // Only reset student if the user is typing something different
+                          // than the selected student display text
+                          if (selectedStudent) {
+                            const selectedDisplayText = `${selectedStudent.name} (${selectedStudent.register_number})`
+                            if (value !== selectedDisplayText && !selectedDisplayText.toLowerCase().includes(value.toLowerCase())) {
+                              setSelectedStudent(null)
+                              setNewFine(prev => ({...prev, student_id: ''}))
+                            }
+                          } else if (!value) {
+                            setSelectedStudent(null)
+                            setNewFine(prev => ({...prev, student_id: ''}))
+                          }
+                        }}
+                        onFocus={() => setShowStudentDropdown(true)}
+                        placeholder="Type student name or register number"
+                        className="bg-white pl-10"
+                        required
+                      />
+                      <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    </div>
+                    
+                    {/* Student Dropdown */}
+                    {showStudentDropdown && (studentSearch.length >= 2 || students.length > 0) && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        {isLoadingStudents ? (
+                          <div className="flex items-center justify-center p-3">
+                            <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                            <span className="text-sm text-gray-600">Searching...</span>
+                          </div>
+                        ) : students.length > 0 ? (
+                          students.map((student) => (
+                            <div
+                              key={student.id}
+                              className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              onClick={() => handleStudentSelect(student)}
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="flex-shrink-0">
+                                  <User className="h-8 w-8 text-gray-400 bg-gray-100 rounded-full p-1" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {student.name}
+                                  </p>
+                                  <p className="text-sm text-gray-500 truncate">
+                                    {student.register_number} • {student.class_year}
+                                  </p>
+                                  <p className="text-xs text-gray-400 truncate">
+                                    {student.email}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : studentSearch.length >= 2 ? (
+                          <div className="p-3 text-center text-sm text-gray-500">
+                            No students found matching "{studentSearch}"
+                          </div>
+                        ) : (
+                          <div className="p-3 text-center text-sm text-gray-500">
+                            Type at least 2 characters to search
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Selected Student Indicator */}
+                  {selectedStudent && (
+                    <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span className="text-sm text-green-800">
+                          Selected: {selectedStudent.name} ({selectedStudent.register_number})
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="fine_type">Fine Type *</Label>
+                  <Select
+                    value={newFine.fine_type}
+                    onValueChange={(value) => setNewFine({...newFine, fine_type: value})}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-gray-200">
+                      <SelectItem value="seminar_no_booking">Seminar No Booking</SelectItem>
+                      <SelectItem value="assignment_late">Assignment Late</SelectItem>
+                      <SelectItem value="attendance_absent">Attendance Absent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="reference_date">Reference Date *</Label>
+                  <Input
+                    id="reference_date"
+                    type="date"
+                    value={newFine.reference_date}
+                    onChange={(e) => setNewFine({...newFine, reference_date: e.target.value})}
+                    className="bg-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="amount">Amount (₹) *</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    value={newFine.amount}
+                    onChange={(e) => setNewFine({...newFine, amount: Number(e.target.value)})}
+                    className="bg-white"
+                    min="1"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                <Button type="submit" className="bg-green-600 hover:bg-green-700">
+                  <Save className="h-4 w-4 mr-2" />
+                  Create Fine
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowAddForm(false)
+                    setNewFine({
+                      student_id: '',
+                      fine_type: 'seminar_no_booking',
+                      reference_date: new Date().toISOString().split('T')[0],
+                      amount: 10
+                    })
+                    setSelectedStudent(null)
+                    setStudentSearch('')
+                    setStudents([])
+                    setShowStudentDropdown(false)
+                  }}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Fine Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Fines</p>
+                <p className="text-3xl font-bold text-gray-900">{fines.length}</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Pending</p>
+                <p className="text-3xl font-bold text-yellow-600">{totalPending}</p>
+              </div>
+              <AlertCircle className="h-8 w-8 text-yellow-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Paid</p>
+                <p className="text-3xl font-bold text-green-600">{totalPaid}</p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Amount</p>
+                <p className="text-3xl font-bold text-gray-900">₹{totalAmount}</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-gray-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters and Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <Label>Class Filter</Label>
+            <Select
+              value={filters.class}
+              onValueChange={(value) => onFiltersChange({...filters, class: value})}
+            >
+              <SelectTrigger className="mt-2 bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-gray-200">
+                <SelectItem value="all">All Classes</SelectItem>
+                <SelectItem value="II-IT">II-IT</SelectItem>
+                <SelectItem value="III-IT">III-IT</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <Label>Status Filter</Label>
+            <Select
+              value={filters.status}
+              onValueChange={(value) => onFiltersChange({...filters, status: value})}
+            >
+              <SelectTrigger className="mt-2 bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-gray-200">
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="waived">Waived</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <Label>Type Filter</Label>
+            <Select
+              value={filters.type}
+              onValueChange={(value) => onFiltersChange({...filters, type: value})}
+            >
+              <SelectTrigger className="mt-2 bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-gray-200">
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="seminar_no_booking">Seminar No Booking</SelectItem>
+                <SelectItem value="assignment_late">Assignment Late</SelectItem>
+                <SelectItem value="attendance_absent">Attendance Absent</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <Label>Actions</Label>
+            <div className="mt-2 space-y-2">
+              <Button
+                onClick={onRefresh}
+                disabled={isLoading}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                size="sm"
+              >
+                {isLoading ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Refresh
+              </Button>
+              <Button
+                onClick={onExport}
+                variant="outline"
+                className="w-full"
+                size="sm"
+                disabled={fines.length === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Fines Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Fine Records</CardTitle>
+          <CardDescription>Manage student fines and payment status</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+              <span>Loading fines...</span>
+            </div>
+          ) : fines.length === 0 ? (
+            <div className="text-center py-8">
+              <DollarSign className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">No fines found</p>
+              <p className="text-sm text-gray-400">Try adjusting your filters</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Register No.</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {fines.map((fine) => (
+                    <TableRow key={fine.id}>
+                      <TableCell className="font-medium">
+                        {fine.unified_students?.name || 'Unknown Student'}
+                      </TableCell>
+                      <TableCell>{fine.unified_students?.register_number || '-'}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={fine.unified_students?.class_year === 'II-IT' ? 'border-blue-200 text-blue-800' : 'border-green-200 text-green-800'}
+                        >
+                          {fine.unified_students?.class_year || '-'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{getFineTypeLabel(fine.fine_type)}</TableCell>
+                      <TableCell>
+                        {editingFine === fine.id ? (
+                          <Input
+                            type="number"
+                            value={editAmount}
+                            onChange={(e) => setEditAmount(Number(e.target.value))}
+                            className="w-20"
+                            min="0"
+                          />
+                        ) : (
+                          `₹${fine.base_amount}`
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(fine.payment_status)}>
+                          {fine.payment_status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatDateTime(fine.reference_date)}</TableCell>
+                      <TableCell>
+                        {editingFine === fine.id ? (
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              onClick={() => handleSaveFine(fine.id, fine)}
+                              className="bg-blue-600 hover:bg-blue-700"
+                              title="Save Amount"
+                            >
+                              <Save className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                handleMarkAsPaid(fine.id)
+                                setEditingFine(null)
+                                setEditAmount(0)
+                              }}
+                              className="bg-green-600 hover:bg-green-700"
+                              title="Mark as Paid"
+                            >
+                              <Check className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingFine(null)
+                                setEditAmount(0)
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditFine(fine)}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleMarkAsPaid(fine.id)}
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              title="Mark as Paid"
+                            >
+                              <Check className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

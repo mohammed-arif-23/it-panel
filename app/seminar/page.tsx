@@ -286,7 +286,7 @@ export default function SeminarPage() {
             setSelectionMessage(`Selection failed: ${result.message}`)
           }
         } catch (error) {
-          console.error('Auto-selection error:', error)
+          // Auto-selection error - handling silently
           setSelectionMessage('Failed to trigger automatic selection')
         } finally {
           setIsSelectionInProgress(false)
@@ -320,7 +320,7 @@ export default function SeminarPage() {
       let { data: student, error } = await seminarDbHelpers.findSeminarStudentByRegNumber(user.register_number)
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Database error:', error)
+        // Database error - handling silently
         return
       }
 
@@ -328,7 +328,7 @@ export default function SeminarPage() {
       if (!student) {
         const createResult = await seminarDbHelpers.createSeminarStudent(user.register_number)
         if (createResult.error) {
-          console.error('Error creating seminar student:', createResult.error)
+          // Error creating seminar student - handling silently
           return
         }
         student = createResult.data
@@ -336,7 +336,7 @@ export default function SeminarPage() {
 
       setSeminarStudent(student)
     } catch (error) {
-      console.error('Error initializing seminar student:', error)
+      // Error initializing seminar student - handling silently
     } finally {
       setIsLoading(false)
     }
@@ -436,7 +436,7 @@ export default function SeminarPage() {
         await loadPresenterHistory()
       }
     } catch (error) {
-      console.error('Error loading dashboard data:', error)
+      // Error loading dashboard data - handling silently
     } finally {
       setIsLoadingSelections(false)
     }
@@ -464,7 +464,7 @@ export default function SeminarPage() {
         .limit(20) // Limit to last 20 presentations
 
       if (error) {
-        console.error('Error loading presenter history:', error)
+        // Error loading presenter history - handling silently
         return
       }
 
@@ -487,7 +487,7 @@ export default function SeminarPage() {
         setPresenterHistory([])
       }
     } catch (error) {
-      console.error('Error loading presenter history:', error)
+      // Error loading presenter history - handling silently
       setPresenterHistory([])
     }
   }
