@@ -258,7 +258,6 @@ export default function HomePage() {
             </CardContent>
           </Card>
         </div>
-        <p className="text-gray-600 text-center mt-8">Today App is under Maintenance. But still you can use all Features</p>
       </div>
     </div>
   )}
@@ -315,7 +314,6 @@ export default function HomePage() {
           <>
         {/* Modern Dashboard Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          <p className="text-gray-600 text-center mt-3">Today App is under Maintenance. But still you can access all features.</p>
           {/* NPTEL Card - Enhanced Design */}
           <Card className="group relative overflow-hidden bg-white shadow-xl border-0 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
             {/* Gradient Border Effect */}
