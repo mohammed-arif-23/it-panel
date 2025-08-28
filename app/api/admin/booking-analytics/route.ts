@@ -22,8 +22,10 @@ interface BookingAnalytics {
   totalStudents: number;
   totalBooked: number;
   totalNotBooked: number;
+  totalSelected: number;
   bookedStudents: any[];
   notBookedStudents: Student[];
+  selectedSeminarStudents: Student[];
   bookingsByClass: {
     'II-IT': { booked: number; total: number; notBooked: number };
     'III-IT': { booked: number; total: number; notBooked: number };
@@ -38,11 +40,20 @@ export async function GET(request: NextRequest) {
 
     console.log('Fetching booking analytics for:', { selectedDate, selectedClass });
 
-    // Get all students
-    const { data: allStudents, error: studentsError } = await supabase
+    // Get students based on class filter - for 'all', only get II-IT and III-IT (matching fine logic)
+    let studentsQuery = supabase
       .from('unified_students')
       .select('id, register_number, name, email, class_year')
       .order('register_number');
+
+    // Apply class filter - for 'all', only include IT students (matching create-for-date logic)
+    if (selectedClass === 'all') {
+      studentsQuery = studentsQuery.in('class_year', ['II-IT', 'III-IT']);
+    } else {
+      studentsQuery = studentsQuery.eq('class_year', selectedClass);
+    }
+
+    const { data: allStudents, error: studentsError } = await studentsQuery;
 
     if (studentsError) {
       console.error('Error fetching students:', studentsError);
@@ -83,17 +94,38 @@ export async function GET(request: NextRequest) {
     const studentsData = (allStudents || []) as Student[];
     const bookingsData = (bookings || []) as Booking[];
 
-    // Filter students by class if specified
-    const filteredStudents = selectedClass === 'all' 
-      ? studentsData
-      : studentsData.filter(student => student.class_year === selectedClass);
+    // All students are already filtered by the query above
+    const filteredStudents = studentsData;
 
     // Create a set of student IDs who have booked
     const bookedStudentIds = new Set(bookingsData.map(booking => booking.student_id));
 
-    // Separate booked and not booked students
+    // Get students who have been selected for any seminar (past or future)
+    // If they're in selections, they shouldn't get fines
+    const { data: selectedStudents, error: selectedError } = await supabase
+      .from('unified_seminar_selections')
+      .select('student_id, seminar_date');
+
+    if (selectedError) {
+      console.error('Error fetching selected students:', selectedError);
+    }
+
+    // Create sets for filtering
+    const selectedStudentIds = new Set(
+      (selectedStudents || []).map((record: any) => record.student_id)
+    );
+
+    // Separate students into categories
     const bookedStudents = filteredStudents.filter(student => bookedStudentIds.has(student.id));
-    const notBookedStudents = filteredStudents.filter(student => !bookedStudentIds.has(student.id));
+    const selectedSeminarStudents = filteredStudents.filter(student => selectedStudentIds.has(student.id));
+    
+    // Students eligible for fines: didn't book AND not selected for any seminar
+    const notBookedStudents = filteredStudents.filter(student => {
+      const didNotBook = !bookedStudentIds.has(student.id);
+      const notSelected = !selectedStudentIds.has(student.id);
+      
+      return didNotBook && notSelected;
+    });
 
     // Calculate class-wise statistics
     const allStudentsByClass = studentsData.reduce((acc, student) => {
@@ -136,8 +168,10 @@ export async function GET(request: NextRequest) {
       totalStudents: filteredStudents.length,
       totalBooked: bookedStudents.length,
       totalNotBooked: notBookedStudents.length,
+      totalSelected: selectedSeminarStudents.length,
       bookedStudents: bookedStudentsWithDetails,
       notBookedStudents,
+      selectedSeminarStudents,
       bookingsByClass
     };
 

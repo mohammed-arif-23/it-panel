@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabaseAdmin } from './supabase';
 import { holidayService } from './holidayService';
 
 export interface FineRecord {
@@ -42,7 +42,7 @@ export class FineService {
 
   /**
    * Create fines for students who didn't book seminars on a specific date
-   * Simple logic: Each day not booked = ₹10 fine for that specific day
+   * Logic: Students who (didn't book) AND (haven't completed seminar) AND (not selected for future)
    */
   async createFinesForNonBookedStudents(seminarDate: string): Promise<{
     success: boolean;
@@ -64,10 +64,11 @@ export class FineService {
         };
       }
 
-      // Get all students
-      const { data: allStudents, error: studentsError } = await (supabase as any)
+      // Get only II-IT and III-IT students
+      const { data: allStudents, error: studentsError } = await supabaseAdmin
         .from('unified_students')
-        .select('id, register_number, name, class_year');
+        .select('id, register_number, name, class_year')
+        .in('class_year', ['II-IT', 'III-IT']);
 
       if (studentsError) {
         console.error('Error fetching all students:', studentsError);
@@ -80,7 +81,7 @@ export class FineService {
       }
 
       // Get students who booked for this specific date
-      const { data: bookings, error: bookingsError } = await (supabase as any)
+      const { data: bookings, error: bookingsError } = await supabaseAdmin
         .from('unified_seminar_bookings')
         .select('student_id')
         .eq('booking_date', seminarDate);
@@ -95,25 +96,52 @@ export class FineService {
         };
       }
 
-      // Find students who didn't book on this specific date
+      // Get students who have been selected for any seminar (past or future)
+      // If they're in selections, they shouldn't get fines
+      const { data: selectedStudents, error: selectedError } = await supabaseAdmin
+        .from('unified_seminar_selections')
+        .select('student_id, seminar_date');
+
+      if (selectedError) {
+        console.error('Error fetching selected students:', selectedError);
+        return {
+          success: false,
+          message: 'Failed to fetch selected students',
+          finesCreated: 0,
+          errors: [selectedError.message]
+        };
+      }
+
+      // Create sets for filtering
       const bookedStudentIds = new Set(bookings?.map((b: any) => b.student_id) || []);
-      const nonBookedStudents = (allStudents || []).filter((student: any) => 
-        !bookedStudentIds.has(student.id)
+      const selectedStudentIds = new Set(
+        (selectedStudents || []).map((record: any) => record.student_id)
       );
 
-      console.log(`Found ${nonBookedStudents.length} students who didn't book for ${seminarDate}`);
+      // Apply the correct logic: Students who (didn't book) AND (not selected for any seminar)
+      const studentsEligibleForFines = (allStudents || []).filter((student: any) => {
+        const didNotBook = !bookedStudentIds.has(student.id);
+        const notSelected = !selectedStudentIds.has(student.id);
+        
+        return didNotBook && notSelected;
+      });
 
-      if (nonBookedStudents.length === 0) {
+      console.log(`DEBUG: Total students: ${allStudents?.length || 0}`);
+      console.log(`DEBUG: Students who booked: ${bookedStudentIds.size}`);
+      console.log(`DEBUG: Students selected for seminars: ${selectedStudentIds.size}`);
+      console.log(`DEBUG: Students eligible for fines: ${studentsEligibleForFines.length}`);
+
+      if (studentsEligibleForFines.length === 0) {
         return {
           success: true,
-          message: 'All students booked for this date',
+          message: 'No students eligible for fines (all either booked or selected for seminars)',
           finesCreated: 0,
           errors: []
         };
       }
 
       // Check if fines already exist for this specific date
-      const { data: existingFines, error: fineCheckError } = await (supabase as any)
+      const { data: existingFines, error: fineCheckError } = await supabaseAdmin
         .from('unified_student_fines')
         .select('student_id')
         .eq('reference_date', seminarDate)
@@ -128,14 +156,14 @@ export class FineService {
       );
 
       // Filter out students who already have fines for this date
-      const studentsToFine = nonBookedStudents.filter(
+      const studentsToFine = studentsEligibleForFines.filter(
         (student: any) => !existingFineStudentIds.has(student.id)
       );
 
       if (studentsToFine.length === 0) {
         return {
           success: true,
-          message: 'Fines already exist for all non-booked students on this date',
+          message: 'Fines already exist for all eligible students on this date',
           finesCreated: 0,
           errors: []
         };
@@ -147,10 +175,10 @@ export class FineService {
       
       for (const student of studentsToFine) {
         try {
-          const { data: fine, error } = await (supabase as any)
+          const { data: fine, error } = await (supabaseAdmin as any)
             .from('unified_student_fines')
             .insert({
-              student_id: student.id,
+              student_id: (student as any).id,
               fine_type: 'seminar_no_booking',
               reference_date: seminarDate,
               base_amount: 10.00, // Fixed ₹10 per day
@@ -165,20 +193,22 @@ export class FineService {
             throw error;
           }
           
-          results.push({ studentId: student.id, fineId: fine.id, action: 'created' });
+          results.push({ studentId: (student as any).id, fineId: (fine as any).id, action: 'created' });
+          console.log(`Created ₹10 fine for student ${(student as any).register_number} (${(student as any).name}) for date ${seminarDate}`);
         } catch (error) {
+          console.error(`Failed to create fine for student ${(student as any).register_number}:`, error);
           errors.push({ 
-            studentId: student.id, 
+            studentId: (student as any).id, 
             error: error instanceof Error ? error.message : 'Unknown error' 
           });
         }
       }
 
-      console.log(`Successfully created ${results.length} daily fines for non-booked students`);
+      console.log(`Successfully created ${results.length} daily fines for eligible students`);
 
       return {
         success: true,
-        message: `Created ₹10 fine for ${results.length} students who didn't book on ${seminarDate}`,
+        message: `Created ₹10 fine for ${results.length} students who didn't book and aren't selected for any seminar on ${seminarDate}`,
         finesCreated: results.length,
         errors: errors.map(e => `Student ${e.studentId}: ${e.error}`)
       };
@@ -214,7 +244,7 @@ export class FineService {
         payment_status: fine.payment_status
       };
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await (supabaseAdmin as any)
         .from('unified_student_fines')
         .insert([dbFine])
         .select()
@@ -262,7 +292,7 @@ export class FineService {
         updateData.description = notes;
       }
 
-      const { error } = await (supabase as any)
+      const { error } = await (supabaseAdmin as any)
         .from('unified_student_fines')
         .update(updateData)
         .eq('id', fineId);
@@ -294,7 +324,7 @@ export class FineService {
     message: string;
   }> {
     try {
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('unified_student_fines')
         .delete()
         .eq('id', fineId);
@@ -327,7 +357,7 @@ export class FineService {
     totalAmount: number;
   }> {
     try {
-      const { data: fines, error } = await (supabase as any)
+      const { data: fines, error } = await (supabaseAdmin as any)
         .from('unified_student_fines')
         .select('*')
         .eq('student_id', studentId)
@@ -389,7 +419,7 @@ export class FineService {
     }>;
   }> {
     try {
-      let query = (supabase as any)
+      let query = (supabaseAdmin as any)
         .from('unified_student_fines')
         .select(`
           *,

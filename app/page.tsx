@@ -21,11 +21,9 @@ export default function HomePage() {
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(false)
   const [isLoadingFines, setIsLoadingFines] = useState(false)
 
-  // Check if user profile is complete
   const isProfileComplete = (user: any) => {
     if (!user) return false
     
-    // Required fields: name, email, mobile, class_year
     const requiredFields = {
       name: user.name?.trim(),
       email: user.email?.trim(),

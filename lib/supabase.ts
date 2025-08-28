@@ -32,7 +32,7 @@ export const dbHelpers = {
   // STUDENT OPERATIONS
   // ===========================
   async findStudentByRegNumber(regNumber: string) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('unified_students')
       .select(`
         *,
@@ -96,7 +96,7 @@ export const dbHelpers = {
   },
 
   async getStudentRegistrations(studentId: string) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('unified_student_registrations')
       .select('*')
       .eq('student_id', studentId)
@@ -124,7 +124,7 @@ export const dbHelpers = {
   },
 
   async getNPTELEnrollments(studentId: string) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('unified_nptel_enrollments')
       .select(`
         *,
@@ -152,7 +152,7 @@ export const dbHelpers = {
   },
 
   async getNPTELProgress(enrollmentId: string) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('unified_nptel_progress')
       .select('*')
       .eq('enrollment_id', enrollmentId)
@@ -178,7 +178,7 @@ export const dbHelpers = {
   },
 
   async getSeminarBookingsForDate(date: string) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('unified_seminar_bookings')
       .select(`
         *,
@@ -190,7 +190,7 @@ export const dbHelpers = {
   },
 
   async getStudentSeminarBooking(studentId: string, date: string) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('unified_seminar_bookings')
       .select('*')
       .eq('student_id', studentId)
@@ -201,7 +201,7 @@ export const dbHelpers = {
   },
 
   async deleteSeminarBooking(studentId: string, date: string) {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('unified_seminar_bookings')
       .delete()
       .eq('student_id', studentId)
@@ -227,7 +227,7 @@ export const dbHelpers = {
   },
 
   async getSeminarSelectionForDate(date: string) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('unified_seminar_selections')
       .select(`
         *,
@@ -240,11 +240,92 @@ export const dbHelpers = {
   },
 
   async getAllSeminarSelectionsForStudent(studentId: string) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('unified_seminar_selections')
       .select('*')
       .eq('student_id', studentId)
       .order('seminar_date', { ascending: false })
+    
+    return { data, error }
+  },
+
+  // Get students not booked today
+  getStudentsNotBookedToday: async () => {
+    const today = new Date().toISOString().split('T')[0]
+    
+    // Get all students from both classes
+    const { data: allStudents, error: studentsError } = await supabase
+      .from('unified_students')
+      .select('*')
+      .in('class_year', ['II-IT', 'III-IT'])
+      .order('name')
+      
+    if (studentsError) {
+      console.error('Error fetching students:', studentsError)
+      return { data: null, error: studentsError }
+    }
+    
+    // Get students who have booked today
+    const { data: bookedStudents, error: bookingError } = await supabase
+      .from('unified_seminar_bookings')
+      .select('student_id')
+      .eq('booking_date', today)
+      
+    if (bookingError) {
+      console.error('Error fetching bookings:', bookingError)
+      return { data: null, error: bookingError }
+    }
+    
+    // Convert booked students to a set of student IDs for efficient lookup
+    const bookedStudentIds = new Set(
+      bookedStudents.map(booking => (booking as any).student_id)
+    )
+    
+    // Find students not booked today
+    const studentsNotBooked = allStudents.filter(student => {
+      return !bookedStudentIds.has((student as any).id)
+    })
+    
+    return { data: studentsNotBooked, error: null }
+  },
+
+  // Add fine for not booking seminar
+  addFineForNotBooking: async (studentId: string) => {
+    const today = new Date().toISOString().split('T')[0]
+    const baseAmount = 10 // Base fine amount for not booking
+    const dailyIncrement = 0 // Daily increment amount
+    
+    // Check if fine already exists for this student and date
+    const { data: existingFine, error: checkError } = await supabaseAdmin
+      .from('unified_student_fines')
+      .select('*')
+      .eq('student_id', studentId)
+      .eq('fine_type', 'not_booked_seminar')
+      .eq('reference_date', today)
+      .single()
+    
+    if (existingFine) {
+      return { data: existingFine, error: null }
+    }
+    
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" error
+      return { data: null, error: checkError }
+    }
+    
+    // Create new fine
+    const { data, error } = await (supabaseAdmin as any)
+      .from('unified_student_fines')
+      .insert({
+        student_id: studentId,
+        fine_type: 'not_booked_seminar',
+        reference_date: today,
+        base_amount: baseAmount,
+        daily_increment: dailyIncrement,
+        days_overdue: 0,
+        payment_status: 'pending'
+      })
+      .select()
+      .single()
     
     return { data, error }
   }
