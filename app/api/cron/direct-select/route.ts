@@ -3,6 +3,7 @@ import { supabaseAdmin } from "../../../../lib/supabase";
 import { seminarTimingService } from "../../../../lib/seminarTimingService";
 import { holidayService } from "../../../../lib/holidayService";
 import { fineService } from "../../../../lib/fineService";
+import { emailService } from "../../../../lib/emailService";
 
 interface BookingWithStudent {
   id: string;
@@ -508,7 +509,13 @@ export async function GET() {
       day: "numeric",
     });
 
-    // Log successful selections with formatted date
+    // Log successful selections with formatted date and send emails
+    const emailResults: Array<{
+      student: string;
+      success: boolean;
+      error?: string;
+    }> = [];
+
     for (const { student: selectedStudent } of finalSelectedStudents) {
       console.log(
         "Successfully selected student:",
@@ -516,6 +523,59 @@ export async function GET() {
         "for",
         formattedDate
       );
+
+      // Send email notification to selected student
+      if (selectedStudent.email) {
+        try {
+          console.log(`Sending selection email to ${selectedStudent.email}...`);
+          const emailResult = await emailService.sendSeminarSelectionEmail(
+            selectedStudent.email,
+            selectedStudent.name || selectedStudent.register_number,
+            selectedStudent.register_number,
+            seminarDate,
+            selectedStudent.class_year
+          );
+
+          emailResults.push({
+            student: selectedStudent.register_number,
+            success: emailResult.success,
+            error: emailResult.error,
+          });
+
+          if (emailResult.success) {
+            console.log(
+              `✅ Email sent successfully to ${selectedStudent.register_number}`
+            );
+          } else {
+            console.error(
+              `❌ Email failed for ${selectedStudent.register_number}:`,
+              emailResult.error
+            );
+          }
+        } catch (emailError) {
+          console.error(
+            `❌ Email error for ${selectedStudent.register_number}:`,
+            emailError
+          );
+          emailResults.push({
+            student: selectedStudent.register_number,
+            success: false,
+            error:
+              emailError instanceof Error
+                ? emailError.message
+                : "Unknown email error",
+          });
+        }
+      } else {
+        console.warn(
+          `⚠️ No email address for student ${selectedStudent.register_number}`
+        );
+        emailResults.push({
+          student: selectedStudent.register_number,
+          success: false,
+          error: "No email address available",
+        });
+      }
     }
 
     // Create fines for students who didn't book for this seminar (₹10 per student)
@@ -538,6 +598,11 @@ export async function GET() {
           seminar_date: seminarDate,
           selected_at: (selectionResults[index] as any)?.selected_at,
         })),
+        emails: {
+          sent: emailResults.filter((r) => r.success).length,
+          failed: emailResults.filter((r) => !r.success).length,
+          results: emailResults,
+        },
         fines: fineResult
           ? {
               success: fineResult.success,
@@ -556,6 +621,8 @@ export async function GET() {
           ii_it_bookings: iiItBookings.length,
           iii_it_bookings: iiiItBookings.length,
           selected_count: finalSelectedStudents.length,
+          emails_sent: emailResults.filter((r) => r.success).length,
+          emails_failed: emailResults.filter((r) => !r.success).length,
         },
         timestamp: new Date().toISOString(),
       },
