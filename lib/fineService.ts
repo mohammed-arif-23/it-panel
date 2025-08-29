@@ -24,18 +24,20 @@ export class FineService {
   }
 
   /**
-   * Check if a date is a valid working day (not weekend or holiday)
+   * Check if a date is a valid working day (not Sunday or explicit holiday)
+   * Saturday is considered a working day unless explicitly marked as holiday in admin panel
    */
   private async isWorkingDay(date: string): Promise<boolean> {
     const dateObj = new Date(date + 'T12:00:00');
     const dayOfWeek = dateObj.getDay();
     
-    // Skip weekends (Sunday = 0, Saturday = 6)
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
+    // Skip only Sundays (Sunday = 0)
+    // Saturday (6) is a working day unless explicitly marked as holiday
+    if (dayOfWeek === 0) {
       return false;
     }
     
-    // Check if this date is a holiday
+    // Check if this date is explicitly marked as a holiday in admin panel
     const { isHoliday } = await holidayService.isHoliday(date);
     return !isHoliday;
   }
