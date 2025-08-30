@@ -11,7 +11,8 @@ import {
   Database, 
   Users, 
   Calendar, 
-  BarChart3 
+  BarChart3,
+  CalendarDays
 } from 'lucide-react'
 
 interface ModernAdminNavbarProps {
@@ -32,6 +33,7 @@ export default function ModernAdminNavbar({
   const navigationItems = [
     { id: 'assignments', label: 'Assignments', icon: BookOpen },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
+    { id: 'holidays', label: 'Holidays', icon: CalendarDays },
     { id: 'students', label: 'Students', icon: Users },
     { id: 'fines', label: 'Fines', icon: DollarSign },
     { id: 'database', label: 'Database', icon: Database }

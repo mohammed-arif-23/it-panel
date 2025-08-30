@@ -30,6 +30,7 @@ import ModernAdminNavbar from '@/components/admin/ModernAdminNavbar'
 import ModernAssignmentManagement from '@/components/admin/ModernAssignmentManagement'
 import ModernFineManagement from '@/components/admin/ModernFineManagement'
 import ModernBookingAnalytics from '@/components/admin/ModernBookingAnalytics'
+import ModernHolidayManagement from '@/components/admin/ModernHolidayManagement'
 
 interface Assignment {
   id: string
@@ -91,7 +92,7 @@ export default function AdminPanel() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   
   // Active Tab State
-  const [activeTab, setActiveTab] = useState<'assignments' | 'bookings' | 'students' | 'fines' | 'database'>('assignments')
+  const [activeTab, setActiveTab] = useState<'assignments' | 'bookings' | 'holidays' | 'students' | 'fines' | 'database'>('assignments')
   
   // Login States
   const [username, setUsername] = useState('')
@@ -144,6 +145,7 @@ export default function AdminPanel() {
       } else if (activeTab === 'bookings') {
         fetchBookings()
       }
+      // Note: holidays component manages its own data fetching
     }
   }, [isAuthenticated, activeTab])
 
@@ -522,6 +524,14 @@ export default function AdminPanel() {
             isLoading={false}
             onRefresh={fetchBookings}
             onExport={() => exportToExcel(bookings, 'bookings')}
+            formatDateTime={formatDateTime}
+          />
+        )}
+        
+        {activeTab === 'holidays' && (
+          <ModernHolidayManagement
+            onRefresh={() => {}} // Component manages its own refresh
+            onExport={() => exportToExcel([], 'holidays')} // Will be handled by component
             formatDateTime={formatDateTime}
           />
         )}

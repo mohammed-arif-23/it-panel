@@ -770,14 +770,14 @@ export default function SeminarPage() {
                   <div className="p-2 bg-green-100 rounded-lg">
                     <Trophy className="h-6 w-6 text-green-600" />
                   </div>
-                  <CardTitle className="text-gray-800 text-xl font-bold">Today's Selection ({user?.class_year || 'Your Class'})</CardTitle>
+                  <CardTitle className="text-gray-800 text-xl font-bold">Next Selection ({user?.class_year || 'Your Class'})</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="p-6">
                 {isLoadingSelections ? (
                   <div className="text-center py-8 bg-green-50/60 backdrop-blur-sm rounded-xl border-2 border-green-200">
                     <Loader2 className="h-10 w-10 animate-spin mx-auto text-green-600 mb-3" />
-                    <p className="text-sm text-green-600 font-medium">Loading today's selection...</p>
+                    <p className="text-sm text-green-600 font-medium">Lets see who is selected next...</p>
                   </div>
                 ) : todaySelection ? (
                   <div className="bg-green-50/70 backdrop-blur-sm border-2 border-green-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
@@ -785,7 +785,7 @@ export default function SeminarPage() {
                       <div className="flex items-center justify-center space-x-2 mb-2">
                         <CheckCircle className="h-5 w-5 text-green-600" />
                         <span className="text-xs font-bold text-green-800 bg-green-100 px-2 py-1 rounded-full">
-                          SELECTED TODAY
+                          SELECTED FOR NEXT
                         </span>
                       </div>
                       <h3 className="font-bold text-green-900 text-xl mb-2">
@@ -796,9 +796,6 @@ export default function SeminarPage() {
                       </p>
                       <p className="text-green-700 text-sm font-medium mb-3 bg-green-100/50 rounded-lg px-3 py-1 inline-block">
                         {todaySelection.student.class_year || 'IT Department'}
-                      </p>
-                      <p className="text-green-600 text-sm font-medium">
-                        Selected at: {seminarTimingService.formatTime12Hour(new Date(todaySelection.selectedAt))}
                       </p>
                       <p className="text-green-500 text-xs mt-2">
                         Will present on {nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0] : 'next seminar day'}

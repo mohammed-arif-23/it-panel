@@ -360,7 +360,7 @@ export default function AssignmentsPage() {
                             <div className="space-y-4">
                               <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
                                 <label className="block text-sm font-bold text-blue-600 mb-3 uppercase tracking-wider">
-                                  Upload Assignment (PDF only, up to 100MB)
+                                  Upload Assignment (PDF only, up to 10MB)
                                 </label>
                                 <input
                                   type="file"
