@@ -887,21 +887,7 @@ export default function SeminarPage() {
                         }`}>
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-1">
-                                {isUpcoming ? (
-                                  <span className="text-xs font-bold text-blue-800 bg-blue-100 px-2 py-1 rounded-full">
-                                    UPCOMING
-                                  </span>
-                                ) : isPast ? (
-                                  <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
-                                    COMPLETED
-                                  </span>
-                                ) : (
-                                  <span className="text-xs font-bold text-purple-800 bg-purple-100 px-2 py-1 rounded-full">
-                                    TODAY
-                                  </span>
-                                )}
-                              </div>
+                             
                               <h4 className={`font-bold text-lg mb-1 ${
                                 isUpcoming ? 'text-blue-900' : isPast ? 'text-gray-700' : 'text-purple-900'
                               }`}>
