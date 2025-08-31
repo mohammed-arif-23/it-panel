@@ -20,8 +20,12 @@ import {
   CheckCircle,
   Download,
   Search,
-  User
+  User,
+  Trash2,
+  Calendar,
+  Eye
 } from 'lucide-react'
+import FineCreationPanel from './FineCreationPanel'
 
 interface Fine {
   id: string
@@ -85,6 +89,20 @@ export default function ModernFineManagement({
     reference_date: new Date().toISOString().split('T')[0],
     amount: 10
   })
+  
+  // Bulk delete states
+  const [showBulkDelete, setShowBulkDelete] = useState(false)
+  const [bulkDeleteFilters, setBulkDeleteFilters] = useState({
+    date: new Date().toISOString().split('T')[0],
+    fine_type: 'all',
+    class_year: 'all'
+  })
+  const [previewFines, setPreviewFines] = useState<Fine[]>([])
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false)
+  const [isDeletingBulk, setIsDeletingBulk] = useState(false)
+  
+  // Bulk create states
+  const [showBulkCreate, setShowBulkCreate] = useState(false)
   
   // Student search states
   const [students, setStudents] = useState<Student[]>([])
@@ -244,6 +262,77 @@ export default function ModernFineManagement({
   const totalPaid = fines.filter(f => f.payment_status === 'paid').length
   const totalAmount = fines.reduce((sum, f) => sum + f.base_amount, 0)
 
+  // Bulk delete functions
+  const handlePreviewBulkDelete = async () => {
+    if (!bulkDeleteFilters.date) {
+      alert('Please select a date')
+      return
+    }
+
+    setIsLoadingPreview(true)
+    try {
+      const params = new URLSearchParams({
+        date: bulkDeleteFilters.date,
+        fine_type: bulkDeleteFilters.fine_type,
+        class_year: bulkDeleteFilters.class_year
+      })
+      
+      const response = await fetch(`/api/admin/fines/bulk-delete?${params}`)
+      const data = await response.json()
+      
+      if (data.success) {
+        setPreviewFines(data.fines || [])
+      } else {
+        alert(`Failed to preview fines: ${data.error}`)
+        setPreviewFines([])
+      }
+    } catch (error) {
+      console.error('Error previewing fines:', error)
+      alert('Failed to preview fines')
+      setPreviewFines([])
+    } finally {
+      setIsLoadingPreview(false)
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (previewFines.length === 0) {
+      alert('No fines to delete')
+      return
+    }
+
+    const confirmMessage = `Are you sure you want to delete ${previewFines.length} fine(s) for ${bulkDeleteFilters.date}?\n\nThis action cannot be undone.`
+    
+    if (!confirm(confirmMessage)) {
+      return
+    }
+
+    setIsDeletingBulk(true)
+    try {
+      const response = await fetch('/api/admin/fines/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bulkDeleteFilters)
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        alert(`Successfully deleted ${data.deleted_count} fine(s)`)
+        setPreviewFines([])
+        setShowBulkDelete(false)
+        onRefresh() // Refresh the main fines list
+      } else {
+        alert(`Failed to delete fines: ${data.error}`)
+      }
+    } catch (error) {
+      console.error('Error deleting fines:', error)
+      alert('Failed to delete fines')
+    } finally {
+      setIsDeletingBulk(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -252,13 +341,31 @@ export default function ModernFineManagement({
           <h2 className="text-2xl font-bold text-gray-900">Fine Management</h2>
           <p className="text-gray-600">Manage student fines and penalties</p>
         </div>
-        <Button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Fine
-        </Button>
+        <div className="flex space-x-2">
+          <Button
+            onClick={() => setShowBulkCreate(!showBulkCreate)}
+            variant="outline"
+            className="border-green-200 text-green-600 hover:bg-green-50"
+          >
+            <Calendar className="h-4 w-4 mr-2" />
+            Bulk Create
+          </Button>
+          <Button
+            onClick={() => setShowBulkDelete(!showBulkDelete)}
+            variant="outline"
+            className="border-red-200 text-red-600 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Bulk Delete
+          </Button>
+          <Button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Fine
+          </Button>
+        </div>
       </div>
 
       {/* Add Fine Form */}
@@ -429,6 +536,168 @@ export default function ModernFineManagement({
                 </Button>
               </div>
             </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Bulk Create Form */}
+      {showBulkCreate && (
+        <div className="space-y-4">
+          <FineCreationPanel />
+        </div>
+      )}
+
+      {/* Bulk Delete Form */}
+      {showBulkDelete && (
+        <Card className="border-red-200 bg-red-50/50">
+          <CardHeader>
+            <CardTitle className="text-red-900">Bulk Delete Fines</CardTitle>
+            <CardDescription>Delete multiple fines for a specific date</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid md:grid-cols-4 gap-4">
+                <div>
+                  <Label htmlFor="bulk_date">Date *</Label>
+                  <Input
+                    id="bulk_date"
+                    type="date"
+                    value={bulkDeleteFilters.date}
+                    onChange={(e) => setBulkDeleteFilters({...bulkDeleteFilters, date: e.target.value})}
+                    className="bg-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="bulk_fine_type">Fine Type</Label>
+                  <Select
+                    value={bulkDeleteFilters.fine_type}
+                    onValueChange={(value) => setBulkDeleteFilters({...bulkDeleteFilters, fine_type: value})}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-gray-200">
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="seminar_no_booking">Seminar No Booking</SelectItem>
+                      <SelectItem value="assignment_late">Assignment Late</SelectItem>
+                      <SelectItem value="attendance_absent">Attendance Absent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="bulk_class_year">Class</Label>
+                  <Select
+                    value={bulkDeleteFilters.class_year}
+                    onValueChange={(value) => setBulkDeleteFilters({...bulkDeleteFilters, class_year: value})}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-gray-200">
+                      <SelectItem value="all">All Classes</SelectItem>
+                      <SelectItem value="II-IT">II-IT</SelectItem>
+                      <SelectItem value="III-IT">III-IT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    onClick={handlePreviewBulkDelete}
+                    disabled={isLoadingPreview || !bulkDeleteFilters.date}
+                    className="w-full bg-orange-600 hover:bg-orange-700"
+                  >
+                    {isLoadingPreview ? (
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Eye className="h-4 w-4 mr-2" />
+                    )}
+                    Preview
+                  </Button>
+                </div>
+              </div>
+
+              {/* Preview Results */}
+              {previewFines.length > 0 && (
+                <div className="mt-4 p-4 bg-white border border-red-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-red-900">
+                      Found {previewFines.length} fine(s) to delete
+                    </h4>
+                    <Badge className="bg-red-100 text-red-800">
+                      Total: ₹{previewFines.reduce((sum, f) => sum + f.base_amount, 0)}
+                    </Badge>
+                  </div>
+                  
+                  <div className="max-h-40 overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Student</TableHead>
+                          <TableHead className="text-xs">Register No.</TableHead>
+                          <TableHead className="text-xs">Type</TableHead>
+                          <TableHead className="text-xs">Amount</TableHead>
+                          <TableHead className="text-xs">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {previewFines.map((fine) => (
+                          <TableRow key={fine.id} className="text-sm">
+                            <TableCell>{fine.unified_students?.name || 'Unknown'}</TableCell>
+                            <TableCell>{fine.unified_students?.register_number || '-'}</TableCell>
+                            <TableCell>{getFineTypeLabel(fine.fine_type)}</TableCell>
+                            <TableCell>₹{fine.base_amount}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(fine.payment_status)}>
+                                {fine.payment_status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {previewFines.length === 0 && !isLoadingPreview && bulkDeleteFilters.date && (
+                <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
+                  <Calendar className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-600">No fines found for the selected criteria</p>
+                </div>
+              )}
+
+              <div className="flex space-x-2">
+                <Button
+                  onClick={handleBulkDelete}
+                  disabled={isDeletingBulk || previewFines.length === 0}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isDeletingBulk ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  {isDeletingBulk ? 'Deleting...' : `Delete ${previewFines.length} Fine(s)`}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowBulkDelete(false)
+                    setPreviewFines([])
+                    setBulkDeleteFilters({
+                      date: new Date().toISOString().split('T')[0],
+                      fine_type: 'all',
+                      class_year: 'all'
+                    })
+                  }}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}

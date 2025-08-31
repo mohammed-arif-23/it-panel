@@ -414,6 +414,7 @@ export default function AssignmentsPage() {
                             } 
                             message={uploadMessage} 
                             className="border-2"
+                            onClose={() => setUploadMessage('')}
                           />
                         </div>
                       )}

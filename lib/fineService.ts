@@ -31,14 +31,18 @@ export class FineService {
     const dateObj = new Date(date + 'T12:00:00');
     const dayOfWeek = dateObj.getDay();
     
+    console.log(`DEBUG: Date ${date} is day of week: ${dayOfWeek} (0=Sunday, 6=Saturday)`);
+    
     // Skip only Sundays (Sunday = 0)
     // Saturday (6) is a working day unless explicitly marked as holiday
     if (dayOfWeek === 0) {
+      console.log(`DEBUG: ${date} is Sunday, not a working day`);
       return false;
     }
     
     // Check if this date is explicitly marked as a holiday in admin panel
     const { isHoliday } = await holidayService.isHoliday(date);
+    console.log(`DEBUG: ${date} is holiday: ${isHoliday}`);
     return !isHoliday;
   }
 
@@ -57,6 +61,7 @@ export class FineService {
 
       // Check if this is a working day (no fines on weekends/holidays)
       const isWorking = await this.isWorkingDay(seminarDate);
+      console.log(`DEBUG: Is ${seminarDate} a working day? ${isWorking}`);
       if (!isWorking) {
         return {
           success: true,
@@ -134,6 +139,7 @@ export class FineService {
       console.log(`DEBUG: Students eligible for fines: ${studentsEligibleForFines.length}`);
 
       if (studentsEligibleForFines.length === 0) {
+        console.log('DEBUG: No students eligible for fines - all either booked or selected for seminars');
         return {
           success: true,
           message: 'No students eligible for fines (all either booked or selected for seminars)',
@@ -163,6 +169,7 @@ export class FineService {
       );
 
       if (studentsToFine.length === 0) {
+        console.log('DEBUG: Fines already exist for all eligible students on this date');
         return {
           success: true,
           message: 'Fines already exist for all eligible students on this date',
@@ -172,6 +179,7 @@ export class FineService {
       }
 
       // Create simple daily fines: ₹10 per day not booked
+      console.log(`DEBUG: About to create fines for ${studentsToFine.length} students`);
       const results = [];
       const errors = [];
       

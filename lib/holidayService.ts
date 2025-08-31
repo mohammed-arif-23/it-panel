@@ -1,7 +1,7 @@
 // Holiday Service for automatic seminar rescheduling
 // Handles holiday detection and automatic seminar date adjustment
 
-import { supabase } from './supabase';
+import { supabaseAdmin } from './supabase';
 
 interface Holiday {
   id: string;
@@ -35,7 +35,7 @@ export class HolidayService {
   // Check if a specific date is a holiday
   async isHoliday(date: string): Promise<{ isHoliday: boolean; holiday?: Holiday }> {
     try {
-      const { data: holiday, error } = await (supabase as any)
+      const { data: holiday, error } = await (supabaseAdmin as any)
         .from('unified_holidays')
         .select('*')
         .eq('holiday_date', date)
@@ -59,6 +59,7 @@ export class HolidayService {
 
   // Get the next working day after a holiday
   async getNextWorkingDay(startDate: string, daysToAdd: number = 1): Promise<string> {
+    console.log(`DEBUG: Finding next working day after ${startDate}, adding ${daysToAdd} working days`);
     let currentDate = new Date(startDate);
     let addedDays = 0;
 
@@ -66,9 +67,11 @@ export class HolidayService {
       currentDate.setDate(currentDate.getDate() + 1);
       const dateString = currentDate.toISOString().split('T')[0];
       
-      // Skip weekends (Sunday = 0, Saturday = 6)
+      // Skip only Sundays (Sunday = 0)
+      // Saturday (6) is considered a working day unless explicitly marked as holiday
       const dayOfWeek = currentDate.getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
+      if (dayOfWeek === 0) {
+        console.log(`DEBUG: Skipping Sunday: ${dateString}`);
         continue;
       }
 
@@ -76,10 +79,15 @@ export class HolidayService {
       const { isHoliday } = await this.isHoliday(dateString);
       if (!isHoliday) {
         addedDays++;
+        console.log(`DEBUG: Found working day: ${dateString} (${addedDays}/${daysToAdd})`);
+      } else {
+        console.log(`DEBUG: Skipping holiday: ${dateString}`);
       }
     }
 
-    return currentDate.toISOString().split('T')[0];
+    const finalDate = currentDate.toISOString().split('T')[0];
+    console.log(`DEBUG: Final next working day: ${finalDate}`);
+    return finalDate;
   }
 
   // Check and handle seminar rescheduling for a given date
@@ -106,7 +114,7 @@ export class HolidayService {
       console.log(`Rescheduling seminar from ${seminarDate} to ${newDate}`);
 
       // Check if there are any students selected for the original date
-      const { data: existingSelections } = await (supabase as any)
+      const { data: existingSelections } = await (supabaseAdmin as any)
         .from('unified_seminar_selections')
         .select(`
           id,
@@ -164,7 +172,7 @@ export class HolidayService {
 
       // Update all selections to the new date
       const updatePromises = selections.map((selection: any) =>
-        (supabase as any)
+        (supabaseAdmin as any)
           .from('unified_seminar_selections')
           .update({
             seminar_date: newDate,
@@ -192,7 +200,7 @@ export class HolidayService {
         updated_at: new Date().toISOString()
       };
 
-      await (supabase as any)
+      await (supabaseAdmin as any)
         .from('unified_seminar_reschedule_history')
         .insert(rescheduleData);
 
@@ -247,7 +255,7 @@ export class HolidayService {
 
           // Store notification in database for record keeping
           try {
-            await (supabase as any)
+            await (supabaseAdmin as any)
               .from('unified_holiday_notifications')
               .insert({
                 holiday_id: null,
@@ -288,6 +296,7 @@ export class HolidayService {
       
       if (baseDate) {
         nextDate = baseDate;
+        console.log(`DEBUG: Using provided base date: ${baseDate}`);
       } else {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -295,18 +304,22 @@ export class HolidayService {
         // Skip Sunday
         if (tomorrow.getDay() === 0) {
           tomorrow.setDate(tomorrow.getDate() + 1);
+          console.log(`DEBUG: Tomorrow is Sunday, moving to Monday`);
         }
         
         nextDate = tomorrow.toISOString().split('T')[0];
+        console.log(`DEBUG: Calculated next seminar date: ${nextDate}`);
       }
 
       // Check if the calculated date is a holiday
       const { isHoliday } = await this.isHoliday(nextDate);
+      console.log(`DEBUG: Is ${nextDate} a holiday? ${isHoliday}`);
       
       if (isHoliday) {
         // If it's a holiday, get the next working day
+        const originalDate = nextDate;
         nextDate = await this.getNextWorkingDay(nextDate, 1);
-        console.log(`Holiday detected, adjusted seminar date to: ${nextDate}`);
+        console.log(`Holiday detected, adjusted seminar date from ${originalDate} to: ${nextDate}`);
       }
 
       return nextDate;

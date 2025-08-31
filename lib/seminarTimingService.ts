@@ -49,10 +49,15 @@ class SeminarTimingService {
   // New method to get the next seminar date for booking purposes
   getNextSeminarDate(): string {
     const today = new Date();
-    const tomorrow = new Date();
-    tomorrow.setDate(today.getDate() + 1);
+    let nextSeminarDate = new Date();
+    nextSeminarDate.setDate(today.getDate() + 1);
     
-    // If today is Saturday (6) or Sunday (0), seminar is on Monday
+    // Skip Sundays by default - seminars never happen on Sunday
+    while (nextSeminarDate.getDay() === 0) {
+      nextSeminarDate.setDate(nextSeminarDate.getDate() + 1);
+    }
+    
+    // If today is Saturday or Sunday, seminar is on Monday
     if (today.getDay() === 6 || today.getDay() === 0) {
       // Find next Monday
       const nextMonday = new Date(today);
@@ -61,12 +66,7 @@ class SeminarTimingService {
       return nextMonday.toISOString().split('T')[0];
     }
     
-    // For Monday-Friday, normal next day (but skip if next day is Sunday)
-    if (tomorrow.getDay() === 0) {
-      tomorrow.setDate(tomorrow.getDate() + 1); // Skip Sunday to Monday
-    }
-    
-    return tomorrow.toISOString().split('T')[0];
+    return nextSeminarDate.toISOString().split('T')[0];
   }
 
   // Holiday-aware seminar date calculation (will be enhanced by holiday service)
@@ -101,7 +101,14 @@ class SeminarTimingService {
   isWorkingDay(date: Date): boolean {
     const day = date.getDay();
     // Sunday is 0, Monday is 1, Saturday is 6
-    // Working days are Monday (1) to Saturday (6)
+    // Working days are Monday (1) to Saturday (6), but seminars don't happen on Sunday
+    // So for seminar purposes, working days are Monday (1) to Saturday (6)
+    return day >= 1 && day <= 6;
+  }
+
+  isSeminarDay(date: Date): boolean {
+    const day = date.getDay();
+    // Seminars happen Monday (1) to Saturday (6), but NOT on Sunday (0)
     return day >= 1 && day <= 6;
   }
 
@@ -148,6 +155,12 @@ class SeminarTimingService {
 
   isBookingWindowOpen(): boolean {
     const now = new Date();
+    
+    // No bookings on Sunday - system is paused
+    if (now.getDay() === 0) {
+      return false;
+    }
+    
     const start = this.getTodayBookingWindowStart();
     const end = this.getTodayBookingWindowEnd();
     
@@ -173,6 +186,21 @@ class SeminarTimingService {
 
   getBookingWindowInfo(): BookingWindowInfo {
     const now = new Date();
+    
+    // Sunday - system is paused
+    if (now.getDay() === 0) {
+      const nextMonday = new Date(now);
+      nextMonday.setDate(now.getDate() + 1);
+      nextMonday.setHours(this.config.startHour, this.config.startMinute, 0, 0);
+      
+      return {
+        isOpen: false,
+        timeUntilOpen: nextMonday.getTime() - now.getTime(),
+        nextOpenTime: nextMonday,
+        selectionTime: undefined
+      };
+    }
+    
     const start = this.getTodayBookingWindowStart();
     const end = this.getTodayBookingWindowEnd();
     const selectionTime = this.getTodaySelectionTime();

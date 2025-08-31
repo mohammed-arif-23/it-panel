@@ -201,16 +201,18 @@ export async function GET() {
       "(" + dayName + ")"
     );
 
-    // Note: Sunday is a holiday - no seminars are scheduled on Sunday
-    // But Sunday bookings target Monday seminars, so we allow Sunday cron execution
+    // Sundays are automatically skipped - no seminars on Sunday
     const seminarDay = new Date(seminarDate + "T12:00:00").getDay();
     if (seminarDay === 0) {
       return NextResponse.json(
         {
-          error: "Cannot schedule seminar on Sunday (holiday)",
+          success: true,
+          message: "No seminar scheduled on Sunday - skipped automatically",
           date: seminarDate,
+          next_seminar_date: seminarTimingService.getNextSeminarDate(),
+          source: "direct-cron-sunday-skip",
         },
-        { status: 400 }
+        { status: 200 }
       );
     }
 

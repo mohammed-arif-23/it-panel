@@ -11,19 +11,7 @@ import {
   Eye,
   EyeOff,
   Database,
-  LogOut,
-  Menu,
-  X,
-  BookOpen,
-  DollarSign,
-  Users,
-  Calendar,
-  BarChart3,
-  Plus,
-  Save,
-  CheckCircle,
-  FileSpreadsheet,
-  Trash2
+  Users
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import ModernAdminNavbar from '@/components/admin/ModernAdminNavbar'
@@ -66,24 +54,7 @@ interface Fine {
   unified_students?: Student
 }
 
-interface BookingAnalytics {
-  totalStudents: number
-  totalBooked: number
-  totalNotBooked: number
-  bookingsByClass: {
-    'II-IT': { total: number; booked: number; notBooked: number }
-    'III-IT': { total: number; booked: number; notBooked: number }
-  }
-  bookedStudents: any[]
-  notBookedStudents: Student[]
-}
 
-interface TableInfo {
-  name: string
-  displayName: string
-  description: string
-  type: string
-}
 
 export default function AdminPanel() {
   const router = useRouter()
@@ -112,21 +83,6 @@ export default function AdminPanel() {
     class: 'all',
     status: 'all',
     type: 'all'
-  })
-  const [editingFine, setEditingFine] = useState<string | null>(null)
-  const [newFine, setNewFine] = useState({
-    student_id: '',
-    fine_type: '',
-    reference_date: '',
-    amount: 0
-  })
-
-  // Assignment Management States for modular component
-  const [newAssignment, setNewAssignment] = useState({
-    title: '',
-    description: '',
-    class_year: '',
-    due_date: ''
   })
 
   // Booking Analytics States

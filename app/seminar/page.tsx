@@ -677,9 +677,9 @@ export default function SeminarPage() {
                     {hasBookedToday ? (
                       <Alert 
                         variant="success" 
-                        title="Booking Confirmed!" 
                         message={`You have successfully booked for the seminar on ${nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0] : 'the next seminar date'}!`}
                         className="mb-4"
+                        onClose={() => setHasBookedToday(false)}
                       />
                     ) : (
                       <>
@@ -706,6 +706,7 @@ export default function SeminarPage() {
                                 variant="error" 
                                 message={topicError} 
                                 className="mt-3"
+                                onClose={() => setTopicError('')}
                               />
                             )}
                           </div>
