@@ -139,14 +139,11 @@ export async function POST(request: NextRequest) {
 
     console.log(`Found ${bookings.length} bookings for selection`);
 
-    // Get today's previous selections to avoid duplicate selections on the same day
-    // Only consider selections made today for today's seminar date
-    const today = new Date().toISOString().split('T')[0];
-    
+    // Get ALL previous selections to avoid selecting students who have already presented
+    // This ensures students don't get selected multiple times across different seminar dates
     const { data: previousSelections, error: previousSelectionsError } = await supabase
       .from('unified_seminar_selections')
-      .select('student_id')
-      .eq('seminar_date', seminarDate); // Only get selections for the same seminar date
+      .select('student_id, seminar_date');
 
     if (previousSelectionsError) {
       console.error('Error fetching previous selections:', previousSelectionsError);
@@ -161,7 +158,7 @@ export async function POST(request: NextRequest) {
       (previousSelections as any[])?.map(selection => selection.student_id) || []
     );
 
-    console.log(`Found ${previouslySelectedStudentIds.size} students already selected for ${seminarDate} to exclude`);
+    console.log(`Found ${previouslySelectedStudentIds.size} students who have already presented (excluding from selection)`);
 
     // Filter out previously selected students from bookings
     const eligibleBookings = bookings.filter(booking => 
@@ -173,11 +170,11 @@ export async function POST(request: NextRequest) {
     if (eligibleBookings.length === 0) {
       return NextResponse.json(
         { 
-          message: 'No eligible students available (all have been selected for this date)', 
+          message: 'No eligible students available (all have already presented in previous seminars)', 
           date: seminarDate,
           total_bookings: bookings.length,
-          already_selected_count: previouslySelectedStudentIds.size,
-          selection_basis: 'same-day bookings only'
+          already_presented_count: previouslySelectedStudentIds.size,
+          selection_basis: 'excluding all previously selected students'
         },
         { status: 200 }
       );

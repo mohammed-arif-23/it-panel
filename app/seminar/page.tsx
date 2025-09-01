@@ -358,25 +358,13 @@ export default function SeminarPage() {
       const today = seminarTimingService.getTodayDate()
       const tomorrow = seminarTimingService.getNextSeminarDate()
 
-      // Try to find selections for multiple possible dates
-      const datesToCheck = [holidayAwareDate, tomorrow, today]
-      let foundSelections = null
-      let foundSelectionsDate = null
-
-      // Check each date until we find selections
-      for (const dateToCheck of datesToCheck) {
-        const { data: selections } = await seminarDbHelpers.getSelectionsForDate(dateToCheck)
-        if (selections && selections.length > 0) {
-          foundSelections = selections
-          foundSelectionsDate = dateToCheck
-          break
-        }
-      }
-
-      // Process today's selection from found selections
-      if (foundSelections && foundSelections.length > 0) {
+      // Get TODAY's seminar selections (for today's date)
+      const { data: todaySelections } = await seminarDbHelpers.getSelectionsForDate(today)
+      
+      // Process today's selection
+      if (todaySelections && todaySelections.length > 0) {
         // Find selections from the user's class only
-        const userClassSelections = foundSelections.filter((selection: any) => 
+        const userClassSelections = todaySelections.filter((selection: any) => 
           (selection as any).unified_students.class_year === user?.class_year
         )
         
@@ -400,9 +388,21 @@ export default function SeminarPage() {
         } else {
           setTodaySelection(null)
         }
+      } else {
+        setTodaySelection(null)
+      }
 
-        // Set tomorrow's selections (same as today since they're for the same seminar date)
-        const allSelections = foundSelections.map((selection: any) => ({
+      // Get TOMORROW's seminar selections (for tomorrow's date)
+      const { data: tomorrowSelectionsData } = await seminarDbHelpers.getSelectionsForDate(tomorrow)
+      
+      if (tomorrowSelectionsData && tomorrowSelectionsData.length > 0) {
+        // Filter selections to only show students from the same class as logged-in user
+        const filteredTomorrowSelections = user ? tomorrowSelectionsData.filter((selection: any) => 
+          selection.unified_students.class_year === user.class_year
+        ) : tomorrowSelectionsData
+        
+        // Map to the correct format
+        const formattedTomorrowSelections = filteredTomorrowSelections.map((selection: any) => ({
           student: {
             id: selection.unified_students.id,
             register_number: selection.unified_students.register_number,
@@ -410,31 +410,21 @@ export default function SeminarPage() {
             class_year: selection.unified_students.class_year
           },
           selectedAt: selection.selected_at,
-          seminarDate: foundSelectionsDate || holidayAwareDate
+          seminarDate: tomorrow
         }))
         
-        // Filter selections to only show students from the same class as logged-in user
-        const filteredSelections = user ? allSelections.filter((selection: any) => 
-          selection.student.class_year === user.class_year
-        ) : allSelections
-        
         // Sort by selection time (most recent first) and show the latest selected student
-        const sortedSelections = filteredSelections.sort((a: any, b: any) => 
+        const sortedTomorrowSelections = formattedTomorrowSelections.sort((a: any, b: any) => 
           new Date(b.selectedAt).getTime() - new Date(a.selectedAt).getTime()
         )
         
-        // Show only the most recently selected student from the user's class
-        setTomorrowSelections(sortedSelections.slice(0, 1) as TomorrowSelection[])
-        
-        // Load presenter history (all past selections from user's class)
-        await loadPresenterHistory()
+        setTomorrowSelections(sortedTomorrowSelections.slice(0, 1) as TomorrowSelection[])
       } else {
-        setTodaySelection(null)
         setTomorrowSelections([])
-        
-        // Still load history even if no current selections
-        await loadPresenterHistory()
       }
+      
+      // Load presenter history (all past selections from user's class)
+      await loadPresenterHistory()
     } catch (error) {
       // Error loading dashboard data - handling silently
     } finally {
@@ -446,7 +436,9 @@ export default function SeminarPage() {
     if (!user) return
 
     try {
-      // Get all past selections from user's class, ordered by date (most recent first)
+      const today = seminarTimingService.getTodayDate()
+      
+      // Get only PAST selections from user's class (before today), ordered by date (most recent first)
       const { data: allSelections, error } = await (supabase as any)
         .from('unified_seminar_selections')
         .select(`
@@ -459,6 +451,7 @@ export default function SeminarPage() {
           )
         `)
         .eq('unified_students.class_year', user.class_year)
+        .lt('seminar_date', today) // Only past selections (before today)
         .order('seminar_date', { ascending: false })
         .order('selected_at', { ascending: false })
         .limit(20) // Limit to last 20 presentations
@@ -771,7 +764,7 @@ export default function SeminarPage() {
                   <div className="p-2 bg-green-100 rounded-lg">
                     <Trophy className="h-6 w-6 text-green-600" />
                   </div>
-                  <CardTitle className="text-gray-800 text-xl font-bold">Next Selection ({user?.class_year || 'Your Class'})</CardTitle>
+                  <CardTitle className="text-gray-800 text-xl font-bold">Today's Selection ({user?.class_year || 'Your Class'})</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="p-6">
@@ -799,7 +792,7 @@ export default function SeminarPage() {
                         {todaySelection.student.class_year || 'IT Department'}
                       </p>
                       <p className="text-green-500 text-xs mt-2">
-                        Will present on {nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0] : 'next seminar day'}
+                        Will present on {seminarTimingService.formatDateWithDay(seminarTimingService.getTodayDate()).split(',')[0]}
                       </p>
                     </div>
                   </div>
@@ -809,6 +802,63 @@ export default function SeminarPage() {
                       <User className="h-10 w-10 mx-auto text-gray-400" />
                     </div>
                     <p className="text-sm font-medium mb-2">No student from {user?.class_year || 'your class'} selected today</p>
+                    <p className="text-xs text-gray-400">
+                      Selection will happen at {seminarTimingService.getBookingWindowConfig().selectionTime}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Next Selection (Tomorrow's Selections) */}
+            <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
+              <CardHeader className="bg-purple-50/50 rounded-t-lg border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Trophy className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <CardTitle className="text-gray-800 text-xl font-bold">Next Selection ({user?.class_year || 'Your Class'})</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {isLoadingSelections ? (
+                  <div className="text-center py-8 bg-purple-50/60 backdrop-blur-sm rounded-xl border-2 border-purple-200">
+                    <Loader2 className="h-10 w-10 animate-spin mx-auto text-purple-600 mb-3" />
+                    <p className="text-sm text-purple-600 font-medium">Selection in progress...</p>
+                  </div>
+                ) : tomorrowSelections.length > 0 ? (
+                  <div className="space-y-4">
+                    {tomorrowSelections.map((selection, index) => (
+                      <div key={index} className="bg-purple-50/70 backdrop-blur-sm border-2 border-purple-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+                        <div className="text-center">
+                          <div className="bg-purple-100 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                            <Trophy className="h-8 w-8 text-purple-600" />
+                          </div>
+                          <div className="bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full inline-block mb-3">
+                            SELECTED FOR NEXT
+                          </div>
+                          <h3 className="font-bold text-purple-900 text-xl mb-2">
+                            {selection.student.name}
+                          </h3>
+                          <p className="text-purple-700 text-sm font-medium mb-2 bg-purple-100 rounded-lg px-3 py-1 inline-block">
+                            {selection.student.register_number}
+                          </p>
+                          <p className="text-purple-700 text-sm font-medium mb-3 bg-purple-100/50 rounded-lg px-3 py-1 inline-block">
+                            {selection.student.class_year || 'IT Department'}
+                          </p>
+                          <p className="text-purple-500 text-xs mt-2">
+                            Will present on {seminarTimingService.formatDateWithDay(seminarTimingService.getTomorrowDate()).split(',')[0]}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-8 bg-gray-50/60 backdrop-blur-sm rounded-xl border-2 border-gray-200">
+                    <div className="p-3 bg-gray-100 rounded-lg inline-block mb-3">
+                      <User className="h-10 w-10 mx-auto text-gray-400" />
+                    </div>
+                    <p className="text-sm font-medium mb-2">No student from {user?.class_year || 'your class'} selected for tomorrow</p>
                     <p className="text-xs text-gray-400">
                       Selection will happen at {seminarTimingService.getBookingWindowConfig().selectionTime}
                     </p>

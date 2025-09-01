@@ -170,7 +170,6 @@ export async function GET() {
 
       seminarDate = rescheduleCheck.newDate!;
 
-      // If there were existing selections that got rescheduled, return the reschedule info
       if (rescheduleCheck.result) {
         return NextResponse.json(
           {
@@ -310,14 +309,11 @@ export async function GET() {
 
     console.log(`Found ${bookings.length} bookings for selection`);
 
-    // Get today's previous selections to avoid duplicate selections on the same day
-    // Only consider selections made today for today's seminar date
-    const today = new Date().toISOString().split("T")[0];
-
+    // Get ALL previous selections to avoid selecting students who have already presented
+    // This ensures students don't get selected multiple times across different seminar dates
     const { data: previousSelections } = await supabaseAdmin
       .from("unified_seminar_selections")
-      .select("student_id")
-      .eq("seminar_date", seminarDate); // Only get selections for the same seminar date
+      .select("student_id, seminar_date");
 
     const previouslySelectedStudentIds = new Set(
       (previousSelections as any[])?.map((selection) => selection.student_id) ||
@@ -325,7 +321,7 @@ export async function GET() {
     );
 
     console.log(
-      `Found ${previouslySelectedStudentIds.size} students already selected for ${seminarDate} to exclude`
+      `Found ${previouslySelectedStudentIds.size} students who have already presented (excluding from selection)`
     );
 
     // Filter out previously selected students
@@ -337,11 +333,11 @@ export async function GET() {
       return NextResponse.json(
         {
           message:
-            "No eligible students available (all have been selected for this date)",
+            "No eligible students available (all have already presented in previous seminars)",
           date: seminarDate,
           total_bookings: bookings.length,
-          already_selected_count: previouslySelectedStudentIds.size,
-          selection_basis: "same-day bookings only",
+          already_presented_count: previouslySelectedStudentIds.size,
+          selection_basis: "excluding all previously selected students",
         },
         { status: 200 }
       );
@@ -616,9 +612,9 @@ export async function GET() {
         summary: {
           total_bookings: bookings.length,
           eligible_bookings: eligibleBookings.length,
-          already_selected_excluded: previouslySelectedStudentIds.size,
-          selection_basis: "same-day bookings only",
-          booking_date: today,
+          already_presented_excluded: previouslySelectedStudentIds.size,
+          selection_basis: "excluding all previously selected students",
+          booking_date: seminarDate,
           seminar_date: seminarDate,
           ii_it_bookings: iiItBookings.length,
           iii_it_bookings: iiiItBookings.length,

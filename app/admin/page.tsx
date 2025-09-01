@@ -486,8 +486,8 @@ export default function AdminPanel() {
         
         {activeTab === 'holidays' && (
           <ModernHolidayManagement
-            onRefresh={() => {}} // Component manages its own refresh
-            onExport={() => exportToExcel([], 'holidays')} // Will be handled by component
+            onRefresh={() => {}} 
+            onExport={() => exportToExcel([], 'holidays')} 
             formatDateTime={formatDateTime}
           />
         )}
