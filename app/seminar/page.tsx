@@ -779,7 +779,7 @@ export default function SeminarPage() {
                       <div className="flex items-center justify-center space-x-2 mb-2">
                         <CheckCircle className="h-5 w-5 text-green-600" />
                         <span className="text-xs font-bold text-green-800 bg-green-100 px-2 py-1 rounded-full">
-                          SELECTED FOR NEXT
+                          SELECTED FOR TODAY
                         </span>
                       </div>
                       <h3 className="font-bold text-green-900 text-xl mb-2">
@@ -792,7 +792,7 @@ export default function SeminarPage() {
                         {todaySelection.student.class_year || 'IT Department'}
                       </p>
                       <p className="text-green-500 text-xs mt-2">
-                        Will present on {seminarTimingService.formatDateWithDay(seminarTimingService.getTodayDate()).split(',')[0]}
+                        To present on {seminarTimingService.formatDateWithDay(seminarTimingService.getTodayDate()).split(',')[0]}..!
                       </p>
                     </div>
                   </div>

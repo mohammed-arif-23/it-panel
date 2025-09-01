@@ -272,7 +272,7 @@ export default function HomePage() {
       </div>
     
       {/* Clean Professional Header */}
-      <div className="relative overflow-hidden bg-white border-b border-gray-200 shadow-sm">
+      <div className="relative overflow-hidden bg-white ">
         <div className="max-w-7xl mx-auto px-2 py-3 relative z-10">
           <div className="flex flex-col lg:flex-row items-center justify-between">
             {/* Welcome Section */}
