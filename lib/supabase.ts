@@ -34,10 +34,7 @@ export const dbHelpers = {
   async findStudentByRegNumber(regNumber: string) {
     const { data, error } = await supabaseAdmin
       .from('unified_students')
-      .select(`
-        *,
-        unified_student_registrations (*)
-      `)
+      .select('*')
       .eq('register_number', regNumber)
       .single()
     

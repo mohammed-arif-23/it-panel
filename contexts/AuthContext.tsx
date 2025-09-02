@@ -83,7 +83,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       let { data: student, error } = await dbHelpers.findStudentByRegNumber(trimmedRegNumber)
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Database error during login:', error)
+        console.error('Database error during login:', {
+          error,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        })
         return { success: false, error: 'Database connection error. Please try again.' }
       }
 

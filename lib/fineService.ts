@@ -216,34 +216,32 @@ export class FineService {
           ) {
             console.log("No Fine");
             continue;
-          }
-          else {
-          const { data: fine, error } = await (supabaseAdmin as any)
-            .from("unified_student_fines")
-            .insert({
-              student_id: (student as any).id,
-              fine_type: "seminar_no_booking",
-              reference_date: seminarDate,
-              base_amount: 10.0, // Fixed ₹10 per day
-              daily_increment: 0.0, // No increments
-              days_overdue: 1, // Always 1 day for the specific date
-              payment_status: "pending",
-            })
-            .select()
-            .single();
-         
+          } else {
+            const { data: fine, error } = await (supabaseAdmin as any)
+              .from("unified_student_fines")
+              .insert({
+                student_id: (student as any).id,
+                fine_type: "seminar_no_booking",
+                reference_date: seminarDate,
+                base_amount: 10.0, // Fixed ₹10 per day
+                daily_increment: 0.0, // No increments
+                days_overdue: 1, // Always 1 day for the specific date
+                payment_status: "pending",
+              })
+              .select()
+              .single();
 
-          results.push({
-            studentId: (student as any).id,
-            fineId: (fine as any).id,
-            action: "created",
-          });
-          console.log(
-            `Created ₹10 fine for student ${
-              (student as any).register_number
-            } (${(student as any).name}) for date ${seminarDate}`
-          );
-        }
+            results.push({
+              studentId: (student as any).id,
+              fineId: (fine as any).id,
+              action: "created",
+            });
+            console.log(
+              `Created ₹10 fine for student ${
+                (student as any).register_number
+              } (${(student as any).name}) for date ${seminarDate}`
+            );
+          }
         } catch (error) {
           console.error(
             `Failed to create fine for student ${
