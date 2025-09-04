@@ -34,7 +34,7 @@ export default function ModernAdminNavbar({
     { id: 'assignments', label: 'Assignments', icon: BookOpen },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
     { id: 'holidays', label: 'Holidays', icon: CalendarDays },
-    { id: 'students', label: 'Students', icon: Users },
+    { id: 'Seminar History', label: 'Seminar History', icon: Users },
     { id: 'fines', label: 'Fines', icon: DollarSign },
     { id: 'database', label: 'Database', icon: Database }
   ]

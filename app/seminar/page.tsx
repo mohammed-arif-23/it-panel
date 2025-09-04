@@ -846,9 +846,7 @@ export default function SeminarPage() {
                           <p className="text-purple-700 text-sm font-medium mb-3 bg-purple-100/50 rounded-lg px-3 py-1 inline-block">
                             {selection.student.class_year || 'IT Department'}
                           </p>
-                          <p className="text-purple-500 text-xs mt-2">
-                            Will present on {seminarTimingService.formatDateWithDay(seminarTimingService.getTomorrowDate()).split(',')[0]}
-                          </p>
+                         
                         </div>
                       </div>
                     ))}
