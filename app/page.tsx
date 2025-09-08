@@ -255,6 +255,49 @@ export default function HomePage() {
               </form>
             </CardContent>
           </Card>
+
+          {/* Learning App Card - Under Development (placed after Assignments) */}
+          <Card className="group relative overflow-hidden bg-white shadow-xl border-0 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+            {/* Gradient Border Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-sky-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+            <div className="relative bg-white m-1 rounded-lg">
+              <CardHeader className="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-t-lg border-b border-cyan-100 pb-6">
+                <div className="flex items-center justify-between">
+                  <div className="p-3 bg-gradient-to-r from-cyan-500 to-sky-500 rounded-xl shadow-lg">
+                    <GraduationCap className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-semibold text-cyan-600 bg-cyan-100 px-2 py-1 rounded-full">
+                      LEARN
+                    </span>
+                  </div>
+                </div>
+                <CardTitle className="text-xl font-bold text-gray-800 mt-4">
+                  Learning App
+                </CardTitle>
+                <CardDescription className="text-gray-600 font-medium">
+                  Continue your learning journey in our external platform
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-cyan-50 rounded-xl">
+                    <div className="flex items-center">
+                      <GraduationCap className="h-4 w-4 mr-2 text-cyan-600" />
+                      <span className="text-sm font-medium text-gray-700">Personalized Learning</span>
+                    </div>
+                    <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></div>
+                  </div>
+                  <Button disabled className="w-full bg-gradient-to-r from-cyan-600 to-sky-600 text-white font-semibold py-3 rounded-xl shadow-lg opacity-70 cursor-not-allowed">
+                    Go to Learning App
+                  </Button>
+                  <p className="text-xs text-gray-500 text-center mt-2">This feature is under development.</p>
+                </div>
+              </CardContent>
+            </div>
+          </Card>
+
+          
         </div>
       </div>
     </div>
@@ -354,6 +397,8 @@ export default function HomePage() {
             </div>
           </Card>
 
+          
+
           {/* Seminar Card - Enhanced Design */}
           <Card className="group relative overflow-hidden bg-white shadow-xl border-0 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
             {/* Gradient Border Effect */}
@@ -437,6 +482,48 @@ export default function HomePage() {
               </CardContent>
             </div>
           </Card>
+
+          {/* Learning App Card - Under Development (placed after Assignments) */}
+          <Card className="group relative overflow-hidden bg-white shadow-xl border-0 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+            {/* Gradient Border Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-sky-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+            <div className="relative bg-white m-1 rounded-lg">
+              <CardHeader className="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-t-lg border-b border-cyan-100 pb-6">
+                <div className="flex items-center justify-between">
+                  <div className="p-3 bg-gradient-to-r from-cyan-500 to-sky-500 rounded-xl shadow-lg">
+                    <GraduationCap className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-semibold text-cyan-600 bg-cyan-100 px-2 py-1 rounded-full">
+                      LEARN
+                    </span>
+                  </div>
+                </div>
+                <CardTitle className="text-xl font-bold text-gray-800 mt-4">
+                  Learning App
+                </CardTitle>
+                <CardDescription className="text-gray-600 font-medium">
+                  Enhance your Skills with <strong>dynamIT's </strong>Learning platform
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-cyan-50 rounded-xl">
+                    <div className="flex items-center">
+                      <GraduationCap className="h-4 w-4 mr-2 text-cyan-600" />
+                      <span className="text-sm font-medium text-gray-700">Personalized Learning</span>
+                    </div>
+                    <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></div>
+                  </div>
+                  <Button disabled className="w-full bg-gradient-to-r from-cyan-600 to-sky-600 text-white font-semibold py-3 rounded-xl shadow-lg opacity-70 cursor-not-allowed">
+                    Go to Learning App
+                  </Button>
+                  <p className="text-xs text-gray-500 text-center mt-2">This app is under development.</p>
+                </div>
+              </CardContent>
+            </div>
+          </Card>
+
         </div>
 
         {/* Enhanced Profile Section */}

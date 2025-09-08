@@ -669,8 +669,8 @@ export default function SeminarPage() {
                     
                     {hasBookedToday ? (
                       <Alert 
-                        variant="success" 
-                        message={`You have successfully booked for the seminar on ${nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0] : 'the next seminar date'}!`}
+                        variant="info" 
+                        message={`You already have an active booking for the seminar on ${nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0] : 'the next seminar date'}.`}
                         className="mb-4"
                         onClose={() => setHasBookedToday(false)}
                       />

@@ -50,7 +50,7 @@ interface BookingAnalytics {
 interface ModernBookingAnalyticsProps {
   isLoading: boolean
   onRefresh: () => void
-  onExport: () => void
+  onExport: (data: any[], filename: string) => void
   formatDateTime: (date: string) => string
 }
 
@@ -97,6 +97,92 @@ export default function ModernBookingAnalytics({
   const handleRefresh = () => {
     fetchBookingAnalytics()
     onRefresh()
+  }
+
+  const handleExport = () => {
+    if (!bookingAnalytics) {
+      onExport([], `bookings_${selectedClass}_${selectedDate}`)
+      return
+    }
+
+    let exportData: any[] = []
+    let filename = `booking_status_${selectedClass}_${selectedDate}`
+
+    if (viewMode === 'booked') {
+      exportData = bookingAnalytics.bookedStudents.map((student: any) => ({
+        'Register Number': student.register_number,
+        Name: student.name,
+        Email: student.email,
+        Class: student.class_year,
+        Status: 'Booked',
+        'Seminar Topic': student.seminar_topic || '-',
+        'Booking Date': student.booking_date || selectedDate,
+        'Booked At': student.booking_time ? formatDateTime(student.booking_time) : '-'
+      }))
+    } else if (viewMode === 'not_booked') {
+      exportData = bookingAnalytics.notBookedStudents.map((student: any) => ({
+        'Register Number': student.register_number,
+        Name: student.name,
+        Email: student.email,
+        Class: student.class_year,
+        Status: 'Not Booked',
+        'Seminar Topic': '-',
+        'Booking Date': selectedDate,
+        'Booked At': '-'
+      }))
+    } else {
+      // overview: consolidated per-student list (Booked + Not Booked)
+      exportData = [
+        ...bookingAnalytics.bookedStudents.map((student: any) => ({
+          'Register Number': student.register_number,
+          Name: student.name,
+          Email: student.email,
+          Class: student.class_year,
+          Status: 'Booked',
+          'Seminar Topic': student.seminar_topic || '-',
+          'Booking Date': student.booking_date || selectedDate,
+          'Booked At': student.booking_time ? formatDateTime(student.booking_time) : '-'
+        })),
+        ...bookingAnalytics.notBookedStudents.map((student: any) => ({
+          'Register Number': student.register_number,
+          Name: student.name,
+          Email: student.email,
+          Class: student.class_year,
+          Status: 'Not Booked',
+          'Seminar Topic': '-',
+          'Booking Date': selectedDate,
+          'Booked At': '-'
+        }))
+      ]
+    }
+
+    // If chosen view produced no rows, fall back to consolidated list
+    if (exportData.length === 0) {
+      exportData = [
+        ...bookingAnalytics.bookedStudents.map((student: any) => ({
+          'Register Number': student.register_number,
+          Name: student.name,
+          Email: student.email,
+          Class: student.class_year,
+          Status: 'Booked',
+          'Seminar Topic': student.seminar_topic || '-',
+          'Booking Date': student.booking_date || selectedDate,
+          'Booked At': student.booking_time ? formatDateTime(student.booking_time) : '-'
+        })),
+        ...bookingAnalytics.notBookedStudents.map((student: any) => ({
+          'Register Number': student.register_number,
+          Name: student.name,
+          Email: student.email,
+          Class: student.class_year,
+          Status: 'Not Booked',
+          'Seminar Topic': '-',
+          'Booking Date': selectedDate,
+          'Booked At': '-'
+        }))
+      ]
+    }
+
+    onExport(exportData, filename)
   }
 
   return (
@@ -264,9 +350,9 @@ export default function ModernBookingAnalytics({
                   </Button>
                 </div>
                 
-                <Button onClick={onExport} className="bg-green-600 hover:bg-green-700">
+                <Button onClick={handleExport} disabled={isLoadingAnalytics || !bookingAnalytics} className="bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed">
                   <Download className="h-4 w-4 mr-2" />
-                  Export to Excel
+                  Export Status to Excel
                 </Button>
               </div>
             </CardContent>

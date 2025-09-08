@@ -345,12 +345,12 @@ export default function AdminPanel() {
 
   // Export Functions
   const exportToExcel = (data: any[], filename: string) => {
-    if (data.length === 0) {
-      alert("No data to export");
-      return;
-    }
-
-    const worksheet = XLSX.utils.json_to_sheet(data);
+    const safeData = data && Array.isArray(data) ? data : [];
+    const worksheet = XLSX.utils.json_to_sheet(
+      safeData.length > 0
+        ? safeData
+        : [{ Message: "No data for selected filters" }]
+    );
     const workbook = XLSX.utils.book_new();
 
     const fileName = `${filename}_${
@@ -512,7 +512,7 @@ export default function AdminPanel() {
           <ModernBookingAnalytics
             isLoading={false}
             onRefresh={fetchBookings}
-            onExport={() => exportToExcel(bookings, "bookings")}
+            onExport={(data, filename) => exportToExcel(data, filename)}
             formatDateTime={formatDateTime}
           />
         )}

@@ -118,13 +118,26 @@ export async function GET(request: NextRequest) {
     // Separate students into categories
     const bookedStudents = filteredStudents.filter(student => bookedStudentIds.has(student.id));
     const selectedSeminarStudents = filteredStudents.filter(student => selectedStudentIds.has(student.id));
-    
-    // Students eligible for fines: didn't book AND not selected for any seminar
-    const notBookedStudents = filteredStudents.filter(student => {
+
+    // Not Booked should exclude students who have already selected a seminar
+    // i.e., no booking on the selected date AND not selected for any seminar
+    let notBookedStudents = filteredStudents.filter(student => {
       const didNotBook = !bookedStudentIds.has(student.id);
       const notSelected = !selectedStudentIds.has(student.id);
-      
       return didNotBook && notSelected;
+    });
+
+    // Apply explicit skip list (same behavior as FineService):
+    // Do not show these register numbers in Not Booked list
+    const SKIPPED_REGS = new Set(['620123205015', '620123205027']);
+    const skipCountByClass: Record<string, number> = {};
+    notBookedStudents = notBookedStudents.filter((s) => {
+      if (SKIPPED_REGS.has(s.register_number)) {
+        const cls = s.class_year || 'UNKNOWN';
+        skipCountByClass[cls] = (skipCountByClass[cls] || 0) + 1;
+        return false;
+      }
+      return true;
     });
 
     // Calculate class-wise statistics
@@ -152,6 +165,13 @@ export async function GET(request: NextRequest) {
     // Calculate not booked counts
     bookingsByClass['II-IT'].notBooked = bookingsByClass['II-IT'].total - bookingsByClass['II-IT'].booked;
     bookingsByClass['III-IT'].notBooked = bookingsByClass['III-IT'].total - bookingsByClass['III-IT'].booked;
+    // Adjust not booked counts to account for skipped registers
+    if (skipCountByClass['II-IT']) {
+      bookingsByClass['II-IT'].notBooked = Math.max(0, bookingsByClass['II-IT'].notBooked - skipCountByClass['II-IT']);
+    }
+    if (skipCountByClass['III-IT']) {
+      bookingsByClass['III-IT'].notBooked = Math.max(0, bookingsByClass['III-IT'].notBooked - skipCountByClass['III-IT']);
+    }
 
     // Add booking details to booked students
     const bookedStudentsWithDetails = bookedStudents.map(student => {
