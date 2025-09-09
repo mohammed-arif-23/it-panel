@@ -5,9 +5,16 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import { GraduationCap, BookOpen, Calendar, LogIn, Loader2, Users, Award, LogOut, FileText, User, AlertTriangle, IndianRupee } from 'lucide-react'
+import { GraduationCap, BookOpen, Calendar, LogIn, Loader2, Users, Award, LogOut, FileText, User, AlertTriangle, IndianRupee, Search, CheckCircle, X, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import Alert from '../components/ui/alert'
+
+interface Student {
+  id: string;
+  name: string;
+  register_number: string;
+  class_year: string;
+}
 
 export default function HomePage() {
   const { user, loading, login, logout, hasRegistration } = useAuth()
@@ -20,6 +27,14 @@ export default function HomePage() {
   const [finesData, setFinesData] = useState<any>(null)
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(false)
   const [isLoadingFines, setIsLoadingFines] = useState(false)
+  
+  // Student dropdown states
+  const [students, setStudents] = useState<Student[]>([])
+  const [studentSearch, setStudentSearch] = useState('')
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false)
+  const [showStudentDropdown, setShowStudentDropdown] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [showStudentDetails, setShowStudentDetails] = useState(false)
 
   const isProfileComplete = (user: any) => {
     if (!user) return false
@@ -103,26 +118,67 @@ export default function HomePage() {
     }
   }
 
-  // Function to validate if register number belongs to IT department
-  const validateITDepartment = (regNumber: string): boolean => {
-    // Check if register number has exactly 12 digits
-    if (regNumber.length !== 12) {
-      return false
+  // Fetch students based on search query
+  const fetchStudents = async (search: string) => {
+    if (search.length < 2) {
+      setStudents([])
+      return
     }
-    
-    // Check if all characters are digits
-    if (!/^\d{12}$/.test(regNumber)) {
-      return false
-    }
-    
 
-    const departmentCode = regNumber.substring(6, 9)
-    return departmentCode === '205'
+    setIsLoadingStudents(true)
+    try {
+      const response = await fetch(`/api/students/search?q=${encodeURIComponent(search)}&limit=10`)
+      const result = await response.json()
+      
+      if (result.success) {
+        setStudents(result.data || [])
+      } else {
+        setStudents([])
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error)
+      setStudents([])
+    } finally {
+      setIsLoadingStudents(false)
+    }
   }
+
+  // Debounce student search
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (studentSearch && !selectedStudent) {
+        fetchStudents(studentSearch)
+      }
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [studentSearch, selectedStudent])
+
+  // Handle student selection
+  const handleStudentSelect = (student: Student) => {
+    setSelectedStudent(student)
+    setRegisterNumber(student.register_number)
+    setStudentSearch(`${student.name} (${student.register_number})`)
+    setShowStudentDropdown(false)
+    setError('')
+  }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('.student-search-container')) {
+        setShowStudentDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   // Function to check if login should be disabled
   const isLoginDisabled = (): boolean => {
-    return isLogging || !registerNumber || !validateITDepartment(registerNumber)
+    return isLogging || !selectedStudent
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -130,41 +186,25 @@ export default function HomePage() {
     setIsLogging(true)
     setError('')
 
-    // Validate IT department first
-    if (!validateITDepartment(registerNumber)) {
-      setError('This is only for IT department')
+    if (!selectedStudent) {
+      setError('Please select a student')
       setIsLogging(false)
       return
     }
 
-    const result = await login(registerNumber)
+    const result = await login(selectedStudent.register_number)
     if (!result.success) {
       setError(result.error || 'Login failed')
     }
     setIsLogging(false)
   }
 
-  const handleRegisterNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    
-    // Only allow digits
-    if (value && !/^\d*$/.test(value)) {
-      return // Don't update if non-digits are entered
-    }
-    
-    setRegisterNumber(value)
-    
-    // Clear previous errors
+  const handleBackToStudentSelection = () => {
+    setShowStudentDetails(false)
+    setSelectedStudent(null)
+    setStudentSearch('')
+    setRegisterNumber('')
     setError('')
-    
-    // Show validation message for various invalid cases
-    if (value.length > 0) {
-      if (value.length !== 12) {
-        setError('Register number must be exactly 12 digits')
-      } else if (!validateITDepartment(value)) {
-        setError('This is only for IT department')
-      }
-    }
   }
 
   if (loading || isRedirecting) {
@@ -214,88 +254,191 @@ export default function HomePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Register Number
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={12}
-                    value={registerNumber}
-                    onChange={handleRegisterNumberChange}
-                    className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
-                    placeholder="Enter your 12-digit register number"
-                  />
-                </div>
-
-                {error && (
-                  <Alert 
-                    variant="error" 
-                    message={error} 
-                    className="mt-4"
-                  />
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={isLoginDisabled()}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700"
-                >
-                  {isLogging ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin mr-3" />
-                      Logging in...
-                    </>
-                  ) : (
-                    "Login to Dashboard"
+              {!showStudentDetails ? (
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="student-search-container relative">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Search Student
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={studentSearch}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          setStudentSearch(value)
+                          setShowStudentDropdown(true)
+                          
+                          // Reset student if the user is typing something different
+                          if (selectedStudent) {
+                            const selectedDisplayText = `${selectedStudent.name} (${selectedStudent.register_number})`
+                            if (value !== selectedDisplayText && !selectedDisplayText.toLowerCase().includes(value.toLowerCase())) {
+                              setSelectedStudent(null)
+                              setRegisterNumber('')
+                            }
+                          } else if (!value) {
+                            setSelectedStudent(null)
+                            setRegisterNumber('')
+                          }
+                        }}
+                        onFocus={() => setShowStudentDropdown(true)}
+                        placeholder="Type student name or register number"
+                        className="w-full px-4 py-4 pl-12 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
+                        required
+                      />
+                      <Search className="h-4 w-4 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    </div>
+                    
+                    {/* Student Dropdown */}
+                    {showStudentDropdown && (studentSearch.length >= 2 || students.length > 0) && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        {isLoadingStudents ? (
+                          <div className="flex items-center justify-center p-3">
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            <span className="text-sm text-gray-600">Searching...</span>
+                          </div>
+                        ) : students.length > 0 ? (
+                          students.map((student) => (
+                            <div
+                              key={student.id}
+                              className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              onClick={() => handleStudentSelect(student)}
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="flex-shrink-0">
+                                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <User className="h-4 w-4 text-blue-600" />
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {student.name}
+                                  </p>
+                                  <p className="text-sm text-gray-500 truncate">
+                                    {student.register_number} • {student.class_year}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : studentSearch.length >= 2 ? (
+                          <div className="p-3 text-center text-gray-500">
+                            <p className="text-sm">No students found</p>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Selected Student Indicator */}
+                  {selectedStudent && (
+                    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span className="text-sm text-green-800">
+                            Selected: {selectedStudent.name} ({selectedStudent.register_number})
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowStudentDetails(true)}
+                          className="text-blue-600 hover:text-blue-800 text-xs"
+                        >
+                          View Details
+                        </Button>
+                      </div>
+                    </div>
                   )}
-                </Button>
-              </form>
+
+                  {error && (
+                    <Alert 
+                      variant="error" 
+                      message={error} 
+                      className="mt-4"
+                    />
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={isLoginDisabled()}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLogging ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-3" />
+                        Logging in...
+                      </>
+                    ) : (
+                      "Login to Dashboard"
+                    )}
+                  </Button>
+                </form>
+              ) : (
+                /* Student Details View */
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Button
+                      onClick={handleBackToStudentSelection}
+                      variant="ghost"
+                      className="text-gray-600 hover:text-gray-800 p-0"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Back to Selection
+                    </Button>
+                  </div>
+                  
+                  {selectedStudent && (
+                    <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                      <h3 className="font-semibold text-gray-800 mb-3">Student Details</h3>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Name:</span>
+                          <span className="text-sm font-medium text-gray-800">{selectedStudent.name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Register Number:</span>
+                          <span className="text-sm font-medium text-gray-800">{selectedStudent.register_number}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Class:</span>
+                          <span className="text-sm font-medium text-gray-800">{selectedStudent.class_year}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    {error && (
+                      <Alert 
+                        variant="error" 
+                        message={error} 
+                        className="mt-4"
+                      />
+                    )}
+                    
+                    <Button
+                      type="submit"
+                      disabled={isLoginDisabled()}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLogging ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin mr-3" />
+                          Logging in...
+                        </>
+                      ) : (
+                        "Login to Dashboard"
+                      )}
+                    </Button>
+                  </form>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Learning App Card - Under Development (placed after Assignments) */}
-          <Card className="group relative overflow-hidden bg-white shadow-xl border-0 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
-            {/* Gradient Border Effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-sky-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
-            <div className="relative bg-white m-1 rounded-lg">
-              <CardHeader className="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-t-lg border-b border-cyan-100 pb-6">
-                <div className="flex items-center justify-between">
-                  <div className="p-3 bg-gradient-to-r from-cyan-500 to-sky-500 rounded-xl shadow-lg">
-                    <GraduationCap className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-semibold text-cyan-600 bg-cyan-100 px-2 py-1 rounded-full">
-                      LEARN
-                    </span>
-                  </div>
-                </div>
-                <CardTitle className="text-xl font-bold text-gray-800 mt-4">
-                  Learning App
-                </CardTitle>
-                <CardDescription className="text-gray-600 font-medium">
-                  Continue your learning journey in our external platform
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-cyan-50 rounded-xl">
-                    <div className="flex items-center">
-                      <GraduationCap className="h-4 w-4 mr-2 text-cyan-600" />
-                      <span className="text-sm font-medium text-gray-700">Personalized Learning</span>
-                    </div>
-                    <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></div>
-                  </div>
-                  <Button disabled className="w-full bg-gradient-to-r from-cyan-600 to-sky-600 text-white font-semibold py-3 rounded-xl shadow-lg opacity-70 cursor-not-allowed">
-                    Go to Learning App
-                  </Button>
-                  <p className="text-xs text-gray-500 text-center mt-2">This feature is under development.</p>
-                </div>
-              </CardContent>
-            </div>
-          </Card>
 
           
         </div>
@@ -342,13 +485,12 @@ export default function HomePage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         {/* Loading State - Show loading until both dashboard and fines data are loaded */}
         {(isLoadingDashboard || isLoadingFines) ? (
-          <div className="text-center py-12">
+          <div className="text-center py-28">
             <div className="flex flex-col items-center space-y-4">
               <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
               <div className="space-y-2">
-                <h3 className="text-lg font-medium text-gray-900">Wait a Moment..</h3>
-                <p className="text-sm text-gray-600">It's Loading😅...</p>
-              </div>
+                <h3 className="text-lg font-medium text-gray-900">This will just take a second.</h3>
+                </div>
             </div>
           </div>
         ) : (
@@ -503,7 +645,7 @@ export default function HomePage() {
                   Learning App
                 </CardTitle>
                 <CardDescription className="text-gray-600 font-medium">
-                  Enhance your Skills with <strong>dynamIT's </strong>Learning platform
+                  Enhance your Skills with <strong>dynamIT's</strong> Learning platform
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6">
@@ -518,7 +660,7 @@ export default function HomePage() {
                   <Button disabled className="w-full bg-gradient-to-r from-cyan-600 to-sky-600 text-white font-semibold py-3 rounded-xl shadow-lg opacity-70 cursor-not-allowed">
                     Go to Learning App
                   </Button>
-                  <p className="text-xs text-gray-500 text-center mt-2">This app is under development.</p>
+                  <p className="text-xs text-gray-500 text-center mt-2">This module is being baked, ready to <strong>Cook</strong> soon!.</p>
                 </div>
               </CardContent>
             </div>

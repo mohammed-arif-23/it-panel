@@ -16,10 +16,12 @@ import { RefreshCw, Eye, EyeOff, Database } from "lucide-react";
 import * as XLSX from "xlsx";
 import ModernAdminNavbar from "@/components/admin/ModernAdminNavbar";
 import ModernAssignmentManagement from "@/components/admin/ModernAssignmentManagement";
+import ModernStudentRegistration from "@/components/admin/ModernStudentRegistration";
 import ModernFineManagement from "@/components/admin/ModernFineManagement";
 import ModernBookingAnalytics from "@/components/admin/ModernBookingAnalytics";
 import ModernHolidayManagement from "@/components/admin/ModernHolidayManagement";
 import ModernSeminarHistory from "@/components/admin/ModernSeminarHistory";
+import ModernStudentTableManagement from "@/components/admin/ModernStudentTableManagement";
 
 interface Assignment {
   id: string;
@@ -64,6 +66,7 @@ export default function AdminPanel() {
   // Active Tab State
   const [activeTab, setActiveTab] = useState<
     | "assignments"
+    | "registration"
     | "bookings"
     | "holidays"
     | "Seminar History"
@@ -494,6 +497,15 @@ export default function AdminPanel() {
           />
         )}
 
+        {activeTab === "registration" && (
+          <ModernStudentRegistration
+            onRefresh={() => {
+              // Optionally refresh other data when a new student is registered
+              console.log('Student registered successfully');
+            }}
+          />
+        )}
+
         {activeTab === "fines" && (
           <ModernFineManagement
             fines={fines}
@@ -534,11 +546,13 @@ export default function AdminPanel() {
         )}
 
         {activeTab === "database" && (
-          <div className="text-center py-8">
-            <Database className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 mb-2">Database Management</p>
-            <p className="text-sm text-gray-400">Coming soon...</p>
-          </div>
+          <ModernStudentTableManagement
+            onRefresh={() => {
+              console.log('Student database refreshed');
+            }}
+            onExport={exportToExcel}
+            formatDateTime={formatDateTime}
+          />
         )}
       </div>
     </div>

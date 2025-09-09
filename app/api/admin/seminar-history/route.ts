@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 function checkAdminAuth(request: NextRequest): boolean {
-  const adminToken = request.cookies.get("admin_token")?.value;
-  return adminToken === process.env.ADMIN_TOKEN;
+  const adminSession = request.cookies.get('admin-session');
+  return adminSession?.value === 'authenticated';
 }
 
 export async function GET(request: NextRequest) {
