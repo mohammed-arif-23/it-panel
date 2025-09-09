@@ -225,7 +225,7 @@ export default function HomePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen relative" style={{backgroundColor: '#FFFFFF'}}>
+      <div className="min-h-[70vh] relative" style={{backgroundColor: '#FFFFFF'}}>
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-5">
           <div className="absolute inset-0" style={{
@@ -234,7 +234,7 @@ export default function HomePage() {
           }}></div>
         </div>
       
-      <div className="min-h-[50vh] flex flex-col items-center justify-center  relative z-10">
+      <div className="min-h-full flex flex-col items-center justify-center  relative z-10">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">        
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Department of Information Technology</h1>
@@ -243,22 +243,16 @@ export default function HomePage() {
 
           {/* Video Container */}
           <div className="mb-6 rounded-2xl flex items-center justify-center overflow-hidden">
-           <img src={'7408.jpg'} alt="Video" className=' object-contain h-[70%] w-[70%]'></img>
+           <img src={'7408.jpg'} alt="Video" className=' object-contain h-[40%] w-[40%]'></img>
           </div>
 
-          <Card className="backdrop-blur-md bg-white  hover:shadow-3xl transition-all duration-300">
-            <CardHeader className="bg-blue-50 rounded-t-lg border-b border-gray-200 text-center">
-              <CardTitle className="flex items-center justify-center gap-2 text-gray-800">
-                <LogIn className="h-5 w-5" />
-                Student Login
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
+          <Card className="backdrop-blur-md  bg-white border-0 shadow-none hover:shadow-3xl transition-all duration-300">
+            <CardContent className="px-8 py-2 ">
               {!showStudentDetails ? (
                 <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="student-search-container relative">
-                    <label className="block text-sm font-bold text-gray-700 mb-2">
-                      Search Student
+                  <div className="student-search-container text-center relative">
+                    <label className="block text-md text-gray-700 mb-2">
+                      Welcome to <b className='font-extrabold text-lg'>dynamIT</b>'s Student Corner 
                     </label>
                     <div className="relative">
                       <input
@@ -282,7 +276,7 @@ export default function HomePage() {
                           }
                         }}
                         onFocus={() => setShowStudentDropdown(true)}
-                        placeholder="Type student name or register number"
+                        placeholder="Type your name or register number"
                         className="w-full px-4 py-4 pl-12 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
                         required
                       />
@@ -304,7 +298,7 @@ export default function HomePage() {
                               className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                               onClick={() => handleStudentSelect(student)}
                             >
-                              <div className="flex items-center space-x-3">
+                              <div className="flex space-x-3">
                                 <div className="flex-shrink-0">
                                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                                     <User className="h-4 w-4 text-blue-600" />
@@ -337,7 +331,7 @@ export default function HomePage() {
                         <div className="flex items-center space-x-2">
                           <CheckCircle className="h-4 w-4 text-green-600" />
                           <span className="text-sm text-green-800">
-                            Selected: {selectedStudent.name} ({selectedStudent.register_number})
+                            Logging in as: {selectedStudent.name} 
                           </span>
                         </div>
                         <Button
@@ -364,7 +358,7 @@ export default function HomePage() {
                   <Button
                     type="submit"
                     disabled={isLoginDisabled()}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full  bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isLogging ? (
                       <>
@@ -372,7 +366,7 @@ export default function HomePage() {
                         Logging in...
                       </>
                     ) : (
-                      "Login to Dashboard"
+                      "Login"
                     )}
                   </Button>
                 </form>
@@ -448,7 +442,7 @@ export default function HomePage() {
 
   // Dashboard View
   return (
-    <div className="min-h-screen relative" style={{backgroundColor: '#FFFFFF'}}>
+    <div className="min-h-[70vh] relative" style={{backgroundColor: '#FFFFFF'}}>
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute inset-0" style={{
@@ -687,15 +681,8 @@ export default function HomePage() {
                 </div>
                 
                 <div className="relative z-10">
-                  <div className="flex items-center justify-between ">
+                  <div className="flex flex-col items-center gap-4 justify-center ">
                     <div className="flex items-center space-x-3">
-                      <div className={`p-3 rounded-xl shadow-lg ${
-                        finesData && finesData.stats.totalFines > 0 
-                          ? 'bg-gradient-to-r from-red-500 to-pink-500' 
-                          : 'bg-gradient-to-r from-indigo-500 to-purple-500'
-                      }`}>
-                        <User className="h-6 w-6 text-white" />
-                      </div>
                       <div>
                         <CardTitle className="text-2xl font-bold text-gray-800">
                           My Profile
@@ -712,12 +699,12 @@ export default function HomePage() {
                 </div>
               </CardHeader>
               
-              <CardContent className="p-8">
-                <div className="space-y-8">
+              <CardContent className="p-4">
+                <div className="space-y-4">
                   {/* Enhanced Profile Information */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Personal Details */}
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       <h3 className="text-md font-bold text-gray-800 flex items-center">
                         <div className="w-4 h-4 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mr-3"></div>
                         Personal Information
@@ -739,7 +726,7 @@ export default function HomePage() {
                     </div>
                     
                     {/* Contact Details */}
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       <h3 className="text-lg font-bold text-gray-800 flex items-center">
                         <div className="w-4 h-4 bg-gradient-to-r from-green-500 to-blue-500 rounded-full mr-3"></div>
                         Contact Information
@@ -794,36 +781,20 @@ export default function HomePage() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className={`text-2xl font-bold ${
+                          <p className={`text-2xl font-extrabold ${
                             finesData && finesData.stats.totalFines > 0 ? 'text-red-600' : 'text-green-600'
                           }`}>
                             ₹{finesData ? finesData.stats.totalFines : 0}
                           </p>
                         </div>
                       </div>
-                    
-                      {finesData && finesData.stats.totalFines > 0 && (
-                        <div className="mt-4 p-4 bg-red-100 rounded-xl border border-red-200">
-                          <p className="text-sm text-red-700 font-medium mb-2 flex items-center">
-                            <AlertTriangle className="h-4 w-4 mr-2" />
-                            Action Required
-                          </p>
-                          <p className="text-xs text-red-600">
-                            You are failed to book for seminar.
-                          </p>
-                        </div>
-                      )}
+                   
                     </div>
                   </div>
 
                   {/* Enhanced Action Buttons */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Button asChild className="h-14 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
-                      <Link href="/profile">
-                        <User className="h-5 w-5 mr-2" />
-                        Edit Profile
-                      </Link>
-                    </Button>
+                 
                     <Button 
                       className="h-14 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                       onClick={async () => {

@@ -236,6 +236,23 @@ export class FineService {
               fineId: (fine as any).id,
               action: "created",
             });
+            // Increment student's total fine amount (sum pending fines)
+            try {
+              const sid = (student as any).id
+              const addAmount = (fine as any).base_amount || 10
+              const { data: s } = await (supabaseAdmin as any)
+                .from('unified_students')
+                .select('total_fine_amount')
+                .eq('id', sid)
+                .single()
+              const current = (s?.total_fine_amount ?? 0) as number
+              await (supabaseAdmin as any)
+                .from('unified_students')
+                .update({ total_fine_amount: current + addAmount })
+                .eq('id', sid)
+            } catch (e) {
+              console.warn('Failed to increment total_fine_amount for student', (student as any).id)
+            }
             console.log(
               `Created ₹10 fine for student ${
                 (student as any).register_number
@@ -288,6 +305,22 @@ export class FineService {
     fine?: FineRecord;
   }> {
     try {
+      // Prevent duplicates for same (student, type, date)
+      const { data: existing } = await (supabaseAdmin as any)
+        .from("unified_student_fines")
+        .select("id")
+        .eq("student_id", fine.student_id)
+        .eq("fine_type", fine.fine_type)
+        .eq("reference_date", fine.reference_date)
+        .maybeSingle?.() ?? { data: null };
+
+      if (existing) {
+        return {
+          success: false,
+          message: "Fine already exists for this student, type and date",
+        };
+      }
+
       // Convert to database format
       const dbFine = {
         student_id: fine.student_id,
@@ -310,6 +343,24 @@ export class FineService {
           success: false,
           message: `Failed to create fine: ${error.message}`,
         };
+      }
+
+      // Increment student's total fine amount
+      try {
+        const sid = fine.student_id
+        const addAmount = fine.amount
+        const { data: s } = await (supabaseAdmin as any)
+          .from('unified_students')
+          .select('total_fine_amount')
+          .eq('id', sid)
+          .single()
+        const current = (s?.total_fine_amount ?? 0) as number
+        await (supabaseAdmin as any)
+          .from('unified_students')
+          .update({ total_fine_amount: current + addAmount })
+          .eq('id', sid)
+      } catch (e) {
+        console.warn('Failed to increment total_fine_amount for student', fine.student_id)
       }
 
       return {

@@ -7,6 +7,161 @@ function checkAdminAuth(request: NextRequest) {
   return adminSession?.value === "authenticated";
 }
 
+// Bulk delete fines by an explicit list of IDs
+async function bulkDeleteByIds(data: any) {
+  const { ids } = data || {};
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return NextResponse.json(
+      { error: "ids must be a non-empty array" },
+      { status: 400 }
+    );
+  }
+
+  const uniqueIds = Array.from(new Set(ids)).filter(
+    (id) => typeof id === "string" && id.trim().length > 0
+  );
+
+  if (uniqueIds.length === 0) {
+    return NextResponse.json(
+      { error: "No valid ids provided" },
+      { status: 400 }
+    );
+  }
+
+  // Fetch fines first to compute total decrements per student for pending fines
+  const { data: finesToDelete } = await (supabaseAdmin as any)
+    .from('unified_student_fines')
+    .select('id, student_id, base_amount, payment_status')
+    .in('id', uniqueIds)
+
+  const { data: deleted, error } = await (supabaseAdmin as any)
+    .from("unified_student_fines")
+    .delete()
+    .in("id", uniqueIds)
+    .select("id");
+
+  if (error) {
+    return NextResponse.json(
+      { error: "Failed to delete fines", details: error.message },
+      { status: 500 }
+    );
+  }
+
+  // Decrement totals per student for pending fines
+  try {
+    const decMap = new Map<string, number>()
+    for (const f of finesToDelete || []) {
+      if ((f as any).payment_status === 'pending') {
+        const sid = (f as any).student_id as string
+        const amt = ((f as any).base_amount || 0) as number
+        decMap.set(sid, (decMap.get(sid) || 0) + amt)
+      }
+    }
+    for (const [sid, dec] of decMap.entries()) {
+      const { data: s } = await (supabaseAdmin as any)
+        .from('unified_students')
+        .select('total_fine_amount')
+        .eq('id', sid)
+        .single()
+      const current = (s?.total_fine_amount ?? 0) as number
+      const next = Math.max(0, current - dec)
+      await (supabaseAdmin as any)
+        .from('unified_students')
+        .update({ total_fine_amount: next })
+        .eq('id', sid)
+    }
+  } catch (e) {
+    console.warn('Failed to decrement totals for bulk delete')
+  }
+
+  return NextResponse.json({
+    success: true,
+    deleted_count: deleted?.length || 0,
+    deleted_ids: (deleted || []).map((r: any) => r.id),
+  });
+}
+
+// DELETE - Delete a fine by ID
+export async function DELETE(request: NextRequest) {
+  if (!checkAdminAuth(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const idFromQuery = searchParams.get("id");
+    const body = await request.text();
+    let idFromBody: string | null = null;
+    if (body) {
+      try {
+        const parsed = JSON.parse(body);
+        idFromBody = parsed.id || parsed.fineId || null;
+      } catch {
+        // ignore body parse errors; we can rely on query param
+      }
+    }
+    const fineId = idFromQuery || idFromBody;
+
+    if (!fineId) {
+      return NextResponse.json(
+        { error: "Fine ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Fetch the fine to adjust totals appropriately
+    const { data: fineBefore } = await (supabaseAdmin as any)
+      .from('unified_student_fines')
+      .select('id, student_id, base_amount, payment_status')
+      .eq('id', fineId)
+      .single()
+
+    const { error } = await (supabaseAdmin as any)
+      .from("unified_student_fines")
+      .delete()
+      .eq("id", fineId);
+
+    if (error) {
+      return NextResponse.json(
+        { error: "Failed to delete fine", details: error.message },
+        { status: 500 }
+      );
+    }
+
+    // Decrement student's outstanding total if the fine was pending
+    if (fineBefore && fineBefore.payment_status === 'pending') {
+      try {
+        const sid = (fineBefore as any).student_id
+        const delta = (fineBefore as any).base_amount || 0
+        const { data: s } = await (supabaseAdmin as any)
+          .from('unified_students')
+          .select('total_fine_amount')
+          .eq('id', sid)
+          .single()
+        const current = (s?.total_fine_amount ?? 0) as number
+        const next = Math.max(0, current - delta)
+        await (supabaseAdmin as any)
+          .from('unified_students')
+          .update({ total_fine_amount: next })
+          .eq('id', sid)
+      } catch (e) {
+        console.warn('Failed to decrement total on delete for student', (fineBefore as any)?.student_id)
+      }
+    }
+
+    return NextResponse.json({ success: true, id: fineId, message: "Fine deleted" });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
+  }
+}
+
 // GET - Fetch fines with filters
 export async function GET(request: NextRequest) {
   if (!checkAdminAuth(request)) {
@@ -244,6 +399,8 @@ export async function POST(request: NextRequest) {
         return await createManualFine(data);
       case "update_status":
         return await updateFineStatus(data);
+      case "bulk_delete_by_ids":
+        return await bulkDeleteByIds(data);
       default:
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
@@ -294,6 +451,24 @@ async function createFine(data: any) {
     }
   }
 
+  // Also prevent duplicates per (student, fineType, referenceDate)
+  {
+    const { data: existingForDate } = await (supabaseAdmin as any)
+      .from("unified_student_fines")
+      .select("id")
+      .eq("student_id", studentId)
+      .eq("fine_type", fineType)
+      .eq("reference_date", referenceDate)
+      .maybeSingle?.() ?? { data: null }; // compatible with older supabase clients
+
+    if (existingForDate) {
+      return NextResponse.json(
+        { error: "Fine already exists for this student, type and date" },
+        { status: 409 }
+      );
+    }
+  }
+
   const { data: fine, error } = await (supabaseAdmin as any)
     .from("unified_student_fines")
     .insert({
@@ -323,6 +498,24 @@ async function createFine(data: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // New fine is pending; increment student's total
+  try {
+    const sid = (fine as any).student_id as string
+    const addAmount = (fine as any).base_amount as number
+    const { data: s } = await (supabaseAdmin as any)
+      .from('unified_students')
+      .select('total_fine_amount')
+      .eq('id', sid)
+      .single()
+    const current = (s?.total_fine_amount ?? 0) as number
+    await (supabaseAdmin as any)
+      .from('unified_students')
+      .update({ total_fine_amount: current + addAmount })
+      .eq('id', sid)
+  } catch (e) {
+    console.warn('Failed to increment total on create for student', (fine as any).student_id)
+  }
+
   return NextResponse.json({
     success: true,
     data: fine,
@@ -339,6 +532,13 @@ async function updateFine(data: any) {
   }
 
   const updateData: any = {};
+
+  // Fetch current fine to compute deltas for totals
+  const { data: before } = await (supabaseAdmin as any)
+    .from('unified_student_fines')
+    .select('id, student_id, base_amount, payment_status')
+    .eq('id', fineId)
+    .single()
 
   // Update base amount if paidAmount is provided and we're not marking as paid
   if (paidAmount !== undefined && paymentStatus !== "paid") {
@@ -386,6 +586,44 @@ async function updateFine(data: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Adjust student's total depending on changes
+  try {
+    if (before) {
+      const sid = (before as any).student_id
+      const prevStatus = (before as any).payment_status as string
+      const prevAmount = (before as any).base_amount as number
+      const newStatus = (fine as any).payment_status as string
+      const newAmount = (fine as any).base_amount as number
+
+      const { data: s } = await (supabaseAdmin as any)
+        .from('unified_students')
+        .select('total_fine_amount')
+        .eq('id', sid)
+        .single()
+      const current = (s?.total_fine_amount ?? 0) as number
+      let next = current
+
+      if (prevStatus === 'pending' && newStatus === 'pending' && prevAmount !== newAmount) {
+        next = Math.max(0, current - prevAmount + newAmount)
+      }
+      if (prevStatus === 'pending' && (newStatus === 'paid' || newStatus === 'waived')) {
+        next = Math.max(0, next - prevAmount)
+      }
+      if ((prevStatus === 'paid' || prevStatus === 'waived') && newStatus === 'pending') {
+        next = next + newAmount
+      }
+
+      if (next !== current) {
+        await (supabaseAdmin as any)
+          .from('unified_students')
+          .update({ total_fine_amount: next })
+          .eq('id', sid)
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to adjust total on update for fine', fineId)
+  }
+
   return NextResponse.json({
     success: true,
     data: fine,
@@ -423,6 +661,24 @@ async function createManualFine(data: any) {
     return NextResponse.json({ error: "Student not found" }, { status: 404 });
   }
 
+  // Prevent duplicate manual fines for same student/type/date
+  {
+    const { data: existing } = await (supabaseAdmin as any)
+      .from("unified_student_fines")
+      .select("id")
+      .eq("student_id", student_id)
+      .eq("fine_type", fine_type)
+      .eq("reference_date", reference_date)
+      .maybeSingle?.() ?? { data: null };
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "Fine already exists for this student, type and date" },
+        { status: 409 }
+      );
+    }
+  }
+
   // Insert the fine without embedding the relationship
   const { data: fine, error } = await (supabaseAdmin as any)
     .from("unified_student_fines")
@@ -448,6 +704,24 @@ async function createManualFine(data: any) {
     ...fine,
     unified_students: student,
   };
+
+  // Increment student's total (pending fine)
+  try {
+    const sid = student_id
+    const addAmount = amount
+    const { data: s } = await (supabaseAdmin as any)
+      .from('unified_students')
+      .select('total_fine_amount')
+      .eq('id', sid)
+      .single()
+    const current = (s?.total_fine_amount ?? 0) as number
+    await (supabaseAdmin as any)
+      .from('unified_students')
+      .update({ total_fine_amount: current + addAmount })
+      .eq('id', sid)
+  } catch (e) {
+    console.warn('Failed to increment total on manual create for student', student_id)
+  }
 
   return NextResponse.json({
     success: true,

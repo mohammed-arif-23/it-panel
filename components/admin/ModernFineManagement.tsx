@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { 
   DollarSign, 
   Plus, 
@@ -89,6 +90,49 @@ export default function ModernFineManagement({
     reference_date: new Date().toISOString().split('T')[0],
     amount: 10
   })
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  
+  // Row selection helpers
+  const isAllSelected = fines.length > 0 && selectedIds.length === fines.length
+  const isIndeterminate = selectedIds.length > 0 && selectedIds.length < fines.length
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(fines.map(f => f.id))
+    } else {
+      setSelectedIds([])
+    }
+  }
+
+  const toggleRow = (id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const set = new Set(prev)
+      if (checked) set.add(id); else set.delete(id)
+      return Array.from(set)
+    })
+  }
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return
+    if (!confirm(`Delete ${selectedIds.length} selected fine(s)? This action cannot be undone.`)) return
+    try {
+      const res = await fetch('/api/admin/fines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'bulk_delete_by_ids', ids: selectedIds })
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        alert(`Failed to delete selected: ${data.error || res.statusText}`)
+        return
+      }
+      setSelectedIds([])
+      onRefresh()
+    } catch (e) {
+      console.error('Bulk delete error:', e)
+      alert('Failed to delete selected fines')
+    }
+  }
   
   // Bulk delete states
   const [showBulkDelete, setShowBulkDelete] = useState(false)
@@ -237,6 +281,27 @@ export default function ModernFineManagement({
       await onUpdateFine(fineId, 'paid', 0)
     } catch (error) {
       console.error('Error marking fine as paid:', error)
+    }
+  }
+
+  const handleDeleteFine = async (fineId: string) => {
+    if (!confirm('Are you sure you want to delete this fine? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/admin/fines?id=${encodeURIComponent(fineId)}`, {
+        method: 'DELETE'
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        alert(`Failed to delete fine: ${data.error || res.statusText}`)
+        return
+      }
+      onRefresh()
+    } catch (error) {
+      console.error('Error deleting fine:', error)
+      alert('Failed to delete fine')
     }
   }
 
@@ -835,6 +900,16 @@ export default function ModernFineManagement({
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
+              <Button
+                onClick={handleDeleteSelected}
+                variant="outline"
+                className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                size="sm"
+                disabled={selectedIds.length === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Selected ({selectedIds.length})
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -863,6 +938,14 @@ export default function ModernFineManagement({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={isAllSelected ? true : (isIndeterminate ? 'indeterminate' : false)}
+                        onCheckedChange={(v) => toggleSelectAll(!!v)}
+                        aria-label="Select all"
+                        className={isIndeterminate ? 'data-[state=indeterminate]:opacity-100' : ''}
+                      />
+                    </TableHead>
                     <TableHead>Student</TableHead>
                     <TableHead>Register No.</TableHead>
                     <TableHead>Class</TableHead>
@@ -876,6 +959,13 @@ export default function ModernFineManagement({
                 <TableBody>
                   {fines.map((fine) => (
                     <TableRow key={fine.id}>
+                      <TableCell className="w-10">
+                        <Checkbox
+                          checked={selectedIds.includes(fine.id)}
+                          onCheckedChange={(v) => toggleRow(fine.id, !!v)}
+                          aria-label={`Select fine ${fine.id}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">
                         {fine.unified_students?.name || 'Unknown Student'}
                       </TableCell>
@@ -959,6 +1049,15 @@ export default function ModernFineManagement({
                               title="Mark as Paid"
                             >
                               <Check className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteFine(fine.id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Delete Fine"
+                            >
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
                         )}

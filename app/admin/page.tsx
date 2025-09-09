@@ -22,6 +22,7 @@ import ModernBookingAnalytics from "@/components/admin/ModernBookingAnalytics";
 import ModernHolidayManagement from "@/components/admin/ModernHolidayManagement";
 import ModernSeminarHistory from "@/components/admin/ModernSeminarHistory";
 import ModernStudentTableManagement from "@/components/admin/ModernStudentTableManagement";
+import ModernFineStudentManagement from "@/components/admin/ModernFineStudentManagement";
 
 interface Assignment {
   id: string;
@@ -71,6 +72,7 @@ export default function AdminPanel() {
     | "holidays"
     | "Seminar History"
     | "fines"
+    | "fine-students"
     | "database"
   >("assignments");
 
@@ -527,6 +529,10 @@ export default function AdminPanel() {
             onExport={(data, filename) => exportToExcel(data, filename)}
             formatDateTime={formatDateTime}
           />
+        )}
+
+        {activeTab === "fine-students" && (
+          <ModernFineStudentManagement />
         )}
 
         {activeTab === "holidays" && (

@@ -294,7 +294,7 @@ export default function AssignmentsPage() {
                           <FileText className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                          <CardTitle className="text-gray-800 text-xl font-bold">{assignment.title}</CardTitle>
+                          <CardTitle className="text-gray-800 text-md font-bold">{assignment.title}</CardTitle>
                           <CardDescription className="text-gray-600 mt-1">
                             {assignment.description}
                           </CardDescription>

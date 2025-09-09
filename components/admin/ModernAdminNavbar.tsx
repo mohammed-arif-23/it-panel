@@ -38,6 +38,7 @@ export default function ModernAdminNavbar({
     { id: 'holidays', label: 'Holidays', icon: CalendarDays },
     { id: 'Seminar History', label: 'Seminar History', icon: Users },
     { id: 'fines', label: 'Fines', icon: DollarSign },
+    { id: 'fine-students', label: 'Fine Students', icon: DollarSign },
     { id: 'database', label: 'Database', icon: Database }
   ]
 
@@ -48,21 +49,21 @@ export default function ModernAdminNavbar({
 
   return (
     <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div className="w-full max-w-screen-2xl mx-auto px-6 sm:px-8 lg:px-10">
+        <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <div className="flex items-center">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-              <Database className="h-6 w-6 text-white" />
+            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center mr-4">
+              <Database className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
+              <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">Admin Panel</h1>
               <p className="text-sm text-gray-500 hidden sm:block">System Management Dashboard</p>
             </div>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
+          {/* Desktop Navigation (big, two-lined, spaced) */}
+          <div className="hidden md:flex flex-wrap items-center gap-x-4 gap-y-3 max-w-full">
             {navigationItems.map(({ id, label, icon: Icon }) => (
               <Button
                 key={id}
@@ -70,21 +71,21 @@ export default function ModernAdminNavbar({
                 onClick={() => setActiveTab(id)}
                 className={`${activeTab === id 
                   ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                } px-4 py-2`}
+                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+                } px-6 py-3 rounded-lg text-base font-medium`}
               >
-                <Icon className="h-4 w-4 mr-2" />
-                {label}
+                <Icon className="h-5 w-5 mr-2" />
+                <span className="leading-none">{label}</span>
               </Button>
             ))}
-            <div className="h-6 w-px bg-gray-300 mx-2" />
+            <div className="h-8 w-px bg-gray-300 mx-3" />
             <Button
               variant="outline"
               onClick={onLogout}
-              className="text-gray-600 hover:text-gray-900"
+              className="text-gray-700 hover:text-gray-900 px-6 py-3 rounded-lg text-base"
             >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              <LogOut className="h-5 w-5 mr-2" />
+              <span className="leading-none">Logout</span>
             </Button>
           </div>
 
