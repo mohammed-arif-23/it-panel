@@ -237,7 +237,7 @@ export default function HomePage() {
       <div className="min-h-full flex flex-col items-center justify-center  relative z-10">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">        
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Department of Information Technology</h1>
+            <h1 className="text-xl font-bold text-gray-900 mb-2">Department of Information Technology</h1>
             <p className="text-gray-600">Student Information System</p>
           </div>
 
@@ -252,7 +252,7 @@ export default function HomePage() {
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="student-search-container text-center relative">
                     <label className="block text-md text-gray-700 mb-2">
-                      Welcome to <b className='font-extrabold text-lg'>dynamIT</b>'s Student Corner 
+                      Welcome to <b className='font-extrabold text-lg' style={{fontFamily: 'Playfair Display'}}>dynamIT</b>'s Student Corner 
                     </label>
                     <div className="relative">
                       <input
@@ -467,8 +467,8 @@ export default function HomePage() {
                 </div>
               </div>
               <p className="text-gray-500 max-w-md text-sm">
-                 <span className="font-bold text-md text-gray-700">{user?.name || 'Student'}</span> •  <span className="font-bold text-md text-gray-700">{user?.class_year || 'IT'}</span>             
-          •  <span className="font-bold text-md text-gray-700">{user?.register_number || 'IT'}</span>              </p>
+                 <span className="text-md text-gray-700">{user?.name || 'Student'}</span> •  <span className="text-md text-gray-700">{user?.class_year || 'IT'}</span>             
+          •  <span className="text-md text-gray-700">{user?.register_number || 'IT'}</span>              </p>
               </div>
             
         
@@ -507,7 +507,7 @@ export default function HomePage() {
                     </span>
                   </div>
                 </div>
-                <CardTitle className="text-xl font-bold text-gray-800 mt-4">
+                <CardTitle className="text-xl font-extrabold text-gray-800 mt-4">
                   NPTEL Courses
                 </CardTitle>
                 <CardDescription className="text-gray-600 font-medium">
@@ -551,7 +551,7 @@ export default function HomePage() {
                     </span>
                   </div>
                 </div>
-                <CardTitle className="text-xl font-bold text-gray-800 mt-4">
+                <CardTitle className="text-xl font-extrabold text-gray-800 mt-4">
                   Seminar Booking
                 </CardTitle>
                 <CardDescription className="text-gray-600 font-medium">
@@ -593,7 +593,7 @@ export default function HomePage() {
                     </span>
                   </div>
                 </div>
-                <CardTitle className="text-xl font-bold text-gray-800 mt-4">
+                <CardTitle className="text-xl font-extrabold text-gray-800 mt-4">
                   Assignments
                 </CardTitle>
                 <CardDescription className="text-gray-600 font-medium">
@@ -635,7 +635,7 @@ export default function HomePage() {
                     </span>
                   </div>
                 </div>
-                <CardTitle className="text-xl font-bold text-gray-800 mt-4">
+                <CardTitle className="text-xl font-extrabold text-gray-800 mt-4">
                   Learning App
                 </CardTitle>
                 <CardDescription className="text-gray-600 font-medium">
