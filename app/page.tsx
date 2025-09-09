@@ -651,8 +651,8 @@ export default function HomePage() {
                     </div>
                     <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></div>
                   </div>
-                  <Button asChild className="w-full bg-gradient-to-r from-cyan-600 to-sky-600 text-white font-semibold py-3 rounded-xl shadow-lg opacity-70 cursor-not-allowed">
-                    <Link href="/learn">Go to Learning App</Link>
+                  <Button disabled className="w-full bg-gradient-to-r from-cyan-600 to-sky-600 text-white font-semibold py-3 rounded-xl shadow-lg opacity-70 cursor-not-allowed">
+                    Go to Learning App
                   </Button>
                   <p className="text-xs text-gray-500 text-center mt-2">This module is being baked, ready to <strong>Cook</strong> soon!.</p>
                 </div>
