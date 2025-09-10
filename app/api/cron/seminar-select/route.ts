@@ -1,25 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Import the auto-select function directly to avoid HTTP authentication issues
-import { POST as autoSelectHandler } from '../../seminar/auto-select/route';
+// Delegate to the direct-select handler to centralize selection logic
+import { GET as directSelectHandler } from '../direct-select/route';
 
 export async function GET(request: NextRequest) {
   try {
     console.log('Cron job triggered at:', new Date().toISOString());
-    
-    // Call the auto-select function directly instead of making HTTP requests
-    // This avoids Vercel authentication issues
-    console.log('Calling auto-select handler directly');
-    
-    // Create a mock request for the auto-select handler
-    const mockRequest = new NextRequest('http://localhost:3000/api/seminar/auto-select', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Vercel-Cron-Job-Internal',
-      },
-    });
+    // Call the direct-select function directly to ensure a single source of truth
+    console.log('Calling direct-select handler directly');
 
-    const response = await autoSelectHandler(mockRequest);
+    const response = await directSelectHandler();
     const result = await response.json();
     
     console.log('Auto-select completed with status:', response.status);
@@ -53,8 +42,8 @@ export async function GET(request: NextRequest) {
           ? 'http://localhost:3000' 
           : 'http://localhost:3000';
       
-      const response = await fetch(`${baseUrl}/api/seminar/auto-select`, {
-        method: 'POST',
+      const response = await fetch(`${baseUrl}/api/cron/direct-select`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'User-Agent': 'Vercel-Cron-Job-Fallback',

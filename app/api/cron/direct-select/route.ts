@@ -413,7 +413,7 @@ export async function GET() {
     // Final check before creating selections to prevent race conditions
     const { data: finalCheck } = await supabaseAdmin
       .from("unified_seminar_selections")
-      .select("id, unified_students(class_year)")
+      .select("id, class_year")
       .eq("seminar_date", seminarDate);
 
     if (finalCheck && finalCheck.length >= 2) {
@@ -433,7 +433,7 @@ export async function GET() {
     // Check for class conflicts in final check
     const finalExistingClasses = new Set(
       (finalCheck || [])
-        .map((selection: any) => selection.unified_students?.class_year)
+        .map((selection: any) => selection.class_year)
         .filter(Boolean)
     );
 
@@ -458,7 +458,24 @@ export async function GET() {
 
     // Create selection records
     const selectionResults: any[] = [];
-    for (const { booking: selectedBooking } of finalSelectedStudents) {
+    for (const { booking: selectedBooking, student: selectedStudent } of finalSelectedStudents) {
+      // Per-insert guard: if a selection already exists for this class and date, skip inserting
+      const { data: classSelections } = await supabaseAdmin
+        .from("unified_seminar_selections")
+        .select("id, class_year")
+        .eq("seminar_date", seminarDate);
+
+      const classAlreadyFilled = (classSelections || []).some(
+        (s: any) => s.class_year === selectedStudent.class_year
+      );
+
+      if (classAlreadyFilled) {
+        console.log(
+          `Direct cron - Skip insert: class ${selectedStudent.class_year} already has a selection for ${seminarDate}`
+        );
+        continue;
+      }
+
       const { data: selection, error: selectionError } = await (
         supabaseAdmin as any
       )
@@ -468,12 +485,20 @@ export async function GET() {
             student_id: selectedBooking.student_id,
             seminar_date: seminarDate,
             selected_at: new Date().toISOString(),
+            // optional: store class_year directly; trigger will also populate
+            class_year: selectedStudent.class_year,
           },
         ])
         .select()
         .single();
 
       if (selectionError) {
+        if ((selectionError as any).code === '23505') {
+          console.warn(
+            `Direct cron - Unique constraint prevented duplicate selection for ${seminarDate} / ${selectedStudent.class_year}. Skipping.`
+          );
+          continue;
+        }
         console.error("Error creating selection:", selectionError);
         return NextResponse.json(
           {

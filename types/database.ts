@@ -134,18 +134,21 @@ export interface Database {
           student_id: string
           seminar_date: string
           selected_at: string
+          class_year: string | null
         }
         Insert: {
           id?: string
           student_id: string
           seminar_date: string
           selected_at?: string
+          class_year?: string | null
         }
         Update: {
           id?: string
           student_id?: string
           seminar_date?: string
           selected_at?: string
+          class_year?: string | null
         }
       }
       unified_seminar_attendance: {

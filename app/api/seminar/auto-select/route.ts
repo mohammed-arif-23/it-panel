@@ -3,6 +3,8 @@ import { supabase } from "../../../../lib/supabase";
 import { seminarTimingService } from "../../../../lib/seminarTimingService";
 import { holidayService } from "../../../../lib/holidayService";
 import { fineService } from "../../../../lib/fineService";
+// For cron invocations, delegate to the centralized direct-select handler
+import { GET as directCronSelect } from "../../cron/direct-select/route";
 
 interface BookingWithStudent {
   id: string;
@@ -26,7 +28,12 @@ export async function POST(request: NextRequest) {
       userAgent.includes("Vercel-Cron-Job") || userAgent.includes("cron");
 
     if (isCronJob) {
-      console.log("Cron job request detected, proceeding with auto-selection");
+      console.log(
+        "Cron job request detected at auto-select. Delegating to /api/cron/direct-select to avoid duplicate execution."
+      );
+      // Delegate to the consolidated handler which already includes emails/fines and robust checks
+      const resp = await directCronSelect();
+      return resp;
     }
 
     // Get next seminar date with holiday awareness
@@ -317,7 +324,7 @@ export async function POST(request: NextRequest) {
     // Final check before creating selections to prevent race conditions
     const { data: finalCheck } = await supabase
       .from("unified_seminar_selections")
-      .select("id, unified_students(class_year)")
+      .select("id, class_year")
       .eq("seminar_date", seminarDate);
 
     if (finalCheck && finalCheck.length >= 2) {
@@ -336,7 +343,7 @@ export async function POST(request: NextRequest) {
     // Check for class conflicts in final check
     const finalExistingClasses = new Set(
       (finalCheck || [])
-        .map((selection: any) => selection.unified_students?.class_year)
+        .map((selection: any) => selection.class_year)
         .filter(Boolean)
     );
 
@@ -358,11 +365,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create selection records for each selected student
+    // Create selection records for each selected student with an extra class-level guard
     for (const {
       booking: selectedBooking,
       student: selectedStudent,
     } of finalSelectedStudents) {
+      // Per-insert guard: if a selection already exists for this class and date, skip inserting
+      const { data: classSelections } = await supabase
+        .from("unified_seminar_selections")
+        .select("id, class_year")
+        .eq("seminar_date", seminarDate);
+
+      const classAlreadyFilled = (classSelections || []).some(
+        (s: any) => s.class_year === selectedStudent.class_year
+      );
+
+      if (classAlreadyFilled) {
+        console.log(
+          `Skip insert: class ${selectedStudent.class_year} already has a selection for ${seminarDate}`
+        );
+        continue;
+      }
+
       const { data: selection, error: selectionError } = await (supabase as any)
         .from("unified_seminar_selections")
         .insert([
@@ -370,12 +394,22 @@ export async function POST(request: NextRequest) {
             student_id: selectedBooking.student_id,
             seminar_date: seminarDate,
             selected_at: new Date().toISOString(),
+            // optional: store class_year directly (trigger will also populate)
+            class_year: selectedStudent.class_year,
           },
         ])
         .select()
         .single();
 
       if (selectionError) {
+        // Handle unique constraint gracefully (race-safe): code 23505
+        const pgCode = (selectionError as any).code || (selectionError as any)?.hint || '';
+        if ((selectionError as any).code === '23505') {
+          console.warn(
+            `Unique constraint prevented duplicate selection for ${seminarDate} / ${selectedStudent.class_year}. Skipping.`
+          );
+          continue;
+        }
         console.error("Error creating selection:", selectionError);
         return NextResponse.json(
           {
