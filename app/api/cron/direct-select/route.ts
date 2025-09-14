@@ -37,94 +37,10 @@ async function createFinesForNonBookedStudents(seminarDate: string) {
 
     if (!fineResult.success) {
       console.error(
-        "CRON Fine creation failed:",
+        "CRON Fine creation failed (no fallback will run):",
         fineResult.message,
         fineResult.errors
       );
-
-      // If fineService fails, try direct creation
-      console.log("CRON Attempting direct fine creation...");
-
-      // Get all II-IT and III-IT students
-      const { data: allStudents } = await supabaseAdmin
-        .from("unified_students")
-        .select("id, register_number, name, class_year")
-        .in("class_year", ["II-IT", "III-IT"]);
-
-      // Get students who booked for this date
-      const { data: bookedStudents } = await supabaseAdmin
-        .from("unified_seminar_bookings")
-        .select("student_id")
-        .eq("booking_date", seminarDate);
-
-      // Get students who are selected for seminars
-      const { data: selectedStudents } = await supabaseAdmin
-        .from("unified_seminar_selections")
-        .select("student_id");
-
-      const bookedIds = new Set(
-        (bookedStudents || []).map((b: any) => b.student_id)
-      );
-      const selectedIds = new Set(
-        (selectedStudents || []).map((s: any) => s.student_id)
-      );
-
-      // Find students eligible for fines
-      const eligibleStudents = (allStudents || []).filter((student: any) => {
-        return !bookedIds.has(student.id) && !selectedIds.has(student.id);
-      });
-
-      console.log(
-        `CRON Direct: Found ${eligibleStudents.length} students eligible for fines`
-      );
-
-      // Create fines directly
-      let directFinesCreated = 0;
-      for (const student of eligibleStudents) {
-        try {
-          const { error } = await (supabaseAdmin as any)
-            .from("unified_student_fines")
-            .insert({
-              student_id: (student as any).id,
-              fine_type: "seminar_no_booking",
-              reference_date: seminarDate,
-              base_amount: 10.0,
-              daily_increment: 0.0,
-              days_overdue: 1,
-              payment_status: "pending",
-            });
-
-          if (!error) {
-            directFinesCreated++;
-            console.log(
-              `CRON Direct: Created fine for ${
-                (student as any).register_number
-              }`
-            );
-          } else {
-            console.error(
-              `CRON Direct: Failed to create fine for ${
-                (student as any).register_number
-              }:`,
-              error
-            );
-          }
-        } catch (err) {
-          console.error(
-            `CRON Direct: Error creating fine for ${
-              (student as any).register_number
-            }:`,
-            err
-          );
-        }
-      }
-
-      fineResult = {
-        success: directFinesCreated > 0,
-        message: `Direct creation: ${directFinesCreated} fines created`,
-        finesCreated: directFinesCreated,
-        errors: [],
-      };
     } else {
       console.log(
         `CRON Successfully created ${fineResult.finesCreated} fines for ${seminarDate}`

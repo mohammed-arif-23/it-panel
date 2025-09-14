@@ -217,29 +217,66 @@ export class FineService {
             console.log("No Fine");
             continue;
           } else {
-            const { data: fine, error } = await (supabaseAdmin as any)
+            const { data: upserted, error } = await (supabaseAdmin as any)
               .from("unified_student_fines")
-              .insert({
-                student_id: (student as any).id,
-                fine_type: "seminar_no_booking",
-                reference_date: seminarDate,
-                base_amount: 10.0, // Fixed ₹10 per day
-                daily_increment: 0.0, // No increments
-                days_overdue: 1, // Always 1 day for the specific date
-                payment_status: "pending",
-              })
-              .select()
-              .single();
+              .upsert(
+                {
+                  student_id: (student as any).id,
+                  fine_type: "seminar_no_booking",
+                  reference_date: seminarDate,
+                  base_amount: 10.0, // Fixed ₹10 per day
+                  daily_increment: 0.0, // No increments
+                  days_overdue: 1, // Always 1 day for the specific date
+                  payment_status: "pending",
+                },
+                {
+                  onConflict: "student_id,fine_type,reference_date",
+                  ignoreDuplicates: true,
+                }
+              )
+              .select();
 
+            // If Supabase returned an error object, handle it explicitly
+            if (error) {
+              // Unique violation: skip silently
+              if ((error as any).code === '23505' || (error as any).message?.includes('duplicate key')) {
+                console.warn(
+                  `Duplicate fine detected for student ${(student as any).register_number} on ${seminarDate}, skipping.`
+                );
+                continue;
+              }
+              // Other errors: record and continue
+              console.error(
+                `Failed to create fine for student ${(student as any).register_number}:`,
+                error
+              );
+              errors.push({
+                studentId: (student as any).id,
+                error: (error as any).message || 'Unknown error',
+              });
+              continue;
+            }
+
+            // If a new row was inserted, upserted will be a non-empty array
+            const insertedFine = Array.isArray(upserted) && upserted.length > 0 ? upserted[0] : null;
+            if (!insertedFine) {
+              // Duplicate (ignored) or nothing inserted; skip increment
+              console.warn(
+                `No new fine inserted for ${(student as any).register_number} on ${seminarDate} (likely duplicate).`
+              );
+              continue;
+            }
+
+            // If insert succeeded, record and increment student's total
             results.push({
               studentId: (student as any).id,
-              fineId: (fine as any).id,
+              fineId: (insertedFine as any).id,
               action: "created",
             });
             // Increment student's total fine amount (sum pending fines)
             try {
               const sid = (student as any).id
-              const addAmount = (fine as any).base_amount || 10
+              const addAmount = (insertedFine as any).base_amount || 10
               const { data: s } = await (supabaseAdmin as any)
                 .from('unified_students')
                 .select('total_fine_amount')
@@ -259,7 +296,14 @@ export class FineService {
               } (${(student as any).name}) for date ${seminarDate}`
             );
           }
-        } catch (error) {
+        } catch (error: any) {
+          // Handle unique constraint violation gracefully (duplicate fine)
+          if (error && (error.code === '23505' || error.message?.includes('duplicate key'))) {
+            console.warn(
+              `Duplicate fine detected for student ${(student as any).register_number} on ${seminarDate}, skipping.`
+            );
+            continue;
+          }
           console.error(
             `Failed to create fine for student ${
               (student as any).register_number
