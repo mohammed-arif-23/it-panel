@@ -651,7 +651,7 @@ export default function HomePage() {
                     </div>
                     <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></div>
                   </div>
-                  <Button className="w-full bg-gradient-to-r from-cyan-600 to-sky-600 text-white font-semibold py-3 rounded-xl shadow-lg opacity-70 cursor-not-allowed">
+                  <Button onClick={() => router.push('/learn')} className="w-full bg-gradient-to-r from-cyan-600 to-sky-600 text-white font-semibold py-3 rounded-xl shadow-lg opacity-70 ">
                     Go to Learning App
                   </Button>
                   <p className="text-xs text-gray-500 text-center mt-2">This module is being baked, ready to <strong>Cook</strong> soon!.</p>

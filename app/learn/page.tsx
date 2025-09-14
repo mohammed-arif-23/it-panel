@@ -30,7 +30,7 @@ export default function LearnRedirectPage() {
   }, [user, loading, router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#FFFFFF' }}>
+    <div className="min-h-[70vh] flex items-center justify-center p-4" style={{ backgroundColor: '#FFFFFF' }}>
       <Card className="w-full max-w-lg bg-white shadow-2xl border-2 border-gray-200">
         <CardHeader className="text-center bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-gray-200 rounded-t-xl">
           <CardTitle className="text-2xl font-bold text-gray-800">Redirecting to Learning App</CardTitle>
