@@ -128,6 +128,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid class year. Must be "II-IT" or "III-IT"' }, { status: 400 });
     }
 
+    // Helper to format a naive datetime (e.g., from <input type="datetime-local">) to IST with explicit offset
+    const toISTWithOffset = (dt: string) => {
+      // If already has timezone offset or Z, return as-is
+      if (/Z|[+-]\d{2}:?\d{2}$/.test(dt)) return dt;
+      // Ensure seconds present
+      const withSeconds = dt.match(/:\d{2}$/) ? dt : `${dt}:00`;
+      // Append IST offset
+      return `${withSeconds}+05:30`;
+    };
+
+    // Current timestamp in IST with explicit +05:30 offset
+    const now = new Date();
+    const istNow = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const istTimestamp = `${istNow.getUTCFullYear()}-${pad(istNow.getUTCMonth() + 1)}-${pad(istNow.getUTCDate())}T${pad(istNow.getUTCHours())}:${pad(istNow.getUTCMinutes())}:${pad(istNow.getUTCSeconds())}+05:30`;
+
+    // Normalize due date to IST (if admin provided naive local time, we treat it as IST)
+    const normalizedDue = toISTWithOffset(due_date);
+
     // Insert new assignment using service role (bypasses RLS)
     const { data, error } = await (supabaseAdmin as any)
       .from('assignments')
@@ -135,7 +154,9 @@ export async function POST(request: NextRequest) {
         title,
         description: description || '',
         class_year,
-        due_date
+        due_date: normalizedDue,
+        created_at: istTimestamp,
+        updated_at: istTimestamp
       })
       .select()
       .single();

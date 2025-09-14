@@ -94,6 +94,12 @@ export async function POST(request: NextRequest) {
     // Generate random marks (8 or 9 out of 10)
     const randomMarks = Math.floor(Math.random() * 2) + 8
 
+    // Build IST timestamp string (+05:30)
+    const now = new Date()
+    const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const istTimestamp = `${istNow.getUTCFullYear()}-${pad(istNow.getUTCMonth() + 1)}-${pad(istNow.getUTCDate())}T${pad(istNow.getUTCHours())}:${pad(istNow.getUTCMinutes())}:${pad(istNow.getUTCSeconds())}+05:30`
+
     // Insert submission using service role (bypasses RLS)
     const { data, error } = await supabase
       .from('assignment_submissions')
@@ -103,7 +109,9 @@ export async function POST(request: NextRequest) {
         file_url: uploadResult.publicUrl,
         file_name: file.name,
         marks: randomMarks,
-        status: 'graded'
+        status: 'graded',
+        submitted_at: istTimestamp,
+        graded_at: istTimestamp
       })
       .select()
       .single()
