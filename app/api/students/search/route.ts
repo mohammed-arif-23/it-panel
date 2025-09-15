@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     // Search for students by name or register number
     const { data: students, error } = await supabase
       .from('unified_students')
-      .select('id, name, register_number, class_year')
+      .select('id, name, register_number, class_year, password')
       .or(`name.ilike.%${query}%, register_number.ilike.%${query}%`)
       .limit(limit)
       .order('name');

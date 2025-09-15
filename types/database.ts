@@ -9,6 +9,7 @@ export interface Database {
           email: string | null
           mobile: string | null
           class_year: string | null
+          password: string | null
           created_at: string
           updated_at: string
         }
@@ -19,6 +20,7 @@ export interface Database {
           email?: string | null
           mobile?: string | null
           class_year?: string | null
+          password?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -29,6 +31,7 @@ export interface Database {
           email?: string | null
           mobile?: string | null
           class_year?: string | null
+          password?: string | null
           created_at?: string
           updated_at?: string
         }

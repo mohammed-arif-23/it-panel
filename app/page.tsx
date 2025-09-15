@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import { GraduationCap, BookOpen, Calendar, LogIn, Loader2, Users, Award, LogOut, FileText, User, AlertTriangle, IndianRupee, Search, CheckCircle, X, ArrowLeft } from 'lucide-react'
+import { GraduationCap, BookOpen, Calendar, LogIn, Loader2, Users, Award, LogOut, FileText, User, AlertTriangle, IndianRupee, Search, CheckCircle, X, ArrowLeft, Lock } from 'lucide-react'
 import Link from 'next/link'
 import Alert from '../components/ui/alert'
 
@@ -14,12 +14,15 @@ interface Student {
   name: string;
   register_number: string;
   class_year: string;
+  password?: string | null;
 }
 
 export default function HomePage() {
   const { user, loading, login, logout, hasRegistration } = useAuth()
   const router = useRouter()
   const [registerNumber, setRegisterNumber] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [isLogging, setIsLogging] = useState(false)
   const [error, setError] = useState('')
   const [isRedirecting, setIsRedirecting] = useState(false)
@@ -35,6 +38,7 @@ export default function HomePage() {
   const [showStudentDropdown, setShowStudentDropdown] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [showStudentDetails, setShowStudentDetails] = useState(false)
+  const [studentHasPassword, setStudentHasPassword] = useState(false)
 
   const isProfileComplete = (user: any) => {
     if (!user) return false
@@ -161,6 +165,8 @@ export default function HomePage() {
     setStudentSearch(`${student.name} (${student.register_number})`)
     setShowStudentDropdown(false)
     setError('')
+    // Check if student has a password set
+    setStudentHasPassword(!!student.password)
   }
 
   // Close dropdown when clicking outside
@@ -178,7 +184,7 @@ export default function HomePage() {
 
   // Function to check if login should be disabled
   const isLoginDisabled = (): boolean => {
-    return isLogging || !selectedStudent
+    return isLogging || !selectedStudent || (!studentHasPassword && !password)
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -192,19 +198,17 @@ export default function HomePage() {
       return
     }
 
-    const result = await login(selectedStudent.register_number)
+    // If student doesn't have a password set, we need to set one
+    // If student has a password set, we need to verify it
+    const result = await login(
+      selectedStudent.register_number, 
+      password || undefined
+    )
+    
     if (!result.success) {
       setError(result.error || 'Login failed')
     }
     setIsLogging(false)
-  }
-
-  const handleBackToStudentSelection = () => {
-    setShowStudentDetails(false)
-    setSelectedStudent(null)
-    setStudentSearch('')
-    setRegisterNumber('')
-    setError('')
   }
 
   if (loading || isRedirecting) {
@@ -269,10 +273,14 @@ export default function HomePage() {
                             if (value !== selectedDisplayText && !selectedDisplayText.toLowerCase().includes(value.toLowerCase())) {
                               setSelectedStudent(null)
                               setRegisterNumber('')
+                              setPassword('')
+                              setStudentHasPassword(false)
                             }
                           } else if (!value) {
                             setSelectedStudent(null)
                             setRegisterNumber('')
+                            setPassword('')
+                            setStudentHasPassword(false)
                           }
                         }}
                         onFocus={() => setShowStudentDropdown(true)}
@@ -326,7 +334,7 @@ export default function HomePage() {
                   
                   {/* Selected Student Indicator */}
                   {selectedStudent && (
-                    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <div className="mt-2 p-3 rounded-md">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <CheckCircle className="h-4 w-4 text-green-600" />
@@ -344,6 +352,51 @@ export default function HomePage() {
                           View Details
                         </Button>
                       </div>
+                      
+                      {/* Password Field or Message */}
+                      <div className="mt-3">
+                        {studentHasPassword ? (
+                          <>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Password
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={showPassword ? "text" : "password"}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Enter your password"
+                                className="w-full px-4 py-3 pl-12 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
+                                required
+                              />
+                              <Lock className="h-5 w-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              >
+                                {showPassword ? (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                  </svg>
+                                ) : (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                                    <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                                  </svg>
+                                )}
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="p-3 bg-yellow-50 text-center border border-yellow-200 rounded-md">
+                            <p className="text-sm text-yellow-800">
+                              You don't have any password set. Please use "Set Password" option below.
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -358,7 +411,7 @@ export default function HomePage() {
                   <Button
                     type="submit"
                     disabled={isLoginDisabled()}
-                    className="w-full  bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isLogging ? (
                       <>
@@ -366,16 +419,29 @@ export default function HomePage() {
                         Logging in...
                       </>
                     ) : (
-                      "Login"
+                      studentHasPassword ? "Login to Dashboard" : "Set Password & Login"
                     )}
                   </Button>
+                  <div className="text-center mt-4">
+                    <button 
+                      type="button"
+                      onClick={() => router.push('/verify')}
+                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      {studentHasPassword ? "Forgot Password?" : "Set Password"}
+                    </button>
+                  </div>
                 </form>
               ) : (
                 /* Student Details View */
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Button
-                      onClick={handleBackToStudentSelection}
+                      onClick={() => {
+                        setShowStudentDetails(false)
+                        setPassword('')
+                        setShowPassword(false)
+                      }}
                       variant="ghost"
                       className="text-gray-600 hover:text-gray-800 p-0"
                     >
@@ -400,6 +466,44 @@ export default function HomePage() {
                           <span className="text-sm text-gray-600">Class:</span>
                           <span className="text-sm font-medium text-gray-800">{selectedStudent.class_year}</span>
                         </div>
+                      </div>
+                      
+                      {/* Password Field in Details View */}
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {studentHasPassword ? "Password" : "Set Password"}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder={studentHasPassword ? "Enter your password" : "Set a password for your account"}
+                            className="w-full px-4 py-3 pl-12 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
+                            required={!studentHasPassword} // Only required if setting a new password
+                          />
+                          <Lock className="h-5 w-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            {showPassword ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                                <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                        {!studentHasPassword && (
+                          <p className="text-xs text-gray-500 mt-1">You need to set a password for your account</p>
+                        )}
                       </div>
                     </div>
                   )}
@@ -427,6 +531,15 @@ export default function HomePage() {
                         "Login to Dashboard"
                       )}
                     </Button>
+                    <div className="text-center mt-4">
+                      <button 
+                        type="button"
+                        onClick={() => router.push('/verify')}
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Forgot Password?
+                      </button>
+                    </div>
                   </form>
                 </div>
               )}

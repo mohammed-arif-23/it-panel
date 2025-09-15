@@ -4,6 +4,11 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Student, StudentRegistration } from '@/types/database'
 import { dbHelpers } from '@/lib/supabase'
 
+// Extended student type to include password
+interface StudentWithPassword extends Student {
+  password: string | null;
+}
+
 // Auth state interface
 interface AuthState {
   user: Student | null
@@ -12,7 +17,7 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  login: (regNumber: string) => Promise<{ success: boolean; error?: string }>
+  login: (regNumber: string, password?: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
   refreshUser: () => Promise<void>
   registerForService: (service: 'nptel' | 'seminar') => Promise<{ success: boolean; error?: string }>
@@ -68,7 +73,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     loadStoredUser()
   }, [])
 
-  const login = async (regNumber: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (regNumber: string, password?: string): Promise<{ success: boolean; error?: string }> => {
     setLoading(true)
     
     try {
@@ -105,6 +110,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (!student) {
         return { success: false, error: 'Unable to process login. Please try again.' }
+      }
+
+      // Cast student to include password field
+      const studentWithPassword = student as StudentWithPassword;
+
+      // If password is provided, verify it or set it if not already set
+      if (password) {
+        // If student doesn't have a password set, set it now
+        if (!studentWithPassword.password) {
+          // Update student with new password
+          const { error: updateError } = await dbHelpers.updateStudent(studentWithPassword.id, {
+            password: password
+          });
+          
+          if (updateError) {
+            console.error('Error setting password:', updateError);
+            return { success: false, error: 'Failed to set password. Please try again.' };
+          }
+          
+          // Update student object with new password
+          studentWithPassword.password = password;
+        } 
+        // If student has a password set, verify it
+        else if (studentWithPassword.password !== password) {
+          return { success: false, error: 'Invalid password.' }
+        }
+      } else if (studentWithPassword.password) {
+        // If student has a password but none was provided, require password
+        return { success: false, error: 'Password required for this account.' }
       }
 
       // Load registrations - check if student data includes registrations

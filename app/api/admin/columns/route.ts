@@ -15,6 +15,7 @@ const tableColumns = {
     { name: 'email', type: 'string', displayName: 'Email' },
     { name: 'mobile', type: 'string', displayName: 'Mobile' },
     { name: 'class_year', type: 'string', displayName: 'Class Year' },
+    { name: 'password', type: 'string', displayName: 'Password' },
     { name: 'created_at', type: 'timestamp', displayName: 'Created At' },
     { name: 'updated_at', type: 'timestamp', displayName: 'Updated At' }
   ],
