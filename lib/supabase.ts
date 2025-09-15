@@ -249,7 +249,113 @@ export const dbHelpers = {
 
   // Get students not booked today
   getStudentsNotBookedToday: async () => {
-    // Implementation would go here
-    return { data: [], error: null }
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Get all students who have seminar registrations but haven't booked for today
+      const { data: students, error } = await supabaseAdmin
+        .from('unified_students')
+        .select(`
+          id,
+          register_number,
+          name,
+          email,
+          class_year,
+          unified_student_registrations(registration_type)
+        `)
+        .eq('unified_student_registrations.registration_type', 'seminar')
+        .eq('unified_student_registrations.is_active', true);
+      
+      if (error) {
+        return { data: null, error };
+      }
+      
+      // Filter out students who have already booked for today
+      const studentsWithBookings = await Promise.all(
+        (students || []).map(async (student: any) => {
+          const { data: booking } = await supabaseAdmin
+            .from('unified_seminar_bookings')
+            .select('id')
+            .eq('student_id', student.id)
+            .eq('booking_date', today)
+            .single();
+          
+          return {
+            student,
+            hasBooking: !!booking
+          };
+        })
+      );
+      
+      // Return students who don't have bookings for today
+      const studentsNotBooked = studentsWithBookings
+        .filter(({ hasBooking }) => !hasBooking)
+        .map(({ student }) => student);
+      
+      return { data: studentsNotBooked, error: null };
+    } catch (error) {
+      return { data: null, error: error as any };
+    }
+  },
+
+  // Add the missing addFineForNotBooking method
+  addFineForNotBooking: async (studentId: string) => {
+    try {
+      // Check if student already has a fine for not booking today
+      const today = new Date().toISOString().split('T')[0];
+      
+      // First, check if the student already has a fine for today
+      const { data: existingFines, error: checkError } = await supabaseAdmin
+        .from('unified_student_fines')
+        .select('id')
+        .eq('student_id', studentId)
+        .eq('fine_type', 'seminar_not_booked')
+        .eq('reference_date', today);
+      
+      if (checkError) {
+        return { data: null, error: checkError };
+      }
+      
+      // If fine already exists, return it
+      if (existingFines && existingFines.length > 0) {
+        return { data: existingFines[0], error: null };
+      }
+      
+      // Create a new fine for not booking
+      const { data, error } = await supabaseAdmin
+        .from('unified_student_fines')
+        .insert({
+          student_id: studentId,
+          fine_type: 'seminar_not_booked',
+          reference_date: today,
+          reference_id: `not_booked_${today}`,
+          base_amount: 10.00, // Default fine amount
+          daily_increment: 5.00, // Increment per day
+          days_overdue: 0
+        } as any)
+        .select()
+        .single();
+      
+      // Also update the student's total fine amount
+      const { data: student, error: studentError } = await supabaseAdmin
+        .from('unified_students')
+        .select('total_fine_amount')
+        .eq('id', studentId)
+        .single();
+      
+      if (!studentError && student) {
+        await (supabaseAdmin as any)
+          .from('unified_students')
+          .update({
+            total_fine_amount: ((student as any).total_fine_amount || 0) + 10.00,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', studentId);
+      }
+      
+      return { data, error };
+    } catch (error) {
+      return { data: null, error: error as any };
+    }
   }
 }
