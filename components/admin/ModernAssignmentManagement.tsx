@@ -21,7 +21,8 @@ import {
   Clock,
   Download,
   Eye,
-  ArrowLeft
+  ArrowLeft,
+  FileText
 } from 'lucide-react'
 
 interface Assignment {
@@ -602,6 +603,7 @@ export default function ModernAssignmentManagement({
                             <TableHead>Submitted At</TableHead>
                             <TableHead>Marks</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead>View</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -629,6 +631,18 @@ export default function ModernAssignmentManagement({
                                 <Badge className={student.submissionDetails?.status === 'graded' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
                                   {student.submissionDetails?.status || 'submitted'}
                                 </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  onClick={() => window.open(student.submissionDetails?.file_url || '', '_blank')}
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={!student.submissionDetails?.file_url}
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                >
+                                  <FileText className="h-4 w-4 mr-1" />
+                                  View PDF
+                                </Button>
                               </TableCell>
                             </TableRow>
                           ))}
