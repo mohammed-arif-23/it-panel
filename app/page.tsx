@@ -54,22 +54,15 @@ export default function HomePage() {
     return Object.values(requiredFields).every(field => field && field.length > 0)
   }
 
-  // Redirect to profile if profile is incomplete
   useEffect(() => {
-    // Profile check completed
     if (user) {
-      // User details verified
       const profileComplete = isProfileComplete(user)
-      // Profile completeness check performed
     }
     
-    // Only check profile completeness after loading is done and user exists
     if (!loading && user) {
       const profileComplete = isProfileComplete(user)
-      // Profile completion status determined
       
       if (!profileComplete) {
-        // Redirecting to profile for completion
         setIsRedirecting(true)
         router.push('/profile')
         return
@@ -77,7 +70,6 @@ export default function HomePage() {
     }
   }, [user, loading, router])
 
-  // Fetch dashboard data when user is authenticated
   useEffect(() => {
     if (user && !loading && isProfileComplete(user)) {
       fetchDashboardData()
@@ -91,7 +83,6 @@ export default function HomePage() {
     setIsLoadingFines(true)
     
     try {
-      // Fetch both dashboard and fines data concurrently
       const [dashboardResponse, finesResponse] = await Promise.all([
         fetch(`/api/dashboard?studentId=${user.id}`),
         fetch(`/api/dashboard/fines?studentId=${user.id}`)
@@ -105,24 +96,20 @@ export default function HomePage() {
       if (dashboardData.success) {
         setDashboardData(dashboardData.data)
       } else {
-        // Failed to fetch dashboard data - handling silently
       }
       
       if (finesData.success) {
         setFinesData(finesData.data)
       } else {
-        // Failed to fetch fines data - handling silently
       }
       
     } catch (error) {
-      // Error fetching dashboard data - handling silently
     } finally {
       setIsLoadingDashboard(false)
       setIsLoadingFines(false)
     }
   }
 
-  // Fetch students based on search query
   const fetchStudents = async (search: string) => {
     if (search.length < 2) {
       setStudents([])
@@ -158,18 +145,15 @@ export default function HomePage() {
     return () => clearTimeout(timeoutId)
   }, [studentSearch, selectedStudent])
 
-  // Handle student selection
   const handleStudentSelect = (student: Student) => {
     setSelectedStudent(student)
     setRegisterNumber(student.register_number)
     setStudentSearch(`${student.name} (${student.register_number})`)
     setShowStudentDropdown(false)
     setError('')
-    // Check if student has a password set
     setStudentHasPassword(!!student.password)
   }
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element
@@ -182,7 +166,6 @@ export default function HomePage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Function to check if login should be disabled
   const isLoginDisabled = (): boolean => {
     return isLogging || !selectedStudent || (!studentHasPassword && !password)
   }
@@ -198,8 +181,6 @@ export default function HomePage() {
       return
     }
 
-    // If student doesn't have a password set, we need to set one
-    // If student has a password set, we need to verify it
     const result = await login(
       selectedStudent.register_number, 
       password || undefined
@@ -230,7 +211,6 @@ export default function HomePage() {
   if (!user) {
     return (
       <div className="min-h-[70vh] relative" style={{backgroundColor: '#FFFFFF'}}>
-        {/* Background Pattern */}
         <div className="absolute inset-0 opacity-5">
           <div className="absolute inset-0" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
@@ -245,7 +225,6 @@ export default function HomePage() {
             <p className="text-gray-600">Student Information System</p>
           </div>
 
-          {/* Video Container */}
           <div className="mb-6 rounded-2xl flex items-center justify-center overflow-hidden">
            <img src={'7408.jpg'} alt="Video" className=' object-contain h-[40%] w-[40%]'></img>
           </div>
@@ -267,7 +246,6 @@ export default function HomePage() {
                           setStudentSearch(value)
                           setShowStudentDropdown(true)
                           
-                          // Reset student if the user is typing something different
                           if (selectedStudent) {
                             const selectedDisplayText = `${selectedStudent.name} (${selectedStudent.register_number})`
                             if (value !== selectedDisplayText && !selectedDisplayText.toLowerCase().includes(value.toLowerCase())) {

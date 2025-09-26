@@ -43,22 +43,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [registrations, setRegistrations] = useState<StudentRegistration[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Load user from localStorage on mount
   useEffect(() => {
     const loadStoredUser = async () => {
       try {
         const storedUser = localStorage.getItem('unified_college_user')
         if (storedUser) {
           const userData = JSON.parse(storedUser) as Student
-          // Verify user still exists in database and load registrations
           const { data, error } = await dbHelpers.findStudentByRegNumber(userData.register_number)
           if (data && !error) {
             setUser(data as Student)
-            // Load registrations - check if data has unified_student_registrations
             const registrationsData = (data as any).unified_student_registrations || []
             setRegistrations(registrationsData)
           } else {
-            // User doesn't exist anymore, clear storage
             localStorage.removeItem('unified_college_user')
           }
         }
@@ -77,14 +73,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setLoading(true)
     
     try {
-      // Validate registration number format
       if (!regNumber || regNumber.trim().length === 0) {
         return { success: false, error: 'Please enter your registration number' }
       }
 
       const trimmedRegNumber = regNumber.trim().toUpperCase()
 
-      // Check if student exists
       let { data: student, error } = await dbHelpers.findStudentByRegNumber(trimmedRegNumber)
 
       if (error && error.code !== 'PGRST116') {
@@ -98,7 +92,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: 'Database connection error. Please try again.' }
       }
 
-      // If student doesn't exist, create a new record
       if (!student) {
         const createResult = await dbHelpers.createStudent(trimmedRegNumber)
         if (createResult.error) {
@@ -112,14 +105,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: 'Unable to process login. Please try again.' }
       }
 
-      // Cast student to include password field
       const studentWithPassword = student as StudentWithPassword;
 
-      // If password is provided, verify it or set it if not already set
       if (password) {
-        // If student doesn't have a password set, set it now
         if (!studentWithPassword.password) {
-          // Update student with new password
           const { error: updateError } = await dbHelpers.updateStudent(studentWithPassword.id, {
             password: password
           });
@@ -129,22 +118,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
             return { success: false, error: 'Failed to set password. Please try again.' };
           }
           
-          // Update student object with new password
           studentWithPassword.password = password;
         } 
-        // If student has a password set, verify it
         else if (studentWithPassword.password !== password) {
           return { success: false, error: 'Invalid password.' }
         }
       } else if (studentWithPassword.password) {
-        // If student has a password but none was provided, require password
         return { success: false, error: 'Password required for this account.' }
       }
 
-      // Load registrations - check if student data includes registrations
       const registrationsData = (student as any).unified_student_registrations || []
 
-      // Store user data
       setUser(student as Student)
       setRegistrations(registrationsData)
       localStorage.setItem('unified_college_user', JSON.stringify(student))
@@ -173,7 +157,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(data as Student)
         localStorage.setItem('unified_college_user', JSON.stringify(data))
         
-        // Refresh registrations - check if data includes registrations
         const registrationsData = (data as any).unified_student_registrations || []
         setRegistrations(registrationsData)
       }
@@ -188,7 +171,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     try {
-      // Check if already registered
       const existingRegistration = registrations.find(
         reg => reg.registration_type === service || reg.registration_type === 'both'
       )
@@ -197,14 +179,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: `Already registered for ${service}` }
       }
 
-      // Create registration
       const { data, error } = await dbHelpers.createRegistration(user.id, service)
       if (error) {
         console.error('Registration error:', error)
         return { success: false, error: 'Failed to register. Please try again.' }
       }
 
-      // Update local state
       if (data) {
         setRegistrations(prev => [...prev, data])
       }

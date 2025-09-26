@@ -13,7 +13,8 @@ import {
   Calendar, 
   BarChart3,
   CalendarDays,
-  UserPlus
+  UserPlus,
+  Search
 } from 'lucide-react'
 
 interface ModernAdminNavbarProps {
@@ -33,6 +34,7 @@ export default function ModernAdminNavbar({
 }: ModernAdminNavbarProps) {
   const navigationItems = [
     { id: 'assignments', label: 'Assignments', icon: BookOpen },
+    { id: 'detect-assignments', label: 'Detect Plagiarism', icon: Search },
     { id: 'registration', label: 'Registration', icon: UserPlus },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
     { id: 'holidays', label: 'Holidays', icon: CalendarDays },

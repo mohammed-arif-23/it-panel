@@ -77,7 +77,6 @@ export default function VerifyPage() {
 
       if (response.ok && data.success) {
         setMessage({ type: 'success', text: data.message });
-        // Redirect to login after 2 seconds
         setTimeout(() => {
           router.push('/');
         }, 2000);

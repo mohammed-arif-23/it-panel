@@ -31,7 +31,7 @@ export default function RootLayout({
         <header className="fixed top-0 left-0 w-full backdrop-blur-md bg-white/90  z-60 flex justify-center items-center py-4 ">
           <div className="flex flex-col items-center">
             <img 
-              src="logo.png" 
+              src="https://avsec-it.vercel.app/logo.png" 
               alt="A.V.S. Engineering College" 
               width={500} 
               height={150} 

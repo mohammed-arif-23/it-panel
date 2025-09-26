@@ -67,6 +67,7 @@ export default function AdminPanel() {
   // Active Tab State
   const [activeTab, setActiveTab] = useState<
     | "assignments"
+    | "detect-assignments"
     | "registration"
     | "bookings"
     | "holidays"
@@ -498,6 +499,20 @@ export default function AdminPanel() {
             formatDateTime={formatDateTime}
             exportToExcel={exportToExcel}
           />
+        )}
+
+        {activeTab === "detect-assignments" && (
+          <div className="text-center py-12">
+            <p className="text-gray-600 mb-4">
+              Assignment plagiarism detection is now available as a separate page.
+            </p>
+            <Button 
+              onClick={() => window.open('/admin/detect-assignments', '_blank')}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Open Detection Tool
+            </Button>
+          </div>
         )}
 
         {activeTab === "registration" && (
