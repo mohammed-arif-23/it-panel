@@ -4,17 +4,17 @@ import AdminSubHeader from '@/components/admin/AdminSubHeader'
 
 export const metadata: Metadata = {
   title: 'Admin Panel - College Management System',
-  description: 'Administrative panel for database management and export',
+  description: 'Administrative panel for renewed UI and tools',
 }
 
-export default function AdminLayout({
+export default function AdminRenewLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
     <AdminAuthGuard>
-      <AdminSubHeader basePath="/admin" />
+      <AdminSubHeader basePath="/admin-renew" />
       {children}
     </AdminAuthGuard>
   )

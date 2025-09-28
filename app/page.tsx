@@ -1,13 +1,17 @@
 'use client'
 
 import { useAuth } from '../contexts/AuthContext'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback, memo } from 'react'
 import { useRouter } from 'next/navigation'
+import { useDashboardData, useFinesData } from '../hooks/useDashboardData'
+import { useStudentSearch } from '../hooks/useStudentSearch'
+import { useDebounce } from '../hooks/useDebounce'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { GraduationCap, BookOpen, Calendar, LogIn, Loader2, Users, Award, LogOut, FileText, User, AlertTriangle, IndianRupee, Search, CheckCircle, X, ArrowLeft, Lock, CalendarDays, ClipboardList, BarChart3, Megaphone, HelpCircle } from 'lucide-react'
 import Link from 'next/link'
 import Alert from '../components/ui/alert'
+import Loader from '../components/ui/loader'
 
 interface Student {
   id: string;
@@ -26,21 +30,35 @@ export default function HomePage() {
   const [isLogging, setIsLogging] = useState(false)
   const [error, setError] = useState('')
   const [isRedirecting, setIsRedirecting] = useState(false)
-  const [dashboardData, setDashboardData] = useState<any>(null)
-  const [finesData, setFinesData] = useState<any>(null)
-  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false)
-  const [isLoadingFines, setIsLoadingFines] = useState(false)
   
   // Student dropdown states
-  const [students, setStudents] = useState<Student[]>([])
   const [studentSearch, setStudentSearch] = useState('')
-  const [isLoadingStudents, setIsLoadingStudents] = useState(false)
   const [showStudentDropdown, setShowStudentDropdown] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [showStudentDetails, setShowStudentDetails] = useState(false)
   const [studentHasPassword, setStudentHasPassword] = useState(false)
 
-  const isProfileComplete = (user: any) => {
+  // Debounced search for better performance
+  const debouncedSearch = useDebounce(studentSearch, 300)
+  
+  // Query hooks for data fetching
+  const { data: dashboardData, isLoading: isLoadingDashboard } = useDashboardData(user?.id || '')
+  const { data: finesData, isLoading: isLoadingFines } = useFinesData(user?.id || '')
+  const { data: students = [], isLoading: isLoadingStudents } = useStudentSearch(debouncedSearch)
+
+  // Move useMemo hook here to ensure consistent hook order
+  const quickTiles = useMemo(() => ([
+   // { title: 'Attendance', href: '/attendance', icon: CheckCircle, hint: 'View daily attendance' },
+   // { title: 'Timetable', href: '/timetable', icon: CalendarDays, hint: 'Class schedule' },
+    { title: 'NPTEL', href: '/nptel', icon: BookOpen, hint: 'Your NPTEL courses' },
+    { title: 'Assignments', href: '/assignments', icon: FileText, hint: 'Submit and track' },
+    { title: 'Seminar', href: '/seminar', icon: ClipboardList, hint: 'Seminar management' },
+    { title: 'Learning Platform', href: '/learn', icon: BookOpen, hint: 'Access learning resources' },
+    { title: 'Fees', href: '/fines', icon: IndianRupee, hint: 'Fines/fees status' },
+    { title: 'Profile', href: '/profile', icon: User, hint: 'Your account' },
+  ]), [])
+
+  const isProfileComplete = useCallback((user: any) => {
     if (!user) return false
     
     const requiredFields = {
@@ -51,7 +69,7 @@ export default function HomePage() {
     }
     
     return Object.values(requiredFields).every(field => field && field.length > 0)
-  }
+  }, [])
 
   useEffect(() => {
     if (user) {
@@ -69,85 +87,17 @@ export default function HomePage() {
     }
   }, [user, loading, router])
 
-  useEffect(() => {
-    if (user && !loading && isProfileComplete(user)) {
-      fetchDashboardData()
-    }
-  }, [user, loading])
+  // Remove the old fetchDashboardData function and useEffect since we're using React Query now
 
-  const fetchDashboardData = async () => {
-    if (!user?.id) return
-    
-    setIsLoadingDashboard(true)
-    setIsLoadingFines(true)
-    
-    try {
-      const [dashboardResponse, finesResponse] = await Promise.all([
-        fetch(`/api/dashboard?studentId=${user.id}`),
-        fetch(`/api/dashboard/fines?studentId=${user.id}`)
-      ])
-      
-      const [dashboardData, finesData] = await Promise.all([
-        dashboardResponse.json(),
-        finesResponse.json()
-      ])
-      
-      if (dashboardData.success) {
-        setDashboardData(dashboardData.data)
-      }
-      
-      if (finesData.success) {
-        setFinesData(finesData.data)
-      }
-      
-    } catch (error) {
-    } finally {
-      setIsLoadingDashboard(false)
-      setIsLoadingFines(false)
-    }
-  }
+  // Remove old fetchStudents function and useEffect since we're using React Query now
 
-  const fetchStudents = async (search: string) => {
-    if (search.length < 2) {
-      setStudents([])
-      return
-    }
-
-    setIsLoadingStudents(true)
-    try {
-      const response = await fetch(`/api/students/search?q=${encodeURIComponent(search)}&limit=10`)
-      const result = await response.json()
-      
-      if (result.success) {
-        setStudents(result.data || [])
-      } else {
-        setStudents([])
-      }
-    } catch (error) {
-      console.error('Error fetching students:', error)
-      setStudents([])
-    } finally {
-      setIsLoadingStudents(false)
-    }
-  }
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (studentSearch && !selectedStudent) {
-        fetchStudents(studentSearch)
-      }
-    }, 300)
-
-    return () => clearTimeout(timeoutId)
-  }, [studentSearch, selectedStudent])
-
-  const handleStudentSelect = (student: Student) => {
+  const handleStudentSelect = useCallback((student: Student) => {
     setSelectedStudent(student)
     setStudentSearch(`${student.name} (${student.register_number})`)
     setShowStudentDropdown(false)
     setError('')
     setStudentHasPassword(!!student.password)
-  }
+  }, [])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -161,11 +111,11 @@ export default function HomePage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const isLoginDisabled = (): boolean => {
+  const isLoginDisabled = useCallback((): boolean => {
     return isLogging || !selectedStudent || (!studentHasPassword && !password)
-  }
+  }, [isLogging, selectedStudent, studentHasPassword, password])
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLogging(true)
     setError('')
@@ -185,18 +135,13 @@ export default function HomePage() {
       setError(result.error || 'Login failed')
     }
     setIsLogging(false)
-  }
+  }, [selectedStudent, password, login])
 
   if (loading || isRedirecting) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#FFFFFF'}}>
-        <div className="text-center">
-          <div className="flex items-center justify-center space-x-2">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-            <span className="text-gray-600">
-              {isRedirecting ? 'Redirecting to profile...' : 'Loading...'}
-            </span>
-          </div>
+        <div className="w-16 h-16">
+          <Loader />
         </div>
       </div>
     )
@@ -223,7 +168,7 @@ export default function HomePage() {
             <img src={'/7408.jpg'} alt="Illustration" className='object-contain h-[40%] w-[40%]' />
           </div>
 
-          <Card className="bg-white border border-gray-200 shadow-sm">
+          <Card className="bg-white border border-white shadow-none">
             <CardContent className="px-6 py-4 ">
               {!showStudentDetails ? (
                 <form onSubmit={handleLogin} className="space-y-4">
@@ -254,32 +199,18 @@ export default function HomePage() {
                       <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
                         {isLoadingStudents ? (
                           <div className="flex items-center justify-center p-3">
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            <div className="w-4 h-4 mr-2">
+                              <Loader />
+                            </div>
                             <span className="text-sm text-gray-600">Searching...</span>
                           </div>
                         ) : students.length > 0 ? (
                           students.map((student) => (
-                            <div
+                            <StudentDropdownItem
                               key={student.id}
-                              className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                              onClick={() => handleStudentSelect(student)}
-                            >
-                              <div className="flex space-x-3">
-                                <div className="flex-shrink-0">
-                                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <User className="h-4 w-4 text-blue-600" />
-                                  </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-900 truncate">
-                                    {student.name}
-                                  </p>
-                                  <p className="text-sm text-gray-500 truncate">
-                                    {student.register_number} • {student.class_year}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
+                              student={student}
+                              onSelect={handleStudentSelect}
+                            />
                           ))
                         ) : studentSearch.length >= 2 ? (
                           <div className="p-3 text-center text-gray-500">
@@ -364,19 +295,6 @@ export default function HomePage() {
     </div>
   )}
 
-  const quickTiles = useMemo(() => ([
-    { title: 'Attendance', href: '/attendance', icon: CheckCircle, hint: 'View daily attendance' },
-    { title: 'Timetable', href: '/timetable', icon: CalendarDays, hint: 'Class schedule' },
-    { title: 'Courses', href: '/nptel', icon: BookOpen, hint: 'Your enrolled courses' },
-    { title: 'Assignments', href: '/assignments', icon: FileText, hint: 'Submit and track' },
-    { title: 'Exams', href: '/exams', icon: ClipboardList, hint: 'Exam schedule' },
-    { title: 'Results', href: '/results', icon: BarChart3, hint: 'Marks and grades' },
-    { title: 'Fees', href: '/profile?tab=fines', icon: IndianRupee, hint: 'Fines/fees status' },
-    { title: 'Notices', href: '/notices', icon: Megaphone, hint: 'Department announcements' },
-    { title: 'Profile', href: '/profile', icon: User, hint: 'Your account' },
-    { title: 'Support', href: '/support', icon: HelpCircle, hint: 'Get help' },
-  ]), [])
-
   return (
     <div className="min-h-[70vh] relative" style={{backgroundColor: '#FFFFFF'}}>
       <div className="absolute inset-0 opacity-5">
@@ -388,50 +306,45 @@ export default function HomePage() {
     
       <div className="relative overflow-hidden bg-white ">
         <div className="max-w-7xl mx-auto px-2 py-3 relative z-10">
-          <div className="flex items-center justify-between">
-            <div className="text-left">
+          <div className="flex items-center justify-center">
+            <div className="text-center">
               <h2 className="text-xl lg:text-3xl font-bold text-gray-800">Department of Information Technology</h2>
               <p className="text-gray-500 max-w-md text-sm mt-1">
-                 <span className="text-md text-gray-700">{user?.name || 'Student'}</span> •  <span className="text-md text-gray-700">{user?.class_year || 'IT'}</span> •  <span className="text-md text-gray-700">{user?.register_number || 'IT'}</span>
+                 <span className="text-md my-4 text-gray-700">{user?.name?.toLocaleUpperCase() || 'Student'}</span> •  <span className="text-md text-gray-700">{user?.class_year || 'IT'}</span> •  <span className="text-md text-gray-700">{user?.register_number || 'IT'}</span>
               </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-100" onClick={async () => { await logout(); router.push('/'); }} title="Logout">
-                <LogOut className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+      {/* Logout Card - Red Card */}
+      
+      <div className="min-h-[90vh] mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         {(isLoadingDashboard || isLoadingFines) ? (
           <div className="text-center py-20">
             <div className="flex flex-col items-center space-y-4">
-              <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-              <div className="space-y-2">
-                <h3 className="text-base font-medium text-gray-900">This will just take a second.</h3>
+              <div className="w-15 h-15">
+                <Loader />
               </div>
             </div>
           </div>
         ) : (
           <>
-          {/* Quick Access Tiles with ripple */}
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold text-gray-500 mb-3">Quick Access</h3>
+          <div className="mb-4">
+            <h3 className="text-lg text-center font-semibold text-gray-500 mb-4">Quick Access</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
               {quickTiles.map((tile) => {
                 const Icon = tile.icon
                 return (
                   <Link href={tile.href} key={tile.title} className="group block">
-                    <div className="h-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 hover:border-blue-600 ripple" data-ripple>
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                          <Icon className="h-5 w-5" />
+                    <div className="h-full rounded-2xl bg-white p-4 border border-blue-200 shadow-sm hover:shadow-md transition-shadow duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 hover:border-blue-600 ripple" data-ripple>
+                      <div className="flex flex-col justify-center items-center gap-3">
+                        <div className="h-14 w-14 rounded-lg text-blue-600 flex items-center justify-center">
+                          <Icon className="h-7 w-7" />
                         </div>
-                        <div>
-                          <div className="text-sm font-semibold text-gray-900">{tile.title}</div>
-                          <div className="text-xs text-gray-500">{tile.hint}</div>
+                        <div className="text-center text-sm">
+                          <div className="text-base font-semibold text-gray-900">{tile.title}</div>
+                          <div className="text-xs text-gray-500 mt-1">{tile.hint}</div>
                         </div>
                       </div>
                     </div>
@@ -441,89 +354,98 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Profile and Finance Summary */}
+          {/* Profile and Finance Summary - Removed profile details as requested */}
           <div className="max-w-4xl mx-auto">
             <Card className="bg-white shadow-sm border border-gray-200">
               <CardHeader className="rounded-t-xl bg-gray-50 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl font-bold text-gray-800">My Profile</CardTitle>
-                  {finesData && finesData.stats.totalFines > 0 && (
-                    <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded-md">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span className="text-xs font-semibold">Fine Alert</span>
-                    </div>
-                  )}
+                <div className="flex items-center justify-center">
+                  <CardTitle className="text-xl  font-bold text-gray-800">Other Details</CardTitle>
                 </div>
               </CardHeader>
               
               <CardContent className="p-4">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <h3 className="text-sm font-bold text-gray-700">Personal Information</h3>
-                      <div className="space-y-3">
-                        <div className="p-3 bg-white rounded-lg border border-gray-200">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Full Name</label>
-                          <p className="text-sm font-semibold text-gray-900 mt-1">{user?.name || 'Not provided'}</p>
-                        </div>
-                        <div className="p-3 bg-white rounded-lg border border-gray-200">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Register Number</label>
-                          <p className="text-sm font-semibold text-gray-900 mt-1">{user?.register_number || 'Not provided'}</p>
-                        </div>
-                        <div className="p-3 bg-white rounded-lg border border-gray-200">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Class Year</label>
-                          <p className="text-sm font-semibold text-gray-900 mt-1">{user?.class_year || 'Not provided'}</p>
-                        </div>
+                <div className={`relative p-4 rounded-xl border ${
+                  finesData && finesData.stats.totalFines > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${finesData && finesData.stats.totalFines > 0 ? 'bg-red-600' : 'bg-green-600'}`}>
+                        {finesData && finesData.stats.totalFines > 0 ? (
+                          <AlertTriangle className="h-5 w-5 text-white" />
+                        ) : (
+                          <IndianRupee className="h-5 w-5 text-white" />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-800">Fine Details</h3>
+                        <p className={`text-xs font-medium ${finesData && finesData.stats.totalFines > 0 ? 'text-red-700' : 'text-green-700'}`}>
+                          {finesData && finesData.stats.totalFines > 0 ? 'Pending fines' : 'No pending fines'}
+                        </p>
                       </div>
                     </div>
-                    
-                    <div className="space-y-4">
-                      <h3 className="text-sm font-bold text-gray-700">Contact Information</h3>
-                      <div className="space-y-3">
-                        <div className="p-3 bg-white rounded-lg border border-gray-200">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Email Address</label>
-                          <p className="text-sm font-semibold text-gray-900 mt-1 break-all">{user?.email || 'Not provided'}</p>
-                        </div>
-                        <div className="p-3 bg-white rounded-lg border border-gray-200">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Mobile Number</label>
-                          <p className="text-sm font-semibold text-gray-900 mt-1">{user?.mobile || 'Not provided'}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={`relative p-4 rounded-xl border ${
-                    finesData && finesData.stats.totalFines > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${finesData && finesData.stats.totalFines > 0 ? 'bg-red-600' : 'bg-green-600'}`}>
-                          {finesData && finesData.stats.totalFines > 0 ? (
-                            <AlertTriangle className="h-5 w-5 text-white" />
-                          ) : (
-                            <IndianRupee className="h-5 w-5 text-white" />
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-bold text-gray-800">Fine Details</h3>
-                          <p className={`text-xs font-medium ${finesData && finesData.stats.totalFines > 0 ? 'text-red-700' : 'text-green-700'}`}>
-                            {finesData && finesData.stats.totalFines > 0 ? 'Pending fines' : 'No pending fines'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={`text-xl font-extrabold ${finesData && finesData.stats.totalFines > 0 ? 'text-red-700' : 'text-green-700'}`}>₹{finesData ? finesData.stats.totalFines : 0}</p>
-                      </div>
+                    <div className="text-right">
+                      <p className={`text-xl font-extrabold ${finesData && finesData.stats.totalFines > 0 ? 'text-red-700' : 'text-green-700'}`}>₹{finesData ? finesData.stats.totalFines : 0}</p>
                     </div>
                   </div>
                 </div>
+                <div className="sm:px-0 lg:px-8 py-4">
+        <Card className="bg-red-50 rounded-xl border-red-200 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-500 ">
+                  <LogOut className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-red-800">Logout</h3>
+                  <p className="text-sm text-red-600">End your current session</p>
+                </div>
+              </div>
+              <Button 
+                variant="destructive" 
+                className="bg-red-600 hover:bg-red-700 text-white"
+                onClick={async () => { await logout(); router.push('/'); }}
+              >
+                Logout
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
               </CardContent>
             </Card>
           </div>
-
+                        
           </>
         )}
       </div>
     </div>
   )
 }
+
+// Memoized student dropdown item component
+const StudentDropdownItem = memo(({ student, onSelect }: { student: Student, onSelect: (student: Student) => void }) => (
+  <div
+    className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+    onClick={() => onSelect(student)}
+  >
+    <div className="flex space-x-3">
+      <div className="flex-shrink-0">
+        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+          <User className="h-4 w-4 text-blue-600" />
+        </div>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 truncate">
+          {student.name}
+        </p>
+        <p className="text-sm text-gray-500 truncate">
+          {student.register_number} • {student.class_year}
+        </p>
+      </div>
+    </div>
+  </div>
+))
+
+StudentDropdownItem.displayName = 'StudentDropdownItem'

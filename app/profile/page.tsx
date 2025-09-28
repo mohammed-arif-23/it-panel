@@ -1,43 +1,31 @@
 "use client";
 
 import { useAuth } from "../../contexts/AuthContext";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../../components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
 import {
   ArrowLeft,
   User,
-  Save,
-  Loader2,
   CheckCircle,
   AlertCircle,
+  IdCard,
+  Mail,
+  Phone,
+  Calendar,
 } from "lucide-react";
 import Link from "next/link";
-import { dbHelpers } from "../../lib/supabase";
-import Alert from "@/components/ui/alert";
-import { BasicInput } from "@/components/ui/basic-input";
+import Loader from "../../components/ui/loader";
 
 export default function ProfilePage() {
-  const { user, loading, refreshUser } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    mobile: "",
-    class_year: "",
-  });
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<"success" | "error">(
-    "success"
-  );
 
   // Helper function to check if a field has meaningful data
   const hasData = (value: string | null | undefined): boolean => {
@@ -49,127 +37,12 @@ export default function ProfilePage() {
     user &&
     (!hasData(user.name) || !hasData(user.email) || !hasData(user.class_year));
 
-  // Determine if fields should be disabled (existing students with complete profiles)
-  const shouldDisableField = (fieldName: string): boolean => {
-    // New students can edit everything
-    if (isNewStudent) return false;
-
-    // Existing students with complete profiles - disable based on field
-    switch (fieldName) {
-      case "name":
-        return hasData(user?.name);
-      case "email":
-        return hasData(user?.email);
-      case "mobile":
-        return false; // Mobile can always be updated
-      case "class_year":
-        return hasData(user?.class_year);
-      default:
-        return false;
-    }
-  };
-
   useEffect(() => {
     if (!loading && !user) {
       router.push("/");
       return;
     }
-
-    if (user) {
-      // Debug log to check user data
-      console.log("User data in profile:", {
-        name: user.name,
-        email: user.email,
-        mobile: user.mobile,
-        class_year: user.class_year,
-        hasName: hasData(user.name),
-        hasEmail: hasData(user.email),
-        hasMobile: hasData(user.mobile),
-        hasClassYear: hasData(user.class_year),
-        isNewStudent: isNewStudent,
-        shouldDisableName: shouldDisableField("name"),
-        shouldDisableEmail: shouldDisableField("email"),
-        shouldDisableMobile: shouldDisableField("mobile"),
-        shouldDisableClassYear: shouldDisableField("class_year"),
-      });
-
-      setFormData({
-        name: user.name || "",
-        email: user.email || "",
-        mobile: user.mobile || "",
-        class_year: user.class_year || "",
-      });
-    }
   }, [user, loading, router]);
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
-    setIsUpdating(true);
-    setMessage("");
-
-    try {
-      // Validate form data
-      if (!formData.name.trim()) {
-        setMessage("Name is required");
-        setMessageType("error");
-        return;
-      }
-
-      if (formData.email && !formData.email.includes("@")) {
-        setMessage("Please enter a valid email address");
-        setMessageType("error");
-        return;
-      }
-
-      if (
-        formData.mobile &&
-        !/^\d{10}$/.test(formData.mobile.replace(/\D/g, ""))
-      ) {
-        setMessage("Please enter a valid 10-digit mobile number");
-        setMessageType("error");
-        return;
-      }
-
-      // Update student details
-      const { data, error } = await dbHelpers.updateStudent(user.id, {
-        name: formData.name.trim(),
-        email: formData.email.trim() || undefined,
-        mobile: formData.mobile.replace(/\D/g, "") || undefined,
-        class_year: formData.class_year || undefined,
-      });
-
-      if (error) {
-        // Profile update error - handling silently
-        setMessage("Failed to update profile. Please try again.");
-        setMessageType("error");
-        return;
-      }
-
-      // Refresh user data in context
-      await refreshUser();
-
-      setMessage("Profile updated successfully!");
-      setMessageType("success");
-    } catch (error) {
-      // Profile update error - handling silently
-      setMessage("An unexpected error occurred. Please try again.");
-      setMessageType("error");
-    } finally {
-      setIsUpdating(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -177,9 +50,8 @@ export default function ProfilePage() {
         className="min-h-screen flex items-center justify-center"
         style={{ backgroundColor: "#FFFFFF" }}
       >
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
-          <p className="mt-2 text-black">Loading profile...</p>
+        <div className="w-16 h-16">
+          <Loader />
         </div>
       </div>
     );
@@ -210,19 +82,20 @@ export default function ProfilePage() {
       </div>
 
       {/* Header with Back Button */}
-      <div className="backdrop-blur-md  bg-white relative z-10">
+      <div className="backdrop-blur-md bg-white relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <Button
               variant="ghost"
               asChild
-              className="text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-300  hover:shadow-xl rounded-xl px-6 py-3 hover:border-blue-300"
+              className="text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-300 hover:shadow-xl rounded-xl px-6 py-3 hover:border-blue-300"
             >
               <Link href="/">
                 <ArrowLeft className="h-5 w-5 mr-2" />
+                Back to Home
               </Link>
             </Button>
-            <div className="flex flex-col items-end bg-white rounded-2xl px-6 py-3">
+            <div className="flex flex-col items-end">
               <p className="text-xl font-bold text-gray-800">{user.name}</p>
               <p className="text-sm text-gray-600 font-medium">
                 {user.register_number || "Student"}
@@ -232,245 +105,107 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-2 relative z-10">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         {/* Page Title Section */}
         <div className="mb-8 text-center">
-          <div className="bg-white rounded-2xl p-2 mx-auto max-w-2xl">
-            <h1 className="text-2xl font-bold text-gray-800 mb-3">
-              Personal Information
-            </h1>
-            {isNewStudent ? (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
-                <div className="flex items-center justify-center space-x-2">
-                  <AlertCircle className="h-5 w-5 text-blue-600" />
-                  <p className="text-blue-800 font-semibold">
-                    Complete Your Profile
-                  </p>
-                </div>
-                <p className="text-blue-700 text-sm mt-2">
-                  Please fill in all required information to access the system
-                  features
-                </p>
-              </div>
-            ) : (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
-                <div className="flex items-center justify-center space-x-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <p className="text-green-800 font-semibold">
-                    Profile Complete
-                  </p>
-                </div>
-                <p className="text-green-700 text-sm mt-2">
-                  Your profile is verified. Only mobile number can be updated.
-                </p>
-              </div>
-            )}
-            <p className="text-gray-600 text-sm">
-              Update your profile information to ensure accurate records
-            </p>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">
+            Personal Information
+          </h1>
+          <p className="text-gray-600 text-sm">
+            Your profile details
+          </p>
         </div>
 
-        <Card
-          className="group relative overflow-hidden bg-white shadow-2xl border-0 hover:shadow-3xl transition-all duration-500"
-          style={{ position: "relative", zIndex: 1 }}
-        >
-          {/* Gradient Border Effect */}
-          <div
-            className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl"
-            style={{ zIndex: -1 }}
-          ></div>
-          <div
-            className="relative bg-white m-1 rounded-xl"
-            style={{ position: "relative", zIndex: 2 }}
-          >
-            <CardHeader className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-t-xl border-b border-indigo-100">
-              {/* Header Background Pattern */}
-              <div
-                className="absolute inset-0 opacity-5 rounded-t-xl"
-                style={{ zIndex: -5, pointerEvents: "none" }}
-              >
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Cpath d='M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z'/%3E%3C/g%3E%3C/svg%3E")`,
-                    pointerEvents: "none",
-                  }}
-                ></div>
-              </div>
-              <div className="relative z-10">
-                <CardTitle className="flex items-center space-x-3">
-                  <div className="p-3 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl shadow-lg">
-                    <User className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-800">
-                      Profile Details
-                    </h2>
-                  </div>
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent
-              className="p-8"
-              style={{ position: "relative", zIndex: 3 }}
-            >
-              <form
-                onSubmit={handleSubmit}
-                className="space-y-8"
-                style={{ position: "relative", zIndex: 4 }}
-              >
-                {/* Registration Number (Read-only) */}
-                <div className="p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200">
-                  <label className="block text-sm font-bold text-gray-700 mb-3">
-                    Register Number (As per Anna University)
-                  </label>
-                  <input
-                    type="text"
-                    value={user.register_number}
-                    disabled
-                    className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-gray-800 cursor-not-allowed bg-gray-100 shadow-inner font-medium"
-                  />
-                  <p className="text-xs text-gray-600 mt-2 flex items-center">
-                    <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
-                    Register number cannot be modified
-                  </p>
-                </div>
-
-                {/* Name */}
-                <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-                  <label className="block text-sm font-bold text-blue-600 uppercase tracking-wider mb-3">
-                    Full Name{" "}
-                    {isNewStudent && <span className="text-red-500">*</span>}
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name || ""}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-inner text-gray-800 font-medium transition-all duration-300 bg-white border-blue-300"
-                    placeholder="Enter your full name"
-                  />
-                  <p className="text-xs text-gray-600 mt-2 flex items-center">
-                    {shouldDisableField("name") ? (
-                      <>
-                        <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
-                        Name is verified and cannot be modified
-                      </>
-                    ) : (
-                      "Enter your full name as per official records"
-                    )}
-                  </p>
-                </div>
-
-                {/* Email */}
-                <div className="p-4 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-100">
-                  <label className="block text-sm font-bold text-cyan-600 uppercase tracking-wider mb-3">
-                    Email Address{" "}
-                    {isNewStudent && <span className="text-red-500">*</span>}
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email || ""}
-                    onChange={handleInputChange}
-                    disabled={false}
-                    className="w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent shadow-inner text-gray-800 font-medium transition-all duration-300 bg-white border-cyan-300"
-                    placeholder="Enter your email address"
-                  />
-                  <p className="text-xs text-gray-600 mt-2 flex items-center">
-                    {shouldDisableField("email") ? (
-                      <>
-                        <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
-                        Email is verified and cannot be modified
-                      </>
-                    ) : (
-                      "Enter your college or personal email address"
-                    )}
-                  </p>
-                </div>
-
-                {/* Mobile */}
-                <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                  <label className="block text-sm font-bold text-green-600 uppercase tracking-wider mb-3">
-                    Mobile Number{" "}
-                    {isNewStudent && <span className="text-red-500">*</span>}
-                  </label>
-                  <input
-                    type="tel"
-                    name="mobile"
-                    value={formData.mobile || ""}
-                    onChange={handleInputChange}
-                    disabled={false}
-                    className="w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-inner text-gray-800 font-medium transition-all duration-300 bg-white border-green-300"
-                    placeholder="Enter your mobile number"
-                  />
-                  <p className="text-xs text-gray-600 mt-2">
-                    {shouldDisableField("mobile")
-                      ? "Mobile number can be updated anytime"
-                      : "Enter your 10-digit mobile number"}
-                  </p>
-                </div>
-
-                {/* Class Year */}
-                <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
-                  <label className="block text-sm font-bold text-purple-600 uppercase tracking-wider mb-3">
-                    Class Year{" "}
-                    {isNewStudent && <span className="text-red-500">*</span>}
-                  </label>
-                  <select
-                    name="class_year"
-                    value={formData.class_year || ""}
-                    onChange={handleInputChange}
-                    disabled={false}
-                    className="w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent shadow-inner text-gray-800 font-medium transition-all duration-300 bg-white border-purple-300"
-                  >
-                    <option value="">Select your class year</option>
-                    <option value="II-IT">II-IT</option>
-                    <option value="III-IT">III-IT</option>
-                  </select>
-                  <p className="text-xs text-gray-600 mt-2 flex items-center">
-                    {shouldDisableField("class_year") ? (
-                      <>
-                        <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
-                        Class year is verified and cannot be modified
-                      </>
-                    ) : (
-                      "Select your current academic year"
-                    )}
-                  </p>
-                </div>
-
-                {message && (
-                  <Alert
-                    variant={messageType === "success" ? "success" : "error"}
-                    message={message}
-                    className="mt-4"
-                  />
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={isUpdating}
-                  className="w-full h-14 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  {isUpdating ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin mr-3" />
-                      {isNewStudent
-                        ? "Completing Profile..."
-                        : "Updating Profile..."}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-5 w-5 mr-3" />
-                      {isNewStudent ? "Complete Profile" : "Save Changes"}
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
+        {isNewStudent ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-center">
+            <div className="flex items-center justify-center space-x-2">
+              <AlertCircle className="h-5 w-5 text-blue-600" />
+              <p className="text-blue-800 font-semibold">
+                Profile Incomplete
+              </p>
+            </div>
+            <p className="text-blue-700 text-sm mt-2">
+              Please contact administration to complete your profile
+            </p>
           </div>
+        ) : (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-center">
+            <div className="flex items-center justify-center space-x-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <p className="text-green-800 font-semibold">
+                Profile Complete
+              </p>
+            </div>
+          </div>
+        )}
+
+        <Card className="bg-white shadow-sm border border-gray-200">
+          <CardHeader className="bg-gray-50 border-b border-gray-200 rounded-t-lg">
+            <CardTitle className="flex items-center space-x-3 text-gray-800">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <User className="h-5 w-5 text-blue-600" />
+              </div>
+              <span>Profile Details</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-6">
+              {/* Registration Number */}
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div className="flex items-center space-x-3">
+                  <IdCard className="h-5 w-5 text-gray-400" />
+                  <span className="text-gray-600">Register Number</span>
+                </div>
+                <span className="font-medium text-gray-900">
+                  {user.register_number || "Not provided"}
+                </span>
+              </div>
+
+              {/* Name */}
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div className="flex items-center space-x-3">
+                  <User className="h-5 w-5 text-gray-400" />
+                  <span className="text-gray-600">Full Name</span>
+                </div>
+                <span className="font-medium text-gray-900">
+                  {user.name || "Not provided"}
+                </span>
+              </div>
+
+              {/* Email */}
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div className="flex items-center space-x-3">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                  <span className="text-gray-600">Email Address</span>
+                </div>
+                <span className="font-medium text-gray-900">
+                  {user.email || "Not provided"}
+                </span>
+              </div>
+
+              {/* Mobile */}
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div className="flex items-center space-x-3">
+                  <Phone className="h-5 w-5 text-gray-400" />
+                  <span className="text-gray-600">Mobile Number</span>
+                </div>
+                <span className="font-medium text-gray-900">
+                  {user.mobile || "Not provided"}
+                </span>
+              </div>
+
+              {/* Class Year */}
+              <div className="flex items-center justify-between py-3">
+                <div className="flex items-center space-x-3">
+                  <Calendar className="h-5 w-5 text-gray-400" />
+                  <span className="text-gray-600">Class Year</span>
+                </div>
+                <span className="font-medium text-gray-900">
+                  {user.class_year || "Not provided"}
+                </span>
+              </div>
+            </div>
+          </CardContent>
         </Card>
       </div>
     </div>

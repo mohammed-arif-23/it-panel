@@ -27,6 +27,7 @@ import {
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import Alert from '@/components/ui/alert'
+import Loader from '@/components/ui/loader'
 
 interface NPTELRegistrationData {
   register_number: string
@@ -449,7 +450,7 @@ export default function NPTELPage() {
     return (
       <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#FFFFFF'}}>
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
+          <Loader/>
           <p className="mt-2 text-black">Loading your NPTEL data...</p>
         </div>
       </div>
@@ -632,7 +633,7 @@ export default function NPTELPage() {
                 >
                   {isRegistering ? (
                     <>
-                      <Loader2 className="h-5 w-5 animate-spin mr-3" />
+                      <Loader/>
                       Registering...
                     </>
                   ) : (
@@ -649,7 +650,7 @@ export default function NPTELPage() {
 
   // Main NPTEL Dashboard
   return (
-    <div className="min-h-screen relative" style={{backgroundColor: '#FFFFFF'}}>
+    <div className="min-h-[70vh] relative" style={{backgroundColor: '#FFFFFF'}}>
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute inset-0" style={{
@@ -801,7 +802,7 @@ export default function NPTELPage() {
           </>
         ) : (
           <div className="text-center py-12 bg-white rounded-2xl shadow-xl border border-gray-200">
-            <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-600 mb-4" />
+            <Loader/>
             <p className="text-gray-700 font-medium">Loading course data...</p>
           </div>
         )}

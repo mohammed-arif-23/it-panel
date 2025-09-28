@@ -20,6 +20,9 @@ import {
   AlertCircle, 
   CheckCircle,
   Download,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Search,
   User,
   Trash2,
@@ -27,6 +30,7 @@ import {
   Eye
 } from 'lucide-react'
 import FineCreationPanel from './FineCreationPanel'
+import { exportArrayToExcel } from '@/lib/exportExcel'
 
 interface Fine {
   id: string
@@ -91,6 +95,19 @@ export default function ModernFineManagement({
     amount: 10
   })
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState<keyof Fine | 'student_name' | 'student_register' | 'student_class' | 'payment_status'>('created_at' as any)
+  const [sortAsc, setSortAsc] = useState<boolean>(false)
+  const [columnsDialog, setColumnsDialog] = useState(false)
+  const allColumns = [
+    { key: 'student_name', label: 'Student' },
+    { key: 'student_register', label: 'Register No.' },
+    { key: 'student_class', label: 'Class' },
+    { key: 'fine_type', label: 'Type' },
+    { key: 'base_amount', label: 'Amount' },
+    { key: 'payment_status', label: 'Status' },
+    { key: 'reference_date', label: 'Date' },
+  ] as const
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(allColumns.map(c => c.key))
   
   // Row selection helpers
   const isAllSelected = fines.length > 0 && selectedIds.length === fines.length
@@ -396,6 +413,35 @@ export default function ModernFineManagement({
     } finally {
       setIsDeletingBulk(false)
     }
+  }
+
+  const sortedFines = [...fines].sort((a, b) => {
+    const getVal = (f: Fine) => {
+      switch (sortBy) {
+        case 'student_name': return f.unified_students?.name || ''
+        case 'student_register': return f.unified_students?.register_number || ''
+        case 'student_class': return f.unified_students?.class_year || ''
+        default: return (f as any)[sortBy]
+      }
+    }
+    const av = getVal(a); const bv = getVal(b)
+    if (av === bv) return 0
+    return (av > bv ? 1 : -1) * (sortAsc ? 1 : -1)
+  })
+
+  const exportSelectedColumns = () => {
+    const rows = sortedFines.map(f => ({
+      student_name: f.unified_students?.name || '',
+      student_register: f.unified_students?.register_number || '',
+      student_class: f.unified_students?.class_year || '',
+      fine_type: f.fine_type,
+      base_amount: f.base_amount,
+      payment_status: f.payment_status,
+      reference_date: f.reference_date,
+    }))
+    const headerMap: Record<string, string> = {}
+    allColumns.forEach(c => headerMap[c.key] = c.label)
+    exportArrayToExcel(rows, 'fines', selectedColumns, headerMap)
   }
 
   return (
@@ -891,7 +937,7 @@ export default function ModernFineManagement({
                 Refresh
               </Button>
               <Button
-                onClick={onExport}
+                onClick={() => setColumnsDialog(true)}
                 variant="outline"
                 className="w-full"
                 size="sm"
@@ -946,18 +992,53 @@ export default function ModernFineManagement({
                         className={isIndeterminate ? 'data-[state=indeterminate]:opacity-100' : ''}
                       />
                     </TableHead>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Register No.</TableHead>
-                    <TableHead>Class</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none"
+                      onClick={() => { if (sortBy === 'student_name') setSortAsc(!sortAsc); else { setSortBy('student_name'); setSortAsc(true) } }}
+                    >
+                      <div className="flex items-center gap-1">Student {sortBy === 'student_name' ? (sortAsc ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-50" />}</div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none"
+                      onClick={() => { if (sortBy === 'student_register') setSortAsc(!sortAsc); else { setSortBy('student_register'); setSortAsc(true) } }}
+                    >
+                      <div className="flex items-center gap-1">Register No. {sortBy === 'student_register' ? (sortAsc ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-50" />}</div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none"
+                      onClick={() => { if (sortBy === 'student_class') setSortAsc(!sortAsc); else { setSortBy('student_class'); setSortAsc(true) } }}
+                    >
+                      <div className="flex items-center gap-1">Class {sortBy === 'student_class' ? (sortAsc ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-50" />}</div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none"
+                      onClick={() => { if (sortBy === 'fine_type') setSortAsc(!sortAsc); else { setSortBy('fine_type'); setSortAsc(true) } }}
+                    >
+                      <div className="flex items-center gap-1">Type {sortBy === 'fine_type' ? (sortAsc ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-50" />}</div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none"
+                      onClick={() => { if (sortBy === 'base_amount') setSortAsc(!sortAsc); else { setSortBy('base_amount'); setSortAsc(true) } }}
+                    >
+                      <div className="flex items-center gap-1">Amount {sortBy === 'base_amount' ? (sortAsc ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-50" />}</div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none"
+                      onClick={() => { if (sortBy === 'payment_status') setSortAsc(!sortAsc); else { setSortBy('payment_status'); setSortAsc(true) } }}
+                    >
+                      <div className="flex items-center gap-1">Status {sortBy === 'payment_status' ? (sortAsc ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-50" />}</div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none"
+                      onClick={() => { if (sortBy === 'reference_date') setSortAsc(!sortAsc); else { setSortBy('reference_date'); setSortAsc(true) } }}
+                    >
+                      <div className="flex items-center gap-1">Date {sortBy === 'reference_date' ? (sortAsc ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-50" />}</div>
+                    </TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {fines.map((fine) => (
+                  {sortedFines.map((fine) => (
                     <TableRow key={fine.id}>
                       <TableCell className="w-10">
                         <Checkbox

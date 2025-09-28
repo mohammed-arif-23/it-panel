@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, memo, useMemo } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
+import { useSeminarStudent, useSeminarDashboardData, usePresenterHistory, useSeminarBooking } from '../../hooks/useSeminarData'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import Alert from '../../components/ui/alert'
@@ -15,16 +16,15 @@ import {
   AlertCircle, 
   ArrowLeft,
   Trophy,
-  Loader2,
-  RefreshCw,
   CalendarX,
+  Loader2,
   Info
 } from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import { holidayService } from '../../lib/holidayService'
 import { seminarTimingService } from '../../lib/seminarTimingService'
-
+import Loader from '@/components/ui/loader'
 interface TodaySelection {
   student: {
     id: string
@@ -189,15 +189,9 @@ const seminarDbHelpers = {
 export default function SeminarPage() {
   const { user } = useAuth()
   const router = useRouter()
-  const [seminarStudent, setSeminarStudent] = useState<SeminarStudent | null>(null)
   const [windowInfo, setWindowInfo] = useState<BookingWindowInfo>({ isOpen: false })
-  const [todaySelection, setTodaySelection] = useState<TodaySelection | null>(null)
-  const [tomorrowSelections, setTomorrowSelections] = useState<TomorrowSelection[]>([])
-  const [hasBookedToday, setHasBookedToday] = useState(false)
   const [isBooking, setIsBooking] = useState(false)
   const [bookingMessage, setBookingMessage] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingSelections, setIsLoadingSelections] = useState(false)
   const [autoSelectionTriggered, setAutoSelectionTriggered] = useState(false)
   const [selectionMessage, setSelectionMessage] = useState('')
   const [seminarTopic, setSeminarTopic] = useState('')
@@ -205,19 +199,24 @@ export default function SeminarPage() {
   const [holidayInfo, setHolidayInfo] = useState<HolidayInfo>({ isHoliday: false })
   const [rescheduleNotification, setRescheduleNotification] = useState<RescheduleNotification | null>(null)
   const [rescheduleNotificationDismissed, setRescheduleNotificationDismissed] = useState(false)
-  const [nextSeminarDate, setNextSeminarDate] = useState('')
   const [isSelectionInProgress, setIsSelectionInProgress] = useState(false)
-  const [presenterHistory, setPresenterHistory] = useState<TomorrowSelection[]>([])
   const [isTodayHoliday, setIsTodayHoliday] = useState(false)
   const [todayHolidayInfo, setTodayHolidayInfo] = useState<{ holidayName?: string }>({})
+
+  // Use React Query hooks
+  const { data: seminarStudent, isLoading: isLoadingStudent } = useSeminarStudent(user?.register_number || '')
+  const { data: dashboardData, isLoading: isLoadingSelections } = useSeminarDashboardData(seminarStudent?.id || '', user?.class_year || '')
+  const { data: presenterHistory = [] } = usePresenterHistory(user?.class_year || '')
+  const bookingMutation = useSeminarBooking()
+
+  // Extract data from dashboard
+  const { hasBookedToday, todaySelection, tomorrowSelections, nextSeminarDate } = dashboardData || {}
 
   useEffect(() => {
     if (!user) {
       router.push('/')
       return
     }
-    
-    initializeSeminarStudent()
   }, [user, router])
 
   // Real-time updates with auto-selection and holiday checking
@@ -238,7 +237,6 @@ export default function SeminarPage() {
       
       // Get holiday-aware next seminar date
       const holidayAwareSeminarDate = await holidayService.getHolidayAwareNextSeminarDate()
-      setNextSeminarDate(holidayAwareSeminarDate)
       
       // Check if the originally calculated seminar date is a holiday
       const originalDate = seminarTimingService.getNextSeminarDate()
@@ -304,188 +302,9 @@ export default function SeminarPage() {
     return () => clearInterval(interval)
   }, [autoSelectionTriggered, seminarStudent, rescheduleNotificationDismissed])
 
-  // Load data when seminar student is set
-  useEffect(() => {
-    if (seminarStudent) {
-      loadDashboardData()
-    }
-  }, [seminarStudent])
+  // Remove old data loading functions since we're using React Query now
 
-  const initializeSeminarStudent = async () => {
-    if (!user) return
-
-    setIsLoading(true)
-    try {
-      // Check if seminar student exists
-      let { data: student, error } = await seminarDbHelpers.findSeminarStudentByRegNumber(user.register_number)
-
-      if (error && error.code !== 'PGRST116') {
-        // Database error - handling silently
-        return
-      }
-
-      // If seminar student doesn't exist, create one
-      if (!student) {
-        const createResult = await seminarDbHelpers.createSeminarStudent(user.register_number)
-        if (createResult.error) {
-          // Error creating seminar student - handling silently
-          return
-        }
-        student = createResult.data
-      }
-
-      setSeminarStudent(student)
-    } catch (error) {
-      // Error initializing seminar student - handling silently
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const loadDashboardData = async () => {
-    if (!seminarStudent) return
-
-    setIsLoadingSelections(true)
-    try {
-      // Get holiday-aware next seminar date
-      const holidayAwareDate = nextSeminarDate || await holidayService.getHolidayAwareNextSeminarDate()
-      
-      // Check if user has booked for next seminar
-      const { data: booking } = await seminarDbHelpers.getStudentBooking(seminarStudent.id, holidayAwareDate)
-      setHasBookedToday(!!booking)
-
-      // Get date references for selection lookup
-      const today = seminarTimingService.getTodayDate()
-      const tomorrow = seminarTimingService.getNextSeminarDate()
-
-      // Get TODAY's seminar selections (for today's date)
-      const { data: todaySelections } = await seminarDbHelpers.getSelectionsForDate(today)
-      
-      // Process today's selection
-      if (todaySelections && todaySelections.length > 0) {
-        // Find selections from the user's class only
-        const userClassSelections = todaySelections.filter((selection: any) => 
-          (selection as any).unified_students.class_year === user?.class_year
-        )
-        
-        if (userClassSelections.length > 0) {
-          // Sort by selection time (most recent first) and show the latest
-          const sortedSelections = userClassSelections.sort((a: any, b: any) => 
-            new Date((b as any).selected_at).getTime() - new Date((a as any).selected_at).getTime()
-          )
-          
-          const latestSelection = sortedSelections[0]
-          
-          setTodaySelection({
-            student: {
-              id: (latestSelection as any).unified_students.id,
-              register_number: (latestSelection as any).unified_students.register_number,
-              name: (latestSelection as any).unified_students.name || (latestSelection as any).unified_students.register_number,
-              class_year: (latestSelection as any).unified_students.class_year
-            },
-            selectedAt: (latestSelection as any).selected_at
-          })
-        } else {
-          setTodaySelection(null)
-        }
-      } else {
-        setTodaySelection(null)
-      }
-
-      // Get TOMORROW's seminar selections (for tomorrow's date)
-      const { data: tomorrowSelectionsData } = await seminarDbHelpers.getSelectionsForDate(tomorrow)
-      
-      if (tomorrowSelectionsData && tomorrowSelectionsData.length > 0) {
-        // Filter selections to only show students from the same class as logged-in user
-        const filteredTomorrowSelections = user ? tomorrowSelectionsData.filter((selection: any) => 
-          selection.unified_students.class_year === user.class_year
-        ) : tomorrowSelectionsData
-        
-        // Map to the correct format
-        const formattedTomorrowSelections = filteredTomorrowSelections.map((selection: any) => ({
-          student: {
-            id: selection.unified_students.id,
-            register_number: selection.unified_students.register_number,
-            name: selection.unified_students.name || selection.unified_students.register_number,
-            class_year: selection.unified_students.class_year
-          },
-          selectedAt: selection.selected_at,
-          seminarDate: tomorrow
-        }))
-        
-        // Sort by selection time (most recent first) and show the latest selected student
-        const sortedTomorrowSelections = formattedTomorrowSelections.sort((a: any, b: any) => 
-          new Date(b.selectedAt).getTime() - new Date(a.selectedAt).getTime()
-        )
-        
-        setTomorrowSelections(sortedTomorrowSelections.slice(0, 1) as TomorrowSelection[])
-      } else {
-        setTomorrowSelections([])
-      }
-      
-      // Load presenter history (all past selections from user's class)
-      await loadPresenterHistory()
-    } catch (error) {
-      // Error loading dashboard data - handling silently
-    } finally {
-      setIsLoadingSelections(false)
-    }
-  }
-
-  const loadPresenterHistory = async () => {
-    if (!user) return
-
-    try {
-      const today = seminarTimingService.getTodayDate()
-      
-      // Get only PAST selections from user's class (before today), ordered by date (most recent first)
-      const { data: allSelections, error } = await (supabase as any)
-        .from('unified_seminar_selections')
-        .select(`
-          *,
-          unified_students (
-            id,
-            name,
-            register_number,
-            class_year
-          )
-        `)
-        .eq('unified_students.class_year', user.class_year)
-        .lt('seminar_date', today) // Only past selections (before today)
-        .order('seminar_date', { ascending: false })
-        .order('selected_at', { ascending: false })
-        .limit(20) // Limit to last 20 presentations
-
-      if (error) {
-        // Error loading presenter history - handling silently
-        return
-      }
-
-      if (allSelections && allSelections.length > 0) {
-        const historySelections = allSelections
-          .filter((selection: any) => selection.unified_students) // Filter out null students
-          .map((selection: any) => ({
-            student: {
-              id: selection.unified_students.id,
-              register_number: selection.unified_students.register_number,
-              name: selection.unified_students.name || selection.unified_students.register_number,
-              class_year: selection.unified_students.class_year
-            },
-            selectedAt: selection.selected_at,
-            seminarDate: selection.seminar_date
-          }))
-
-        setPresenterHistory(historySelections as TomorrowSelection[])
-      } else {
-        setPresenterHistory([])
-      }
-    } catch (error) {
-      // Error loading presenter history - handling silently
-      setPresenterHistory([])
-    }
-  }
-
-  const handleBooking = async () => {
+  const handleBooking = useCallback(async () => {
     if (!seminarStudent || !windowInfo.isOpen) return
 
     setIsBooking(true)
@@ -501,34 +320,27 @@ export default function SeminarPage() {
 
     try {
       const bookingDate = nextSeminarDate || await holidayService.getHolidayAwareNextSeminarDate()
-      const { data, error } = await seminarDbHelpers.createBooking(seminarStudent.id, bookingDate, seminarTopic)
       
-      if (error) {
-        if (error.code === '23505') {
-          setBookingMessage(`You have already booked for the seminar on ${seminarTimingService.formatDateWithDay(bookingDate).split(',')[0]}!`)
-          setHasBookedToday(true)
-        } else {
-          setBookingMessage('Failed to book. Please try again.')
-        }
-      } else {
-        const dateDisplay = seminarTimingService.formatDateWithDay(bookingDate).split(',')[0]
-        setBookingMessage(`Successfully booked for seminar on ${dateDisplay}!`)
-        setHasBookedToday(true)
-      }
+      await bookingMutation.mutateAsync({
+        studentId: seminarStudent.id,
+        bookingDate,
+        seminarTopic
+      })
+      
+      const dateDisplay = seminarTimingService.formatDateWithDay(bookingDate).split(',')[0]
+      setBookingMessage(`Successfully booked for seminar on ${dateDisplay}!`)
     } catch (error) {
-      console.error('Booking error:', error)
-      setBookingMessage('An error occurred. Please try again.')
+      setBookingMessage(error instanceof Error ? error.message : 'An error occurred. Please try again.')
     } finally {
       setIsBooking(false)
     }
-  }
+  }, [seminarStudent, windowInfo.isOpen, seminarTopic, nextSeminarDate, bookingMutation])
 
-  if (isLoading) {
+  if (isLoadingStudent) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#FFFFFF'}}>
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
-          <p className="mt-2 text-black">Loading Seminar system...</p>
+          <Loader/>
         </div>
       </div>
     )
@@ -672,7 +484,6 @@ export default function SeminarPage() {
                         variant="info" 
                         message={`You already have an active booking for the seminar on ${nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0] : 'the next seminar date'}.`}
                         className="mb-4"
-                        onClose={() => setHasBookedToday(false)}
                       />
                     ) : (
                       <>
@@ -711,7 +522,7 @@ export default function SeminarPage() {
                           >
                             {isBooking ? (
                               <>
-                                <Loader2 className="h-5 w-5 animate-spin mr-3" />
+                               <Loader /> 
                                 Booking...
                               </>
                             ) : (

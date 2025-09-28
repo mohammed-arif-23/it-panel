@@ -31,6 +31,7 @@ interface DatabaseSubmission {
   submitted_at: string;
   status: string;
   file_size?: number;
+  file_hash?: string;
   unified_students?: {
     name: string;
     register_number: string;
@@ -306,7 +307,8 @@ export async function POST(request: NextRequest) {
       student_name: submission.unified_students?.name || 'Unknown',
       register_number: submission.unified_students?.register_number || 'Unknown',
       assignment_title: submission.assignments?.title || 'Unknown',
-      file_size: submission.file_size || 0
+      file_size: submission.file_size || 0,
+      file_hash: submission.file_hash
     }));
     
     console.log('Transformed submissions:', transformedSubmissions.length);
@@ -318,24 +320,37 @@ export async function POST(request: NextRequest) {
     if (method === 'all' || method === 'hash') {
       console.log('Starting file hash comparison for', transformedSubmissions.length, 'submissions');
       const hashGroups = new Map<string, any[]>();
-      
-      for (const submission of transformedSubmissions) {
-        console.log('Processing submission:', submission.id, 'URL:', submission.file_url);
-        const fileHash = await calculateFileHash(submission.file_url);
-        console.log('Hash calculated:', fileHash ? 'SUCCESS' : 'FAILED');
-        if (fileHash) {
+
+      const allHaveStoredHash = transformedSubmissions.every(s => !!s.file_hash);
+      console.log('All submissions have stored hash?', allHaveStoredHash);
+
+      if (allHaveStoredHash) {
+        // Use stored hashes directly; no file fetching
+        for (const submission of transformedSubmissions) {
+          const fileHash = submission.file_hash!;
           if (!hashGroups.has(fileHash)) {
             hashGroups.set(fileHash, []);
           }
-          hashGroups.get(fileHash)!.push({
-            ...submission,
-            file_hash: fileHash
-          });
+          hashGroups.get(fileHash)!.push(submission);
+        }
+      } else {
+        // Fallback: compute hashes for those missing (minimize file checks)
+        for (const submission of transformedSubmissions) {
+          const fileHash = submission.file_hash || (await calculateFileHash(submission.file_url));
+          if (fileHash) {
+            if (!hashGroups.has(fileHash)) {
+              hashGroups.set(fileHash, []);
+            }
+            hashGroups.get(fileHash)!.push({
+              ...submission,
+              file_hash: fileHash
+            });
+          }
         }
       }
-      
+
       console.log('Hash groups created:', hashGroups.size);
-      
+
       const suspiciousGroups = Array.from(hashGroups.entries())
         .filter(([hash, group]) => group.length > 1)
         .map(([hash, group]) => ({
@@ -344,7 +359,7 @@ export async function POST(request: NextRequest) {
           confidence: 100,
           reason: `Identical file hash (${group.length} students)`
         }));
-      
+
       console.log('Suspicious hash groups found:', suspiciousGroups.length);
       if (suspiciousGroups.length > 0) {
         results.push({

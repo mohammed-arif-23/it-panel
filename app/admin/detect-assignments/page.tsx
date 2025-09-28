@@ -26,6 +26,7 @@ import {
   Hash
 } from "lucide-react";
 import ModernAdminNavbar from "@/components/admin/ModernAdminNavbar";
+import PlagiarismDetection from "@/components/adminComponents/PlagiarismDetection";
 
 interface AssignmentSubmission {
   id: string;
@@ -142,9 +143,27 @@ export default function DetectAssignmentsPage() {
   const runDetection = async () => {
     setIsDetecting(true);
     try {
+      // Pre-check hash generation stats to decide the best detection method.
+      // If all submissions have stored hashes (without_hash === 0), prefer hash-based detection
+      // to avoid direct file checks.
+      let effectiveMethod = selectedMethod;
+      try {
+        const statsUrl = selectedAssignment
+          ? `/api/admin/generate-hashes?assignment_id=${selectedAssignment}`
+          : "/api/admin/generate-hashes";
+        const statsRes = await fetch(statsUrl);
+        const statsData = await statsRes.json();
+        if (statsData?.success && statsData?.statistics?.without_hash === 0) {
+          // All submissions have hashes; force hash-only to avoid direct file checks
+          effectiveMethod = "hash";
+        }
+      } catch (e) {
+        console.warn("Could not fetch hash stats before detection, proceeding with selected method.", e);
+      }
+
       console.log("Running detection with:", {
         assignment_id: selectedAssignment,
-        method: selectedMethod,
+        method: effectiveMethod,
         min_similarity: filters.min_similarity
       });
 
@@ -155,7 +174,7 @@ export default function DetectAssignmentsPage() {
         },
         body: JSON.stringify({
           assignment_id: selectedAssignment,
-          method: selectedMethod,
+          method: effectiveMethod,
           min_similarity: filters.min_similarity
         }),
       });
@@ -306,7 +325,7 @@ Check console for detailed logs.`);
 
   return (
     <div className="min-h-screen mt-16 bg-gray-50">
- 
+
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
@@ -316,6 +335,11 @@ Check console for detailed logs.`);
           <p className="text-gray-600">
             Detect multiple students uploading the same or similar assignments using advanced algorithms.
           </p>
+        </div>
+
+        {/* Hash Generation & Setup */}
+        <div className="mb-8">
+          <PlagiarismDetection />
         </div>
 
         {/* Detection Methods Overview */}
@@ -511,13 +535,18 @@ Check console for detailed logs.`);
                       <Badge variant="secondary">{result.suspicious_groups.length} groups</Badge>
                     </div>
                     <p className="text-gray-600 mb-4">{result.description}</p>
-                    
+
                     <div className="space-y-4">
                       {result.suspicious_groups.map((group, groupIndex) => (
                         <div key={groupIndex} className="bg-gray-50 rounded-lg p-4">
                           <div className="flex justify-between items-start mb-3">
                             <div>
                               <h4 className="font-medium">Group {group.group_id}</h4>
+                              {group.submissions?.[0]?.assignment_title && (
+                                <p className="text-xs text-gray-700 mt-0.5">
+                                  Subject: {group.submissions[0].assignment_title}
+                                </p>
+                              )}
                               <p className="text-sm text-gray-600">{group.reason}</p>
                             </div>
                             <div className="text-right">
