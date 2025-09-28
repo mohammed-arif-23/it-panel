@@ -26,8 +26,8 @@ interface TomorrowSelection {
 
 interface SeminarStudent {
   id: string
-  reg_number: string
-  created_at: string
+  register_number: string
+  created_at?: string
 }
 
 interface BookingWindowInfo {
@@ -133,15 +133,30 @@ export function useSeminarStudent(registerNumber: string) {
         student = createResult.data
       }
 
-      return student
+      // Ensure we always return a SeminarStudent shape
+      if (!student) {
+        throw new Error('Seminar student not found')
+      }
+      return {
+        id: (student as any).id,
+        register_number: (student as any).register_number,
+        created_at: (student as any).created_at,
+      } as SeminarStudent
     },
     enabled: !!registerNumber,
     staleTime: 10 * 60 * 1000, // 10 minutes
   })
 }
 
+interface SeminarDashboardData {
+  hasBookedToday: boolean
+  todaySelection: TodaySelection | null
+  tomorrowSelections: TomorrowSelection[]
+  nextSeminarDate: string
+}
+
 export function useSeminarDashboardData(studentId: string, classYear: string) {
-  return useQuery({
+  return useQuery<SeminarDashboardData>({
     queryKey: ['seminar-dashboard', studentId],
     queryFn: async () => {
       const holidayAwareDate = await holidayService.getHolidayAwareNextSeminarDate()
@@ -215,7 +230,7 @@ export function useSeminarDashboardData(studentId: string, classYear: string) {
         todaySelection,
         tomorrowSelections,
         nextSeminarDate: holidayAwareDate
-      }
+      } as SeminarDashboardData
     },
     enabled: !!studentId && !!classYear,
     staleTime: 30 * 1000, // 30 seconds

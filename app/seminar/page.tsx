@@ -209,8 +209,8 @@ export default function SeminarPage() {
   const { data: presenterHistory = [] } = usePresenterHistory(user?.class_year || '')
   const bookingMutation = useSeminarBooking()
 
-  // Extract data from dashboard
-  const { hasBookedToday, todaySelection, tomorrowSelections, nextSeminarDate } = dashboardData || {}
+  // Extract data from dashboard with safe defaults
+  const { hasBookedToday, todaySelection, tomorrowSelections = [], nextSeminarDate } = dashboardData || {}
 
   useEffect(() => {
     if (!user) {
@@ -276,10 +276,6 @@ export default function SeminarPage() {
           const result = await seminarTimingService.triggerAutoSelection()
           if (result.success) {
             setSelectionMessage('Automatic selection completed successfully!')
-            // Reload dashboard data to show the new selection
-            if (seminarStudent) {
-              loadDashboardData()
-            }
           } else {
             setSelectionMessage(`Selection failed: ${result.message}`)
           }
