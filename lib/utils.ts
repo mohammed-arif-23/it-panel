@@ -5,8 +5,8 @@ export function cn(...inputs: any[]) {
   return twMerge(clsx(inputs))
 }
 
-// optional ripple position helper
-export function attachRipplePosition(e: React.MouseEvent<HTMLElement>) {
+// optional ripple position helper (no React type to avoid import)
+export function attachRipplePosition(e: any) {
   const target = e.currentTarget as HTMLElement
   const rect = target.getBoundingClientRect()
   const x = ((e.clientX - rect.left) / rect.width) * 100
