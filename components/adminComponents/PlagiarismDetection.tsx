@@ -304,46 +304,6 @@ export default function PlagiarismDetection() {
         <Alert variant="error" message={error} />
       )}
 
-      {/* Information Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-blue-600" />
-            How It Works
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3 text-sm text-gray-600">
-            <div className="flex items-start gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-              <div>
-                <strong>Hash Generation:</strong> Calculates SHA-256 hash for each PDF file to create a unique fingerprint.
-              </div>
-            </div>
-            
-            <div className="flex items-start gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-              <div>
-                <strong>Plagiarism Detection:</strong> New submissions are automatically checked against existing hashes.
-              </div>
-            </div>
-            
-            <div className="flex items-start gap-2">
-              <div className="w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
-              <div>
-                <strong>Exact Match:</strong> If a hash matches, the upload is blocked and the original student's name is shown.
-              </div>
-            </div>
-            
-            <div className="flex items-start gap-2">
-              <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-              <div>
-                <strong>Batch Processing:</strong> Large numbers of submissions are processed in batches to avoid timeouts.
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

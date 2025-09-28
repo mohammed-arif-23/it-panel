@@ -465,43 +465,7 @@ Check console for detailed logs.`);
           </CardContent>
         </Card>
 
-        {/* Submissions Overview */}
-        {submissions.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Current Submissions</CardTitle>
-              <CardDescription>
-                {submissions.length} submissions available for detection
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {submissions.slice(0, 6).map((submission) => (
-                  <div key={submission.id} className="bg-gray-50 rounded-lg p-3 border">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <p className="font-medium text-sm">{submission.student_name}</p>
-                        <p className="text-xs text-gray-500">{submission.register_number}</p>
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        {submission.status}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-gray-600 mb-1">{submission.assignment_title}</p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(submission.submitted_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              {submissions.length > 6 && (
-                <p className="text-sm text-gray-500 mt-4 text-center">
-                  And {submissions.length - 6} more submissions...
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
+
 
         {/* Results */}
         {detectionResults.length > 0 && (
