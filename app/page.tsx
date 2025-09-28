@@ -226,7 +226,7 @@ export default function HomePage() {
           </div>
 
           <div className="mb-6 rounded-2xl flex items-center justify-center overflow-hidden">
-           <img src={'7408.jpg'} alt="Video" className=' object-contain h-[40%] w-[40%]'></img>
+           <img src={'/7408.jpg'} alt="Illustration" className='object-contain h-[40%] w-[40%]' />
           </div>
 
           <Card className="backdrop-blur-md  bg-white border-0 shadow-none hover:shadow-3xl transition-all duration-300">
