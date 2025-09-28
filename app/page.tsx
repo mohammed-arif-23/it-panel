@@ -50,7 +50,6 @@ export default function HomePage() {
       class_year: user.class_year?.trim()
     }
     
-    // Check if all required fields are present and not empty
     return Object.values(requiredFields).every(field => field && field.length > 0)
   }
 
@@ -95,12 +94,10 @@ export default function HomePage() {
       
       if (dashboardData.success) {
         setDashboardData(dashboardData.data)
-      } else {
       }
       
       if (finesData.success) {
         setFinesData(finesData.data)
-      } else {
       }
       
     } catch (error) {
@@ -134,7 +131,6 @@ export default function HomePage() {
     }
   }
 
-  // Debounce student search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (studentSearch && !selectedStudent) {
@@ -147,7 +143,6 @@ export default function HomePage() {
 
   const handleStudentSelect = (student: Student) => {
     setSelectedStudent(student)
-    setRegisterNumber(student.register_number)
     setStudentSearch(`${student.name} (${student.register_number})`)
     setShowStudentDropdown(false)
     setError('')
@@ -196,7 +191,6 @@ export default function HomePage() {
     return (
       <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#FFFFFF'}}>
         <div className="text-center">
-          {/* Loading */}
           <div className="flex items-center justify-center space-x-2">
             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
             <span className="text-gray-600">
@@ -218,24 +212,24 @@ export default function HomePage() {
           }}></div>
         </div>
       
-      <div className="min-h-full flex flex-col items-center justify-center  relative z-10">
+      <div className="min-h-full flex flex-col items-center justify-center relative z-10">
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">        
-            <h1 className="text-xl font-bold text-gray-900 mb-2">Department of Information Technology</h1>
-            <p className="text-gray-600">Student Information System</p>
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Student Information System</h1>
+            <p className="text-gray-600 text-sm">Department of Information Technology</p>
           </div>
 
-          <div className="mb-6 rounded-2xl flex items-center justify-center overflow-hidden">
-           <img src={'/7408.jpg'} alt="Illustration" className='object-contain h-[40%] w-[40%]' />
+          <div className="mb-5 rounded-2xl flex items-center justify-center overflow-hidden">
+            <img src={'/7408.jpg'} alt="Illustration" className='object-contain h-[40%] w-[40%]' />
           </div>
 
-          <Card className="backdrop-blur-md  bg-white border-0 shadow-none hover:shadow-3xl transition-all duration-300">
-            <CardContent className="px-8 py-2 ">
+          <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardContent className="px-6 py-4 ">
               {!showStudentDetails ? (
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="student-search-container text-center relative">
-                    <label className="block text-md text-gray-700 mb-2">
-                      Welcome to <b className='font-extrabold text-lg' style={{fontFamily: 'Playfair Display'}}>dynamIT</b>'s Student Corner 
+                    <label className="block text-sm text-gray-700 mb-2">
+                      Welcome to <b className='font-extrabold' style={{fontFamily: 'Playfair Display'}}>dynamIT</b>'s Student Corner 
                     </label>
                     <div className="relative">
                       <input
@@ -245,31 +239,17 @@ export default function HomePage() {
                           const value = e.target.value
                           setStudentSearch(value)
                           setShowStudentDropdown(true)
-                          
-                          if (selectedStudent) {
-                            const selectedDisplayText = `${selectedStudent.name} (${selectedStudent.register_number})`
-                            if (value !== selectedDisplayText && !selectedDisplayText.toLowerCase().includes(value.toLowerCase())) {
-                              setSelectedStudent(null)
-                              setRegisterNumber('')
-                              setPassword('')
-                              setStudentHasPassword(false)
-                            }
-                          } else if (!value) {
-                            setSelectedStudent(null)
-                            setRegisterNumber('')
-                            setPassword('')
-                            setStudentHasPassword(false)
-                          }
+                          setSelectedStudent(null)
+                          setPassword('')
+                          setStudentHasPassword(false)
                         }}
                         onFocus={() => setShowStudentDropdown(true)}
                         placeholder="Type your name or register number"
-                        className="w-full px-4 py-4 pl-12 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
+                        className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800"
                         required
                       />
-                      <Search className="h-4 w-4 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     </div>
-                    
-                    {/* Student Dropdown */}
                     {showStudentDropdown && (studentSearch.length >= 2 || students.length > 0) && (
                       <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
                         {isLoadingStudents ? (
@@ -310,68 +290,38 @@ export default function HomePage() {
                     )}
                   </div>
                   
-                  {/* Selected Student Indicator */}
                   {selectedStudent && (
                     <div className="mt-2 p-3 rounded-md">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <CheckCircle className="h-4 w-4 text-green-600" />
                           <span className="text-sm text-green-800">
-                            Logging in as: {selectedStudent.name} 
+                            Logging in as: {selectedStudent.name}
                           </span>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowStudentDetails(true)}
-                          className="text-blue-600 hover:text-blue-800 text-xs"
-                        >
+                        <Button type="button" variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 text-xs">
                           View Details
                         </Button>
                       </div>
-                      
-                      {/* Password Field or Message */}
                       <div className="mt-3">
                         {studentHasPassword ? (
                           <>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Password
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                             <div className="relative">
                               <input
-                                type={showPassword ? "text" : "password"}
+                                type={showPassword ? 'text' : 'password'}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="Enter your password"
-                                className="w-full px-4 py-3 pl-12 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
+                                className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800"
                                 required
                               />
-                              <Lock className="h-5 w-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                              >
-                                {showPassword ? (
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                                  </svg>
-                                ) : (
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
-                                    <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
-                                  </svg>
-                                )}
-                              </button>
+                              <Lock className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                             </div>
                           </>
                         ) : (
                           <div className="p-3 bg-yellow-50 text-center border border-yellow-200 rounded-md">
-                            <p className="text-sm text-yellow-800">
-                              You don't have any password set. Please use "Set Password" option below.
-                            </p>
+                            <p className="text-sm text-yellow-800">You don't have any password set. Please use "Set Password" option below.</p>
                           </div>
                         )}
                       </div>
@@ -379,39 +329,17 @@ export default function HomePage() {
                   )}
 
                   {error && (
-                    <Alert 
-                      variant="error" 
-                      message={error} 
-                      className="mt-4"
-                    />
+                    <Alert variant="error" message={error} className="mt-2" />
                   )}
 
-                  <Button
-                    type="submit"
-                    disabled={isLoginDisabled()}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isLogging ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin mr-3" />
-                        Logging in...
-                      </>
-                    ) : (
-                      studentHasPassword ? "Login to Dashboard" : "Set Password & Login"
-                    )}
+                  <Button type="submit" disabled={isLoginDisabled()} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl">
+                    {isLogging ? (<><Loader2 className="h-5 w-5 animate-spin mr-3" /> Logging in...</>) : (studentHasPassword ? 'Login to Dashboard' : 'Set Password & Login')}
                   </Button>
-                  <div className="text-center mt-4">
-                    <button 
-                      type="button"
-                      onClick={() => router.push('/verify')}
-                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      {studentHasPassword ? "Forgot Password?" : "Set Password"}
-                    </button>
+                  <div className="text-center mt-2">
+                    <button type="button" onClick={() => router.push('/verify')} className="text-sm text-blue-600 hover:text-blue-800 font-medium">{studentHasPassword ? 'Forgot Password?' : 'Set Password'}</button>
                   </div>
                 </form>
               ) : (
-                /* Student Details View */
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Button
@@ -423,115 +351,19 @@ export default function HomePage() {
                       variant="ghost"
                       className="text-gray-600 hover:text-gray-800 p-0"
                     >
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      Back to Selection
+                      <ArrowLeft className="h-4 w-4 mr-2" /> Back to Selection
                     </Button>
                   </div>
-                  
-                  {selectedStudent && (
-                    <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                      <h3 className="font-semibold text-gray-800 mb-3">Student Details</h3>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Name:</span>
-                          <span className="text-sm font-medium text-gray-800">{selectedStudent.name}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Register Number:</span>
-                          <span className="text-sm font-medium text-gray-800">{selectedStudent.register_number}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Class:</span>
-                          <span className="text-sm font-medium text-gray-800">{selectedStudent.class_year}</span>
-                        </div>
-                      </div>
-                      
-                      {/* Password Field in Details View */}
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          {studentHasPassword ? "Password" : "Set Password"}
-                        </label>
-                        <div className="relative">
-                          <input
-                            type={showPassword ? "text" : "password"}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder={studentHasPassword ? "Enter your password" : "Set a password for your account"}
-                            className="w-full px-4 py-3 pl-12 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-inner text-gray-800 font-medium"
-                            required={!studentHasPassword} // Only required if setting a new password
-                          />
-                          <Lock className="h-5 w-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                          >
-                            {showPassword ? (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                              </svg>
-                            ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
-                                <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
-                              </svg>
-                            )}
-                          </button>
-                        </div>
-                        {!studentHasPassword && (
-                          <p className="text-xs text-gray-500 mt-1">You need to set a password for your account</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    {error && (
-                      <Alert 
-                        variant="error" 
-                        message={error} 
-                        className="mt-4"
-                      />
-                    )}
-                    
-                    <Button
-                      type="submit"
-                      disabled={isLoginDisabled()}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isLogging ? (
-                        <>
-                          <Loader2 className="h-5 w-5 animate-spin mr-3" />
-                          Logging in...
-                        </>
-                      ) : (
-                        "Login to Dashboard"
-                      )}
-                    </Button>
-                    <div className="text-center mt-4">
-                      <button 
-                        type="button"
-                        onClick={() => router.push('/verify')}
-                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                      >
-                        Forgot Password?
-                      </button>
-                    </div>
-                  </form>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          
-          
         </div>
       </div>
     </div>
   )}
 
-  // Dashboard View
   const quickTiles = useMemo(() => ([
     { title: 'Attendance', href: '/attendance', icon: CheckCircle, hint: 'View daily attendance' },
     { title: 'Timetable', href: '/timetable', icon: CalendarDays, hint: 'Class schedule' },
@@ -547,7 +379,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-[70vh] relative" style={{backgroundColor: '#FFFFFF'}}>
-      {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute inset-0" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
@@ -555,28 +386,17 @@ export default function HomePage() {
         }}></div>
       </div>
     
-      {/* Clean Professional Header */}
       <div className="relative overflow-hidden bg-white ">
         <div className="max-w-7xl mx-auto px-2 py-3 relative z-10">
           <div className="flex items-center justify-between">
-            {/* Welcome Section */}
             <div className="text-left">
-              <h2 className="text-xl lg:text-3xl font-bold text-gray-800">
-                Department of Information Technology
-              </h2>
+              <h2 className="text-xl lg:text-3xl font-bold text-gray-800">Department of Information Technology</h2>
               <p className="text-gray-500 max-w-md text-sm mt-1">
                  <span className="text-md text-gray-700">{user?.name || 'Student'}</span> •  <span className="text-md text-gray-700">{user?.class_year || 'IT'}</span> •  <span className="text-md text-gray-700">{user?.register_number || 'IT'}</span>
               </p>
             </div>
-
-            {/* Header actions */}
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline"
-                className="border-gray-300 text-gray-700 hover:bg-gray-100"
-                onClick={async () => { await logout(); router.push('/'); }}
-                title="Logout"
-              >
+              <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-100" onClick={async () => { await logout(); router.push('/'); }} title="Logout">
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -585,27 +405,26 @@ export default function HomePage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        {/* Loading State - Show loading until both dashboard and fines data are loaded */}
         {(isLoadingDashboard || isLoadingFines) ? (
-          <div className="text-center py-28">
+          <div className="text-center py-20">
             <div className="flex flex-col items-center space-y-4">
-              <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+              <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
               <div className="space-y-2">
-                <h3 className="text-lg font-medium text-gray-900">This will just take a second.</h3>
-                </div>
+                <h3 className="text-base font-medium text-gray-900">This will just take a second.</h3>
+              </div>
             </div>
           </div>
         ) : (
           <>
-          {/* Quick Access Tiles - Professional, flat, Android-like */}
-          <div className="mb-10">
+          {/* Quick Access Tiles with ripple */}
+          <div className="mb-8">
             <h3 className="text-sm font-semibold text-gray-500 mb-3">Quick Access</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
               {quickTiles.map((tile) => {
                 const Icon = tile.icon
                 return (
                   <Link href={tile.href} key={tile.title} className="group block">
-                    <div className="h-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 hover:border-blue-600">
+                    <div className="h-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 hover:border-blue-600 ripple" data-ripple>
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
                           <Icon className="h-5 w-5" />
@@ -624,7 +443,7 @@ export default function HomePage() {
 
           {/* Profile and Finance Summary */}
           <div className="max-w-4xl mx-auto">
-            <Card className="group relative overflow-hidden bg-white shadow-sm border border-gray-200">
+            <Card className="bg-white shadow-sm border border-gray-200">
               <CardHeader className="rounded-t-xl bg-gray-50 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-xl font-bold text-gray-800">My Profile</CardTitle>
@@ -639,9 +458,7 @@ export default function HomePage() {
               
               <CardContent className="p-4">
                 <div className="space-y-4">
-                  {/* Profile Information */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Personal Details */}
                     <div className="space-y-4">
                       <h3 className="text-sm font-bold text-gray-700">Personal Information</h3>
                       <div className="space-y-3">
@@ -660,7 +477,6 @@ export default function HomePage() {
                       </div>
                     </div>
                     
-                    {/* Contact Details */}
                     <div className="space-y-4">
                       <h3 className="text-sm font-bold text-gray-700">Contact Information</h3>
                       <div className="space-y-3">
@@ -676,17 +492,12 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Financial Status */}
                   <div className={`relative p-4 rounded-xl border ${
-                    finesData && finesData.stats.totalFines > 0 
-                      ? 'bg-red-50 border-red-200' 
-                      : 'bg-green-50 border-green-200'
+                    finesData && finesData.stats.totalFines > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
                   }`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${
-                          finesData && finesData.stats.totalFines > 0 ? 'bg-red-600' : 'bg-green-600'
-                        }`}>
+                        <div className={`p-2 rounded-lg ${finesData && finesData.stats.totalFines > 0 ? 'bg-red-600' : 'bg-green-600'}`}>
                           {finesData && finesData.stats.totalFines > 0 ? (
                             <AlertTriangle className="h-5 w-5 text-white" />
                           ) : (
@@ -695,19 +506,13 @@ export default function HomePage() {
                         </div>
                         <div>
                           <h3 className="text-sm font-bold text-gray-800">Fine Details</h3>
-                          <p className={`text-xs font-medium ${
-                            finesData && finesData.stats.totalFines > 0 ? 'text-red-700' : 'text-green-700'
-                          }`}>
+                          <p className={`text-xs font-medium ${finesData && finesData.stats.totalFines > 0 ? 'text-red-700' : 'text-green-700'}`}>
                             {finesData && finesData.stats.totalFines > 0 ? 'Pending fines' : 'No pending fines'}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`text-xl font-extrabold ${
-                          finesData && finesData.stats.totalFines > 0 ? 'text-red-700' : 'text-green-700'
-                        }`}>
-                          ₹{finesData ? finesData.stats.totalFines : 0}
-                        </p>
+                        <p className={`text-xl font-extrabold ${finesData && finesData.stats.totalFines > 0 ? 'text-red-700' : 'text-green-700'}`}>₹{finesData ? finesData.stats.totalFines : 0}</p>
                       </div>
                     </div>
                   </div>
