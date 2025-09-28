@@ -489,6 +489,40 @@ export default function AdminPanel() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Quick Actions - flat cards, Android-like */}
+        <div className="mb-8">
+          <h3 className="text-sm font-semibold text-gray-500 mb-3">Quick Actions</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[
+              { id: 'assignments', label: 'Assignments', icon: BookOpen },
+              { id: 'detect-assignments', label: 'Detect', icon: Search },
+              { id: 'registration', label: 'Registration', icon: UserPlus },
+              { id: 'bookings', label: 'Bookings', icon: Calendar },
+              { id: 'holidays', label: 'Holidays', icon: CalendarDays },
+              { id: 'Seminar History', label: 'History', icon: Users },
+              { id: 'fines', label: 'Fines', icon: DollarSign },
+              { id: 'fine-students', label: 'Fine Students', icon: DollarSign },
+              { id: 'database', label: 'Database', icon: Database },
+            ].map((tile) => (
+              <button
+                key={tile.id}
+                onClick={() => setActiveTab(tile.id as any)}
+                className={`group text-left h-full rounded-xl border ${activeTab === tile.id ? 'border-blue-600' : 'border-gray-200'} bg-white p-4 shadow-sm hover:shadow-md transition-all duration-150 hover:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                    {tile.icon && <tile.icon className="h-5 w-5" />}
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">{tile.label}</div>
+                    <div className="text-xs text-gray-500">Open {tile.label}</div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {activeTab === "assignments" && (
           <ModernAssignmentManagement
             assignments={assignments}
