@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       query = query.eq('assignment_id', assignment_id)
     }
     
-    const { data: submissions, error } = await query
+    const { data: submissions, error } = await query as any
     
     if (error) {
       console.error('Error fetching submissions:', error)
@@ -79,12 +79,12 @@ export async function POST(request: NextRequest) {
           const fileHash = await calculateFileHash(submission.file_url)
           
           // Update the submission with the hash
-          const { error: updateError } = await supabaseAdmin
+          const { error: updateError } = await (supabaseAdmin as any)
             .from('assignment_submissions')
             .update({ 
               file_hash: fileHash,
               hash_generated_at: new Date().toISOString()
-            })
+            } as any)
             .eq('id', submission.id)
           
           if (updateError) {
@@ -175,8 +175,8 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
     
-    const total = submissions?.length || 0
-    const withHash = submissions?.filter(s => s.file_hash).length || 0
+    const total = (submissions as any[])?.length || 0
+    const withHash = (submissions as any[])?.filter((s: any) => s.file_hash).length || 0
     const withoutHash = total - withHash
     
     return NextResponse.json({
