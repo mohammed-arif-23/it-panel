@@ -192,10 +192,10 @@ export default function ModernStudentRegistration({ onRefresh }: ModernStudentRe
 
   return (
     <div className="space-y-6">
-      <Card className="bg-white shadow-lg border border-gray-200">
-        <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 border-b border-green-100">
+      <Card className="bg-white shadow-sm border border-gray-200">
+        <CardHeader className="bg-gray-50 border-b border-gray-200">
           <CardTitle className="flex items-center space-x-3">
-            <div className="p-2 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg">
+            <div className="p-2 bg-blue-600 rounded-lg">
               <UserPlus className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -359,7 +359,7 @@ export default function ModernStudentRegistration({ onRefresh }: ModernStudentRe
               <Button 
                 type="submit" 
                 disabled={isLoading}
-                className="flex-1 py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <div className="flex items-center space-x-2">
@@ -379,7 +379,7 @@ export default function ModernStudentRegistration({ onRefresh }: ModernStudentRe
                 variant="outline"
                 onClick={handleReset}
                 disabled={isLoading}
-                className="px-6 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-xl transition-all duration-300"
+                className="px-6 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-xl transition-all duration-200"
               >
                 Reset Form
               </Button>
