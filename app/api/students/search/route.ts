@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     if (!query || query.length < 2) {
       return NextResponse.json({
         success: true,
-        data: []
+        students: []
       });
     }
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: students || []
+      students: students || []
     });
 
   } catch (error) {

@@ -4,6 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../../components/ui/button";
+import { PullToRefresh } from "../../components/pwa/PullToRefresh";
 import {
   Card,
   CardContent,
@@ -22,10 +23,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Loader from "../../components/ui/loader";
+import PageTransition from "../../components/ui/PageTransition";
+import { SkeletonCard } from "../../components/ui/skeletons";
+import { motion } from "framer-motion";
+import { staggerContainer, staggerItem } from "../../lib/animations";
 
 export default function ProfilePage() {
-  const { user, loading } = useAuth();
+
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
+
+  const handleRefresh = async () => {
+    // Refresh will reload user data from context
+    window.location.reload()
+  }
 
   // Helper function to check if a field has meaningful data
   const hasData = (value: string | null | undefined): boolean => {
@@ -46,12 +57,18 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#FFFFFF" }}
-      >
-        <div className="w-16 h-16">
-          <Loader />
+      <div className="min-h-screen bg-[var(--color-background)] pb-20">
+        <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
+          <div className="flex items-center justify-between p-4">
+            <div className="w-16 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
+            <div className="w-24 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
+            <div className="w-16"></div>
+          </div>
+        </div>
+        <div className="p-4 space-y-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} variant="wide" />
+          ))}
         </div>
       </div>
     );
@@ -62,152 +79,106 @@ export default function ProfilePage() {
   }
 
   return (
-    <div
-      className="min-h-screen relative"
-      style={{ backgroundColor: "#FFFFFF" }}
-    >
-      {/* Background Pattern */}
-      <div
-        className="absolute inset-0 opacity-5"
-        style={{ zIndex: -10, pointerEvents: "none" }}
-      >
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            backgroundSize: "60px 60px",
-            pointerEvents: "none",
-          }}
-        ></div>
-      </div>
-
-      {/* Header with Back Button */}
-      <div className="backdrop-blur-md bg-white relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <Button
-              variant="ghost"
-              asChild
-              className="text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-300 hover:shadow-xl rounded-xl px-6 py-3 hover:border-blue-300"
-            >
-              <Link href="/">
-                <ArrowLeft className="h-5 w-5 mr-2" />
-                Back to Home
-              </Link>
-            </Button>
-            <div className="flex flex-col items-end">
-              <p className="text-xl font-bold text-gray-800">{user.name}</p>
-              <p className="text-sm text-gray-600 font-medium">
-                {user.register_number || "Student"}
-              </p>
+    <PullToRefresh onRefresh={handleRefresh}>
+      <PageTransition>
+      <div className="min-h-screen bg-[var(--color-background)] pb-20">
+        {/* Mobile Header */}
+        <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
+          <div className="flex items-center justify-between p-4">
+            <Link href="/dashboard" className="flex items-center space-x-2 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors ripple">
+              <ArrowLeft className="w-5 h-5" />
+              <span className="font-medium">Back</span>
+            </Link>
+            <div className="text-center">
+              <h1 className="text-lg font-bold text-[var(--color-primary)]">Profile</h1>
             </div>
+            <div className="w-16"></div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        {/* Page Title Section */}
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            Personal Information
-          </h1>
-          <p className="text-gray-600 text-sm">
-            Your profile details
-          </p>
-        </div>
 
-        {isNewStudent ? (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-center">
-            <div className="flex items-center justify-center space-x-2">
-              <AlertCircle className="h-5 w-5 text-blue-600" />
-              <p className="text-blue-800 font-semibold">
-                Profile Incomplete
-              </p>
-            </div>
-            <p className="text-blue-700 text-sm mt-2">
-              Please contact administration to complete your profile
-            </p>
-          </div>
-        ) : (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-center">
-            <div className="flex items-center justify-center space-x-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <p className="text-green-800 font-semibold">
-                Profile Complete
-              </p>
-            </div>
-          </div>
-        )}
-
-        <Card className="bg-white shadow-sm border border-gray-200">
-          <CardHeader className="bg-gray-50 border-b border-gray-200 rounded-t-lg">
-            <CardTitle className="flex items-center space-x-3 text-gray-800">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <User className="h-5 w-5 text-blue-600" />
+        <Card className="saas-card mb-4 mt-20 p-4">
+          <CardHeader className="border-b border-[var(--color-border-light)]">
+            <CardTitle className="flex items-center space-x-3 text-[var(--color-primary)]">
+              <div className="p-2 bg-[var(--color-accent)] rounded-lg">
+                <User className="h-5 w-5 text-[var(--color-secondary)]" />
               </div>
               <span>Profile Details</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-6">
+          <CardContent className="p-4">
+            <div className="space-y-4">
               {/* Registration Number */}
-              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+              <div className="flex items-center justify-between py-3 border-b border-[var(--color-border-light)]">
                 <div className="flex items-center space-x-3">
-                  <IdCard className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-600">Register Number</span>
+                  <IdCard className="h-4 w-4 text-[var(--color-text-muted)]" />
+                  <span className="text-[var(--color-text-secondary)] text-sm">Register Number</span>
                 </div>
-                <span className="font-medium text-gray-900">
+                <span className="font-medium text-[var(--color-primary)] text-sm">
                   {user.register_number || "Not provided"}
                 </span>
               </div>
 
               {/* Name */}
-              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+              <div className="flex items-center justify-between py-3 border-b border-[var(--color-border-light)]">
                 <div className="flex items-center space-x-3">
-                  <User className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-600">Full Name</span>
+                  <User className="h-4 w-4 text-[var(--color-text-muted)]" />
+                  <span className="text-[var(--color-text-secondary)] text-sm">Full Name</span>
                 </div>
-                <span className="font-medium text-gray-900">
+                <span className="font-medium text-[var(--color-primary)] text-sm">
                   {user.name || "Not provided"}
                 </span>
               </div>
 
               {/* Email */}
-              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+              <div className="flex items-center justify-between py-3 border-b border-[var(--color-border-light)]">
                 <div className="flex items-center space-x-3">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-600">Email Address</span>
+                  <Mail className="h-4 w-4 text-[var(--color-text-muted)]" />
+                  <span className="text-[var(--color-text-secondary)] text-sm">Email Address</span>
                 </div>
-                <span className="font-medium text-gray-900">
+                <span className="font-medium text-[var(--color-primary)] text-sm">
                   {user.email || "Not provided"}
                 </span>
               </div>
 
               {/* Mobile */}
-              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+              <div className="flex items-center justify-between py-3 border-b border-[var(--color-border-light)]">
                 <div className="flex items-center space-x-3">
-                  <Phone className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-600">Mobile Number</span>
+                  <Phone className="h-4 w-4 text-[var(--color-text-muted)]" />
+                  <span className="text-[var(--color-text-secondary)] text-sm">Mobile Number</span>
                 </div>
-                <span className="font-medium text-gray-900">
+                <span className="font-medium text-[var(--color-primary)] text-sm">
                   {user.mobile || "Not provided"}
                 </span>
               </div>
 
               {/* Class Year */}
-              <div className="flex items-center justify-between py-3">
+              <div className="flex items-center justify-between py-3 border-b border-[var(--color-border-light)]">
                 <div className="flex items-center space-x-3">
-                  <Calendar className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-600">Class Year</span>
+                  <Calendar className="h-4 w-4 text-[var(--color-text-muted)]" />
+                  <span className="text-[var(--color-text-secondary)] text-sm">Class Year</span>
                 </div>
-                <span className="font-medium text-gray-900">
+                <span className="font-medium text-[var(--color-primary)] text-sm">
                   {user.class_year || "Not provided"}
                 </span>
               </div>
+
+              {/* Logout Button */}
+              <div className="pt-4">
+                <Button 
+                  className="saas-button-primary w-full bg-red-600 hover:bg-red-700 text-white ripple"
+                  onClick={async () => { await logout(); router.push('/'); }}
+                >
+                  Logout
+                </Button>
+              </div>
             </div>
+             
           </CardContent>
+          
         </Card>
       </div>
-    </div>
+      </PageTransition>
+    </PullToRefresh>
   );
 }

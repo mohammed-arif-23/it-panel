@@ -288,6 +288,40 @@ export class HolidayService {
     }
   }
 
+  // Check and handle COD rescheduling for a given date
+  async checkAndRescheduleCOD(codDate: string): Promise<{
+    needsReschedule: boolean;
+    newDate?: string;
+    holidayName?: string;
+  }> {
+    try {
+      console.log('Checking if COD date needs rescheduling:', codDate);
+      
+      const { isHoliday, holiday } = await this.isHoliday(codDate);
+      
+      if (!isHoliday) {
+        console.log('No holiday detected for COD date:', codDate);
+        return { needsReschedule: false };
+      }
+
+      console.log(`Holiday detected for COD: ${holiday!.holiday_name} on ${codDate}`);
+      
+      // Calculate the next working day
+      const newDate = await this.getNextWorkingDay(codDate, 1);
+      console.log(`Rescheduling COD from ${codDate} to ${newDate}`);
+
+      return {
+        needsReschedule: true,
+        newDate,
+        holidayName: holiday!.holiday_name
+      };
+
+    } catch (error) {
+      console.error('Error checking COD reschedule:', error);
+      return { needsReschedule: false };
+    }
+  }
+
   // Get holiday-aware next seminar date
   async getHolidayAwareNextSeminarDate(baseDate?: string): Promise<string> {
     try {

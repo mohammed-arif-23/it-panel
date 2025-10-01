@@ -4,6 +4,8 @@ interface DashboardData {
   assignments?: any[]
   seminarBookings?: any[]
   fines?: any[]
+  completed_assignments?: number
+  pending_assignments?: number
   stats?: {
     totalAssignments?: number
     submittedAssignments?: number

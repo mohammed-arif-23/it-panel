@@ -259,7 +259,6 @@ export function usePresenterHistory(classYear: string) {
         .lt('seminar_date', today)
         .order('seminar_date', { ascending: false })
         .order('selected_at', { ascending: false })
-        .limit(20)
 
       if (error) {
         throw new Error('Error loading presenter history')

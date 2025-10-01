@@ -22,7 +22,8 @@ const StyledWrapper = styled.div`
   height: 100%;
     circle {
     color: white;
-    background: white;
+    background: var(--color-primary);
+    stroke-linecap: round
     fill: none;
 
     }

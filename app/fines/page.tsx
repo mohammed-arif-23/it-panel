@@ -4,11 +4,14 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useState, useEffect, useCallback, memo, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFinesData } from '../../hooks/useDashboardData'
-import { Button } from '../../components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
+import { PullToRefresh } from '../../components/pwa/PullToRefresh'
 import { ArrowLeft, IndianRupee, AlertTriangle, CheckCircle, Clock, Calendar } from 'lucide-react'
 import Link from 'next/link'
 import Loader from '../../components/ui/loader'
+import PageTransition from '../../components/ui/PageTransition'
+import { SkeletonCard, SkeletonStatCard } from '../../components/ui/skeletons'
+import { motion } from 'framer-motion'
+import { staggerContainer, staggerItem } from '../../lib/animations'
 
 interface Fine {
   id: string
@@ -81,177 +84,196 @@ export default function FinesPage() {
     }
   }, [])
 
-  if (loading || isLoading) {
+  const handleRefresh = async () => {
+    window.location.reload()
+  }
+
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-16 h-16">
-          <Loader />
+      <PageTransition>
+        <div className="min-h-screen bg-[var(--color-background)] pb-20">
+          <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
+            <div className="flex items-center justify-between p-4">
+              <div className="w-16 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
+              <div className="w-24 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
+              <div className="w-16"></div>
+            </div>
+          </div>
+          <div className="px-4 py-6">
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <SkeletonStatCard key={i} />
+              ))}
+            </div>
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+      </PageTransition>
     )
   }
 
-  if (!user) {
+  if (loading || !user) {
     return <div>Redirecting...</div>
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header with Back Button */}
-      <div className="border-b border-gray-200 sticky top-0 z-10 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <Button
-              variant="ghost"
-              asChild
-              className="text-gray-600 hover:bg-gray-100 px-2 py-1 h-auto text-sm"
-            >
-              <Link href="/">
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back
-              </Link>
-            </Button>
-            <div className="flex flex-col items-end">
-              <p className="text-base font-medium text-gray-900">{user.name}</p>
-              <p className="text-xs text-gray-500">
-                {user.register_number || "Student"}
-              </p>
+    <PullToRefresh onRefresh={handleRefresh}>
+      <PageTransition>
+      <div className="min-h-screen bg-[var(--color-background)] pb-20">
+        {/* Mobile Header */}
+        <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
+          <div className="flex items-center justify-between p-4">
+            <Link href="/dashboard" className="flex items-center space-x-2 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors ripple">
+              <ArrowLeft className="w-5 h-5" />
+              <span className="font-medium">Back</span>
+            </Link>
+            <div className="text-center">
+              <h1 className="text-lg font-bold text-[var(--color-primary)]">Fine History</h1>
+            </div>
+            <div className="w-16"></div> {/* Spacer for centering */}
+          </div>
+        </div>
+
+        <div className="px-4 py-6">
+
+          {/* Stats Overview */}
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="saas-card p-4 text-center">
+              <div className="text-2xl font-bold text-[var(--color-primary)]">{fines.length}</div>
+              <div className="text-xs text-[var(--color-text-muted)]">Total Fines</div>
+            </div>
+            <div className="saas-card p-4 text-center">
+              <div className="text-2xl font-bold text-[var(--color-success)]">
+                {fines.filter(f => f.payment_status.toLowerCase() === 'paid').length}
+              </div>
+              <div className="text-xs text-[var(--color-text-muted)]">Paid</div>
+            </div>
+            <div className="saas-card p-4 text-center">
+              <div className="text-2xl font-bold text-[var(--color-error)]">
+                ₹{totalFines.toFixed(0)}
+              </div>
+              <div className="text-xs text-[var(--color-text-muted)]">Pending</div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Page Title Section */}
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center p-2 bg-gray-100 rounded-lg mb-3">
-            <IndianRupee className="h-5 w-5 text-gray-600" />
-          </div>
-          <h1 className="text-xl font-semibold text-gray-900 mb-1">
-            Fine History
-          </h1>
-          <p className="text-gray-500 text-sm">
-            Track your academic fines and payment status
-          </p>
-        </div>
+          {/* Fines List */}
+          {fines.length === 0 ? (
+            <div className="saas-card p-8 text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-[var(--color-primary)] mb-2">No Fines Found</h3>
+              <p className="text-[var(--color-text-muted)]">Great job! You don't have any fines recorded.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {fines.map((fine) => (
+                <FineItem
+                  key={fine.id}
+                  fine={fine}
+                  formatDate={formatDate}
+                />
+              ))}
+            </div>
+          )}
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
-          <Card className="border border-transparent shadow-sm">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-3 flex-col justify-center">
-                <div className={`p-2 rounded ${totalFines > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
-                  {totalFines > 0 ? (
-                    <AlertTriangle className="h-6 w-6 text-red-500" />
-                  ) : (
-                    <CheckCircle className="h-6 w-6 text-green-500" />
-                  )}
+          {/* Payment Information */}
+          {totalFines > 0 && (
+            <div className="mt-6 bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-5 shadow-sm">
+              <div className="flex items-start space-x-3">
+                <div className="p-2 bg-white rounded-lg shadow-sm flex-shrink-0">
+                  <AlertTriangle className="h-5 w-5 text-orange-600" />
                 </div>
-                <div className="flex-1 text-center">
-                  <p className="text-lg text-gray-500">Total</p>
-                  <p className={`text-md font-semibold ${totalFines > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    ₹{totalFines.toFixed(2)}
+                <div>
+                  <h3 className="text-sm font-bold text-orange-900 mb-2">Payment Information</h3>
+                  <p className="text-orange-700 text-sm leading-relaxed mb-3">
+                    Please contact the department office to settle your pending fines. 
+                    Keep your register number and fine details handy when making payments.
                   </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Fines List */}
-        <Card className="border border-gray-200">
-          <CardHeader className="border-b border-gray-200 bg-gray-50 py-3 px-4">
-            <CardTitle className="flex items-center space-x-2 text-gray-800 text-base">
-    
-              <span className="font-medium text-center">Fine Details</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {fines.length === 0 ? (
-              <div className="p-8 text-center">
-                <div className="inline-flex items-center justify-center p-2 bg-green-50 rounded-full mb-3">
-                  <CheckCircle className="h-6 w-6 text-green-500" />
-                </div>
-                <h3 className="text-base font-medium text-gray-900 mb-1">No Fines Found</h3>
-                <p className="text-gray-500 text-sm">
-                  Great job! You don't have any fines recorded.
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {fines.map((fine) => (
-                  <FineItem
-                    key={fine.id}
-                    fine={fine}
-                    formatDate={formatDate}
-                    getStatusColor={getStatusColor}
-                    getStatusIcon={getStatusIcon}
-                  />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Payment Information */}
-        {totalFines > 0 && (
-          <div className="mt-5 bg-amber-50 border border-amber-200 rounded-md p-3">
-            <div className="flex items-start">
-              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-              <div className="ml-2">
-                <h3 className="text-sm font-medium text-amber-800">Payment Information</h3>
-                <p className="text-amber-700 text-xs mt-1">
-                  Please contact the department office to settle your pending fines. 
-                  Keep your register number and fine details handy when making payments.
-                </p>
-                <div className="mt-2 inline-flex items-center text-xs text-amber-800">
-                  <span className="font-medium">Total Pending:</span>
-                  <span className="ml-1 font-semibold text-red-600">₹{totalFines.toFixed(2)}</span>
+              
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+      </PageTransition>
+    </PullToRefresh>
   )
 }
 
 // Memoized Fine Item Component
 const FineItem = memo(({ 
   fine, 
-  formatDate, 
-  getStatusColor, 
-  getStatusIcon 
+  formatDate
 }: {
   fine: Fine
   formatDate: (dateString: string) => string
-  getStatusColor: (status: string) => string
-  getStatusIcon: (status: string) => React.ReactNode
-}) => (
-  <div className="p-4 hover:bg-gray-50 transition-colors duration-150">
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-2 mb-1.5">
-          <h3 className="text-sm font-medium text-gray-900 truncate">{fine.reason || 'Fine'}</h3>
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(fine.payment_status)}`}>
-            {getStatusIcon(fine.payment_status)}
-            <span className="ml-1 capitalize">{fine.payment_status || 'pending'}</span>
-          </span>
+}) => {
+  const isPaid = fine.payment_status.toLowerCase() === 'paid'
+  
+  const getStatusColor = () => {
+    return isPaid ? 'var(--color-success)' : 'var(--color-error)'
+  }
+
+  const getStatusText = () => {
+    return isPaid ? 'Paid' : 'Pending'
+  }
+
+  return (
+    <div className="saas-card overflow-hidden">
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start space-x-3 flex-1 min-w-0">
+            <div 
+              className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: 'var(--color-accent)' }}
+            >
+              <IndianRupee className="w-6 h-6" style={{ color: 'var(--color-secondary)' }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-[var(--color-primary)] text-base leading-tight mb-2">
+                {fine.reason || 'Fine'}
+              </h3>
+              <div className="flex items-center gap-2 flex-wrap mb-2">
+                <div 
+                  className="px-2.5 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1.5"
+                  style={{ 
+                    backgroundColor: getStatusColor() + '20',
+                    color: getStatusColor()
+                  }}
+                >
+                  {isPaid ? <CheckCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
+                  {getStatusText()}
+                </div>
+              </div>
+              <div className="flex items-center space-x-1 text-xs text-[var(--color-text-muted)]">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Issued: {formatDate(fine.date_issued || fine.created_at)}</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Amount Display */}
+          <div className="flex-shrink-0">
+            <div 
+              className="px-3 py-2 rounded-xl font-bold text-base"
+              style={{
+                backgroundColor: getStatusColor() + '20',
+                color: getStatusColor()
+              }}
+            >
+              ₹{fine.base_amount?.toFixed(2) || '0.00'}
+            </div>
+          </div>
         </div>
-        <div className="flex items-center text-gray-500 text-xs">
-          <Calendar className="h-3 w-3 mr-1" />
-          <span>{formatDate(fine.date_issued || fine.created_at)}</span>
-        </div>
-      </div>
-      {/* Fine amount moved to the right corner */}
-      <div className={`px-2.5 py-1 rounded ${getStatusColor(fine.payment_status)}`}>
-        <p className="text-sm font-semibold">
-          ₹{fine.base_amount?.toFixed(2) || '0.00'}
-        </p>
       </div>
     </div>
-  </div>
-))
+  )
+})
 
 FineItem.displayName = 'FineItem'

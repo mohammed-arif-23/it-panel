@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-
+import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { attachRipplePosition } from "@/lib/utils"
 
@@ -44,12 +44,27 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ripple = true, onMouseDown, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    
+    if (asChild) {
+      return (
+        <Comp
+          className={cn("ripple", buttonVariants({ variant, size, className }))}
+          ref={ref}
+          onMouseDown={(e: any) => { if (ripple) attachRipplePosition(e as any); onMouseDown?.(e as any) }}
+          {...props}
+        />
+      )
+    }
+    
     return (
-      <Comp
+      <motion.button
         className={cn("ripple", buttonVariants({ variant, size, className }))}
         ref={ref}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ duration: 0.15 }}
         onMouseDown={(e: any) => { if (ripple) attachRipplePosition(e as any); onMouseDown?.(e as any) }}
-        {...props}
+        {...(props as any)}
       />
     )
   }

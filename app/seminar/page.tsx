@@ -4,9 +4,11 @@ import React, { useState, useEffect, useCallback, memo, useMemo } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useSeminarStudent, useSeminarDashboardData, usePresenterHistory, useSeminarBooking } from '../../hooks/useSeminarData'
+import { ProgressivePresenterHistory } from '../../components/seminar/ProgressivePresenterHistory'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import Alert from '../../components/ui/alert'
+import { PullToRefresh } from '../../components/pwa/PullToRefresh'
 import { 
   Calendar, 
   Clock, 
@@ -25,6 +27,8 @@ import { supabase } from '../../lib/supabase'
 import { holidayService } from '../../lib/holidayService'
 import { seminarTimingService } from '../../lib/seminarTimingService'
 import Loader from '@/components/ui/loader'
+import { SkeletonCard } from '../../components/ui/skeletons'
+import PageTransition from '../../components/ui/PageTransition'
 interface TodaySelection {
   student: {
     id: string
@@ -204,10 +208,18 @@ export default function SeminarPage() {
   const [todayHolidayInfo, setTodayHolidayInfo] = useState<{ holidayName?: string }>({})
 
   // Use React Query hooks
-  const { data: seminarStudent, isLoading: isLoadingStudent } = useSeminarStudent(user?.register_number || '')
-  const { data: dashboardData, isLoading: isLoadingSelections } = useSeminarDashboardData(seminarStudent?.id || '', user?.class_year || '')
-  const { data: presenterHistory = [] } = usePresenterHistory(user?.class_year || '')
+  const { data: seminarStudent, isLoading: isLoadingStudent, refetch: refetchStudent } = useSeminarStudent(user?.register_number || '')
+  const { data: dashboardData, isLoading: isLoadingSelections, refetch: refetchDashboard } = useSeminarDashboardData(seminarStudent?.id || '', user?.class_year || '')
+  const { data: presenterHistory = [], refetch: refetchHistory } = usePresenterHistory(user?.class_year || '')
   const bookingMutation = useSeminarBooking()
+
+  const handleRefresh = async () => {
+    await Promise.all([
+      refetchStudent(),
+      refetchDashboard(),
+      refetchHistory()
+    ])
+  }
 
   // Extract data from dashboard with safe defaults
   const { hasBookedToday, todaySelection, tomorrowSelections = [], nextSeminarDate } = dashboardData || {}
@@ -334,9 +346,37 @@ export default function SeminarPage() {
 
   if (isLoadingStudent) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#FFFFFF'}}>
-        <div className="text-center">
-          <Loader/>
+      <div className="min-h-screen bg-[var(--color-background)] page-transition pb-20">
+        {/* Header Skeleton */}
+        <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
+          <div className="flex items-center justify-between p-4">
+            <div className="w-16 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
+            <div className="w-32 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
+            <div className="w-16"></div>
+          </div>
+        </div>
+
+        <div className="p-4 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Booking Section Skeleton */}
+            <div className="lg:col-span-2 space-y-6">
+              <SkeletonCard variant="wide" />
+            </div>
+            
+            {/* Selection Cards Skeleton */}
+            <div className="space-y-6">
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+          </div>
+          
+          {/* History Skeleton */}
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonCard key={i} variant="compact" />
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -347,146 +387,128 @@ export default function SeminarPage() {
   }
 
   return (
-    <div className="min-h-screen relative" style={{backgroundColor: '#FFFFFF'}}>
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          backgroundSize: '60px 60px'
-        }}></div>
-      </div>
-      
-      {/* Header with Back Button */}
-      <div className="backdrop-blur-md border-b bg-white relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <Button variant="ghost" asChild className="text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-300  hover:shadow-xl rounded-xl px-6 py-3 borderhover:border-blue-300">
-              <Link href="/">
-                <ArrowLeft className="h-5 w-5 mr-2" />
-              
-              </Link>
-            </Button>
-            <div className="flex flex-col items-end bg-white rounded-2xl px-6 py-3 ">
-              <p className="text-xl font-bold text-gray-800">{user.name}</p>
-              <p className="text-sm text-gray-600 font-medium">{user.register_number || 'Student'}</p>
+    <PullToRefresh onRefresh={handleRefresh}>
+      <PageTransition>
+      <div className="min-h-screen bg-[var(--color-background)] pb-20 page-transition">
+        {/* Header */}
+        <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
+          <div className="flex items-center justify-between p-4">
+            <Link href="/dashboard" className="flex items-center space-x-2 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors ripple">
+              <ArrowLeft className="w-5 h-5" />
+              <span className="font-medium">Back</span>
+            </Link>
+            <div className="text-center">
+              <h1 className="text-lg font-bold text-[var(--color-primary)]">Seminar Booking</h1>
             </div>
+            <div className="w-16"></div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        {/* Page Title Section */}
-        <div className="mb-8 text-center">
-          <div className="bg-white rounded-2xl  p-2 mx-auto max-w-2xl">
-            <h1 className="text-2xl font-bold text-gray-800 mb-3">Seminar Booking</h1>
-            <p className="text-gray-600 text-sm">Book your seminar slots and track your selections</p>
-          </div>
-        </div>
-        
-        {/* Holiday Reschedule Notification */}
-        {rescheduleNotification && rescheduleNotification.show && (
-          <Card className="mb-6 border-orange-200 bg-orange-50">
-            <CardContent className="p-4">
-              <div className="flex items-start space-x-3">
-                <CalendarX className="h-5 w-5 text-orange-600 mt-0.5" />
-                <div className="flex-1">
-                  <h3 className="text-sm font-medium text-orange-800">Seminar Rescheduled Due to Holiday</h3>
-                  <p className="text-sm text-orange-700 mt-1">
-                    The seminar originally scheduled for {new Date(rescheduleNotification.originalDate + 'T12:00:00').toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })} has been moved to {new Date(rescheduleNotification.newDate + 'T12:00:00').toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })} due to <strong>{rescheduleNotification.holidayName}</strong>.
-                  </p>
-                  <div className="mt-2 flex space-x-2">
-                    <Button 
-                      size="sm" 
-                      className="bg-orange-600 hover:bg-orange-700 text-white"
+        <div className="p-4 space-y-6">
+          
+          {/* Holiday Reschedule Notification */}
+          {rescheduleNotification && rescheduleNotification.show && (
+            <div className="saas-card bg-orange-50 border-orange-200 p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <CalendarX className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-orange-800 mb-1">Seminar Rescheduled</h3>
+                    <p className="text-sm text-orange-700 mb-2">
+                      Due to <strong>{rescheduleNotification.holidayName}</strong>, your seminar has been moved:
+                    </p>
+                    <div className="space-y-1 text-xs text-orange-600">
+                      <div>
+                        From: {new Date(rescheduleNotification.originalDate + 'T12:00:00').toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </div>
+                      <div className="font-semibold">
+                        To: {new Date(rescheduleNotification.newDate + 'T12:00:00').toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </div>
+                    </div>
+                    <button
                       onClick={() => {
                         setRescheduleNotification(null)
                         setRescheduleNotificationDismissed(true)
                       }}
+                      className="mt-3 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-xs font-medium hover:bg-orange-700 transition-colors"
                     >
                       Got it!
-                    </Button>
+                    </button>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Booking Section */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Booking Window Status */}
-            <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
-              <CardHeader className="bg-blue-50/50 rounded-t-lg border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Clock className="h-6 w-6 text-blue-600" />
+            </div>
+          )}
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Booking Section */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Booking Window Status */}
+              <div className="saas-card p-5">
+                <div className="flex items-center space-x-3 mb-5">
+                  <div className="p-2 bg-[var(--color-accent)] rounded-lg">
+                    <Clock className="h-5 w-5 text-[var(--color-secondary)]" />
                   </div>
-                  <CardTitle className="text-gray-800 text-xl font-bold">Booking Window</CardTitle>
+                  <h2 className="text-lg font-bold text-[var(--color-primary)]">Booking Window</h2>
                 </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {/* Holiday Pause Message */}
-                {isTodayHoliday && (
-                  <div className="bg-orange-50/60 backdrop-blur-sm border-2 border-orange-200 rounded-xl p-6 shadow-lg mb-6">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="p-2 bg-orange-100 rounded-lg">
-                        <CalendarX className="h-6 w-6 text-orange-600" />
+                  {/* Holiday Pause Message */}
+                  {isTodayHoliday && (
+                    <div className="bg-orange-50 rounded-lg p-4 mb-4 border border-orange-200">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <div className="p-2 bg-orange-100 rounded-lg">
+                          <CalendarX className="h-5 w-5 text-orange-600" />
+                        </div>
+                        <span className="font-semibold text-orange-900">Booking Paused</span>
                       </div>
-                      <span className="font-bold text-orange-800 text-lg">Booking Paused - Holiday</span>
-                    </div>
-                    <div className="space-y-3">
-                      <p className="text-orange-700 font-medium">
-                        Seminar booking is paused today due to {todayHolidayInfo.holidayName || 'holiday'}.
-                      </p>
-                      <p className="text-orange-600 text-sm">
-                        Booking will resume on the next working day. Next seminar is scheduled for {nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate) : 'the next working day'}.
-                      </p>
-                    </div>
-                  </div>
-                )}
-                
-                {!isTodayHoliday && windowInfo.isOpen ? (
-                  <div className="bg-green-50/60 backdrop-blur-sm border-2 border-green-200 rounded-xl p-6 shadow-lg">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="p-2 bg-green-100 rounded-lg">
-                        <CheckCircle className="h-6 w-6 text-green-600" />
-                      </div>
-                      <span className="font-bold text-green-800 text-lg">Booking Window is OPEN</span>
-                    </div>
-                    <div className="space-y-3 mb-4">
-                      <p className="text-green-700 font-medium">
-                        Time remaining: {windowInfo.timeUntilClose ? seminarTimingService.formatTimeRemaining(windowInfo.timeUntilClose) : 'Unknown'}
-                      </p>
-                      {windowInfo.timeUntilSelection !== undefined && windowInfo.timeUntilSelection > 0 && (
-                        <p className="text-blue-700 font-medium">
-                          Selection in: {seminarTimingService.formatTimeRemaining(windowInfo.timeUntilSelection)}
+                      <div className="space-y-1 text-sm">
+                        <p className="text-orange-800">
+                          Holiday: {todayHolidayInfo.holidayName || 'Holiday'}
                         </p>
-                      )}
+                        <p className="text-orange-700">
+                          Next seminar: {nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0] : 'Next working day'}
+                        </p>
+                      </div>
                     </div>
-                    
-                    {hasBookedToday ? (
-                      <Alert 
-                        variant="info" 
-                        message={`You already have an active booking for the seminar on ${nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0] : 'the next seminar date'}.`}
-                        className="mb-4"
-                      />
-                    ) : (
-                      <>
+                  )}
+                  
+                  {!isTodayHoliday && windowInfo.isOpen ? (
+                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="p-2 bg-green-100 rounded-lg">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                        </div>
+                        <span className="font-semibold text-green-900">Window OPEN</span>
+                      </div>
+                      <div className="space-y-2 mb-4">
+                        <p className="text-green-800 font-medium text-sm">
+                          Time remaining: {windowInfo.timeUntilClose ? seminarTimingService.formatTimeRemaining(windowInfo.timeUntilClose) : 'Unknown'}
+                        </p>
+                        {windowInfo.timeUntilSelection !== undefined && windowInfo.timeUntilSelection > 0 && (
+                          <p className="text-[var(--color-secondary)] font-medium text-sm">
+                            Selection in: {seminarTimingService.formatTimeRemaining(windowInfo.timeUntilSelection)}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {hasBookedToday ? (
+                        <Alert 
+                          variant="info" 
+                          message={`You already have an active booking for the seminar on ${nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate).split(',')[0] : 'the next seminar date'}.`}
+                          className="mb-4"
+                        />
+                      ) : (
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-3">
-                              Seminar Topic Title
+                            <label className="block text-sm font-semibold text-[var(--color-primary)] mb-2">
+                              Seminar Topic
                             </label>
                             <input
                               type="text"
@@ -498,325 +520,219 @@ export default function SeminarPage() {
                                   setTopicError('')
                                 }
                               }}
-                              className={`w-full px-4 py-4 border-2 ${topicError ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-white/70 backdrop-blur-sm shadow-inner text-gray-800 font-medium`}
-                              placeholder="Enter your seminar topic title"
+                              className={`w-full px-4 py-3 border-2 ${topicError ? 'border-red-300 focus:border-red-500' : 'border-[var(--color-accent)] focus:border-[var(--color-secondary)]'} rounded-lg focus:outline-none bg-white text-[var(--color-primary)] transition-colors`}
+                              placeholder="Enter your seminar topic"
                             />
                             {topicError && (
-                              <Alert 
-                                variant="error" 
-                                message={topicError} 
-                                className="mt-3"
-                                onClose={() => setTopicError('')}
-                              />
+                              <p className="mt-2 text-sm text-red-600">{topicError}</p>
                             )}
                           </div>
                           
-                          <Button
+                          <button
                             onClick={handleBooking}
                             disabled={isBooking}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-600 hover:border-blue-700"
+                            className="w-full bg-[var(--color-secondary)] hover:bg-[var(--color-dark)] text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isBooking ? (
                               <>
-                               <Loader /> 
-                                Booking...
+                                <Loader /> 
+                                <span>Booking...</span>
                               </>
                             ) : (
-                              <>  
-                                <Calendar className="h-5 w-5 mr-3" />
-                                Book Next Seminar
+                              <>
+                                <Calendar className="h-5 w-5" />
+                                <span>Book Seminar</span>
                               </>
                             )}
-                          </Button>
+                          </button>
                         </div>
-                      </>
-                    )}
-                    {bookingMessage && (
-                      <Alert 
-                        variant={bookingMessage.includes('Successfully') ? 'success' : bookingMessage.includes('already booked') ? 'info' : 'error'} 
-                        message={bookingMessage} 
-                        className="mt-4"
-                        onClose={() => setBookingMessage('')}
-                      />
-                    )}
-                  </div>
-                ) : !isTodayHoliday ? (
-                  <div className="bg-red-50/60 backdrop-blur-sm border-2 border-red-200 rounded-xl p-6 shadow-lg">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="p-2 bg-red-100 rounded-lg">
-                        <XCircle className="h-6 w-6 text-red-500" />
-                      </div>
-                      <span className="font-bold text-red-800 text-lg">Booking Window is CLOSED</span>
-                    </div>
-                    <div className="space-y-3">
-                      <p className="text-red-700 font-medium">
-                        Next opens in: {windowInfo.timeUntilOpen ? seminarTimingService.formatTimeRemaining(windowInfo.timeUntilOpen) : 'Unknown'}
-                      </p>
-                      {windowInfo.timeUntilSelection !== undefined && windowInfo.timeUntilSelection > 0 && (
-                        <p className="text-blue-700 font-medium">
-                          Selection in: {seminarTimingService.formatTimeRemaining(windowInfo.timeUntilSelection)}
-                        </p>
+                      )}
+                      {bookingMessage && (
+                        <Alert 
+                          variant={bookingMessage.includes('Successfully') ? 'success' : bookingMessage.includes('already booked') ? 'info' : 'error'} 
+                          message={bookingMessage} 
+                          className="mt-4"
+                          onClose={() => setBookingMessage('')}
+                        />
                       )}
                     </div>
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-          </div>
-          <div className="space-y-6">
-            {/* Today's Selection */}
-            <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
-              <CardHeader className="bg-green-50/50 rounded-t-lg border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Trophy className="h-6 w-6 text-green-600" />
-                  </div>
-                  <CardTitle className="text-gray-800 text-xl font-bold">Today's Selection ({user?.class_year || 'Your Class'})</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {isLoadingSelections ? (
-                  <div className="text-center py-8 bg-green-50/60 backdrop-blur-sm rounded-xl border-2 border-green-200">
-                    <Loader2 className="h-10 w-10 animate-spin mx-auto text-green-600 mb-3" />
-                    <p className="text-sm text-green-600 font-medium">Lets see who is selected next...</p>
-                  </div>
-                ) : todaySelection ? (
-                  <div className="bg-green-50/70 backdrop-blur-sm border-2 border-green-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-                    <div className="text-center">
-                      <div className="flex items-center justify-center space-x-2 mb-2">
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                        <span className="text-xs font-bold text-green-800 bg-green-100 px-2 py-1 rounded-full">
-                          SELECTED FOR TODAY
-                        </span>
-                      </div>
-                      <h3 className="font-bold text-green-900 text-xl mb-2">
-                        {todaySelection.student.name}
-                      </h3>
-                      <p className="text-green-700 text-sm font-medium mb-2 bg-green-100 rounded-lg px-3 py-1 inline-block">
-                        {todaySelection.student.register_number}
-                      </p>
-                      <p className="text-green-700 text-sm font-medium mb-3 bg-green-100/50 rounded-lg px-3 py-1 inline-block">
-                        {todaySelection.student.class_year || 'IT Department'}
-                      </p>
-                      <p className="text-green-500 text-xs mt-2">
-                        To present on {seminarTimingService.formatDateWithDay(seminarTimingService.getTodayDate()).split(',')[0]}..!
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-500 py-8 bg-gray-50/60 backdrop-blur-sm rounded-xl border-2 border-gray-200">
-                    <div className="p-3 bg-gray-100 rounded-lg inline-block mb-3">
-                      <User className="h-10 w-10 mx-auto text-gray-400" />
-                    </div>
-                    <p className="text-sm font-medium mb-2">No student from {user?.class_year || 'your class'} selected today</p>
-                    <p className="text-xs text-gray-400">
-                      Selection will happen at {seminarTimingService.getBookingWindowConfig().selectionTime}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Next Selection (Tomorrow's Selections) */}
-            <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
-              <CardHeader className="bg-purple-50/50 rounded-t-lg border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Trophy className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <CardTitle className="text-gray-800 text-xl font-bold">Next Selection ({user?.class_year || 'Your Class'})</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {isLoadingSelections ? (
-                  <div className="text-center py-8 bg-purple-50/60 backdrop-blur-sm rounded-xl border-2 border-purple-200">
-                    <Loader2 className="h-10 w-10 animate-spin mx-auto text-purple-600 mb-3" />
-                    <p className="text-sm text-purple-600 font-medium">Selection in progress...</p>
-                  </div>
-                ) : tomorrowSelections.length > 0 ? (
-                  <div className="space-y-4">
-                    {tomorrowSelections.map((selection, index) => (
-                      <div key={index} className="bg-purple-50/70 backdrop-blur-sm border-2 border-purple-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-                        <div className="text-center">
-                          <div className="bg-purple-100 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                            <Trophy className="h-8 w-8 text-purple-600" />
-                          </div>
-                          <div className="bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full inline-block mb-3">
-                            SELECTED FOR NEXT
-                          </div>
-                          <h3 className="font-bold text-purple-900 text-xl mb-2">
-                            {selection.student.name}
-                          </h3>
-                          <p className="text-purple-700 text-sm font-medium mb-2 bg-purple-100 rounded-lg px-3 py-1 inline-block">
-                            {selection.student.register_number}
-                          </p>
-                          <p className="text-purple-700 text-sm font-medium mb-3 bg-purple-100/50 rounded-lg px-3 py-1 inline-block">
-                            {selection.student.class_year || 'IT Department'}
-                          </p>
-                         
+                  ) : !isTodayHoliday ? (
+                    <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="p-2 bg-red-100 rounded-lg">
+                          <XCircle className="h-5 w-5 text-red-600" />
                         </div>
+                        <span className="font-semibold text-red-900">Window CLOSED</span>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-500 py-8 bg-gray-50/60 backdrop-blur-sm rounded-xl border-2 border-gray-200">
-                    <div className="p-3 bg-gray-100 rounded-lg inline-block mb-3">
-                      <User className="h-10 w-10 mx-auto text-gray-400" />
+                      <div className="space-y-2">
+                        <p className="text-red-800 font-medium text-sm">
+                          Opens in: {windowInfo.timeUntilOpen ? seminarTimingService.formatTimeRemaining(windowInfo.timeUntilOpen) : 'Unknown'}
+                        </p>
+                        {windowInfo.timeUntilSelection !== undefined && windowInfo.timeUntilSelection > 0 && (
+                          <p className="text-[var(--color-secondary)] font-medium text-sm">
+                            Selection in: {seminarTimingService.formatTimeRemaining(windowInfo.timeUntilSelection)}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm font-medium mb-2">No student from {user?.class_year || 'your class'} selected for tomorrow</p>
-                    <p className="text-xs text-gray-400">
-                      Selection will happen at {seminarTimingService.getBookingWindowConfig().selectionTime}
-                    </p>
+                  ) : null}
+              </div>
+            </div>
+            <div className="space-y-6">
+              {/* Today's Selection */}
+              <div className="saas-card p-5">
+                <div className="flex items-center space-x-3 mb-5">
+                  <div className="p-2 bg-[var(--color-accent)] rounded-lg">
+                    <Trophy className="h-5 w-5 text-[var(--color-secondary)]" />
                   </div>
-                )}
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
-              <CardHeader className="bg-blue-50/50 rounded-t-lg border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Calendar className="h-6 w-6 text-blue-600" />
+                  <div>
+                    <h3 className="text-base font-bold text-[var(--color-primary)]">Today's Selection</h3>
+                    <p className="text-xs text-[var(--color-text-muted)]">{user?.class_year || 'Your Class'}</p>
                   </div>
-                  <CardTitle className="text-gray-800 text-xl font-bold">Next Seminar</CardTitle>
                 </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="text-center bg-blue-50/60 backdrop-blur-sm rounded-xl p-6 border-2 border-blue-200 shadow-inner">
-                  <p className="text-blue-900 font-bold text-lg mb-2">
-                    {nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate) : 'Loading...'}
-                  </p>
-                  <p className="text-blue-700 text-sm font-medium">
-                    Selection at {seminarTimingService.getBookingWindowConfig().selectionTime}
-                  </p>
-                  
-                  {/* Holiday Information */}
-                  {holidayInfo.isHoliday && holidayInfo.rescheduledDate && holidayInfo.holidayDate !== holidayInfo.rescheduledDate && (
-                    <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                      <div className="flex items-center justify-center space-x-2 mb-2">
-                        <Info className="h-4 w-4 text-orange-600" />
-                        <span className="text-xs font-medium text-orange-800">Holiday Adjustment</span>
+                  {isLoadingSelections ? (
+                    <div className="text-center py-8 bg-green-50 rounded-lg border border-green-200">
+                      <Loader2 className="h-10 w-10 animate-spin mx-auto text-green-600 mb-3" />
+                      <p className="text-sm text-green-600 font-medium">Lets see who is selected next...</p>
+                    </div>
+                  ) : todaySelection ? (
+                    <div className="bg-green-50 rounded-lg p-6 border border-green-200">
+                      <div className="text-center">
+                        <div className="flex items-center justify-center mb-3">
+                          <div className="p-3 bg-green-100 rounded-full">
+                            <CheckCircle className="h-6 w-6 text-green-600" />
+                          </div>
+                        </div>
+                        <div className="bg-green-600 text-white text-xs font-semibold px-3 py-1 rounded-full inline-block mb-3">
+                          SELECTED TODAY
+                        </div>
+                        <h3 className="font-bold text-green-900 text-lg mb-2">
+                          {todaySelection.student.name}
+                        </h3>
+                        <p className="text-green-800 text-sm mb-1">
+                          {todaySelection.student.register_number}
+                        </p>
+                        <p className="text-green-700 text-xs">
+                          {todaySelection.student.class_year || 'IT Department'}
+                        </p>
+                        <p className="text-green-600 text-xs mt-3">
+                          {seminarTimingService.formatDateWithDay(seminarTimingService.getTodayDate()).split(',')[0]}
+                        </p>
                       </div>
-                      <p className="text-xs text-orange-700">
-                        Originally {seminarTimingService.formatDateWithDay(holidayInfo.holidayDate || '')} ({holidayInfo.holidayName})
-                      </p>
-                      <p className="text-xs text-orange-600 font-medium">
-                        Rescheduled to above date
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-8 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="p-3 bg-gray-100 rounded-lg inline-block mb-3">
+                        <User className="h-10 w-10 mx-auto text-gray-400" />
+                      </div>
+                      <p className="text-sm font-medium mb-2">No student from {user?.class_year || 'your class'} selected today</p>
+                      <p className="text-xs text-gray-400">
+                        Selection will happen at {seminarTimingService.getBookingWindowConfig().selectionTime}
                       </p>
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          
+              </div>
 
-            {/* Presenter History */}
-            <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
-              <CardHeader className="bg-purple-50/50 rounded-t-lg border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <User className="h-6 w-6 text-purple-600" />
+              {/* Next Selection */}
+              <div className="saas-card p-5">
+                <div className="flex items-center space-x-3 mb-5">
+                  <div className="p-2 bg-[var(--color-accent)] rounded-lg">
+                    <Trophy className="h-5 w-5 text-[var(--color-secondary)]" />
                   </div>
-                  <CardTitle className="text-gray-800 text-xl font-bold">Presenter History ({user?.class_year || 'Your Class'})</CardTitle>
+                  <div>
+                    <h3 className="text-base font-bold text-[var(--color-primary)]">Next Selection</h3>
+                    <p className="text-xs text-[var(--color-text-muted)]">{user?.class_year || 'Your Class'}</p>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {isLoadingSelections ? (
-                  <div className="text-center py-8 bg-purple-50/60 backdrop-blur-sm rounded-xl border-2 border-purple-200">
-                    <Loader2 className="h-10 w-10 animate-spin mx-auto text-purple-600 mb-3" />
-                    <p className="text-sm text-purple-600 font-medium">Loading history...</p>
-                  </div>
-                ) : presenterHistory.length > 0 ? (
-                  <div className="space-y-4 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-purple-300 scrollbar-track-purple-50">
-                    {presenterHistory.map((selection, index) => {
-                      const isUpcoming = new Date(selection.seminarDate) > new Date()
-                      const isPast = new Date(selection.seminarDate) < new Date()
-                      
-                      return (
-                        <div key={index} className={`backdrop-blur-sm border-2 rounded-xl p-4 shadow-md hover:shadow-lg transition-all duration-300 ${
-                          isUpcoming 
-                            ? 'bg-blue-50/70 border-blue-200' 
-                            : isPast 
-                            ? 'bg-gray-50/70 border-gray-200' 
-                            : 'bg-purple-50/70 border-purple-200'
-                        }`}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                             
-                              <h4 className={`font-bold text-lg mb-1 ${
-                                isUpcoming ? 'text-blue-900' : isPast ? 'text-gray-700' : 'text-purple-900'
-                              }`}>
-                                {selection.student.name}
-                              </h4>
-                              <p className={`text-sm font-medium mb-1 rounded-lg px-2 py-1 inline-block ${
-                                isUpcoming ? 'text-blue-700 bg-blue-100' : isPast ? 'text-gray-600 bg-gray-100' : 'text-purple-700 bg-purple-100'
-                              }`}>
-                                {selection.student.register_number}
-                              </p>
+                  {isLoadingSelections ? (
+                    <div className="text-center py-8 bg-[var(--color-accent)] rounded-lg border border-[var(--color-secondary)]/20">
+                      <Loader2 className="h-10 w-10 animate-spin mx-auto text-[var(--color-secondary)] mb-3" />
+                      <p className="text-sm text-[var(--color-secondary)] font-medium">Selection in progress...</p>
+                    </div>
+                  ) : tomorrowSelections.length > 0 ? (
+                    <div className="space-y-3">
+                      {tomorrowSelections.map((selection, index) => (
+                        <div key={index} className="bg-[var(--color-accent)] rounded-lg p-4 border border-[var(--color-secondary)]/20">
+                          <div className="text-center">
+                            <div className="flex items-center justify-center mb-3">
+                              <div className="p-2 bg-[var(--color-secondary)]/10 rounded-full">
+                                <Trophy className="h-5 w-5 text-[var(--color-secondary)]" />
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <p className={`text-sm font-medium ${
-                                isUpcoming ? 'text-blue-600' : isPast ? 'text-gray-500' : 'text-purple-600'
-                              }`}>
-                                {seminarTimingService.formatDateWithDay(selection.seminarDate).split(',')[0]}
-                              </p>
-                              <p className={`text-xs ${
-                                isUpcoming ? 'text-blue-500' : isPast ? 'text-gray-400' : 'text-purple-500'
-                              }`}>
-                                {seminarTimingService.formatTime12Hour(new Date(selection.selectedAt))}
-                              </p>
+                            <div className="bg-[var(--color-secondary)] text-white text-xs font-semibold px-3 py-1 rounded-full inline-block mb-2">
+                              NEXT PRESENTER
                             </div>
+                            <h3 className="font-bold text-[var(--color-primary)] mb-1">
+                              {selection.student.name}
+                            </h3>
+                            <p className="text-[var(--color-text-secondary)] text-sm mb-1">
+                              {selection.student.register_number}
+                            </p>
+                            <p className="text-[var(--color-text-muted)] text-xs">
+                              {selection.student.class_year || 'IT Department'}
+                            </p>
                           </div>
                         </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-500 py-8 bg-gray-50/60 backdrop-blur-sm rounded-xl border-2 border-gray-200">
-                    <div className="p-3 bg-gray-100 rounded-lg inline-block mb-3">
-                      <User className="h-10 w-10 mx-auto text-gray-400" />
+                      ))}
                     </div>
-                    <p className="text-sm font-medium mb-2">No presentation history found</p>
-                    <p className="text-xs text-gray-400">
-                      Past and upcoming presentations will appear here
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Booking Window Info */}
-            <Card className="bg-white/80 backdrop-blur-md shadow-2xl border-2 border-gray-200 hover:shadow-3xl transition-all duration-300">
-              <CardHeader className="bg-gray-50/50 rounded-t-lg border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-gray-100 rounded-lg">
-                    <AlertCircle className="h-6 w-6 text-gray-600" />
-                  </div>
-                  <CardTitle className="text-gray-800 text-xl font-bold">System Info</CardTitle>
+                  ) : (
+                    <div className="text-center text-gray-500 py-8 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="p-3 bg-gray-100 rounded-lg inline-block mb-3">
+                        <User className="h-10 w-10 mx-auto text-gray-400" />
+                      </div>
+                      <p className="text-sm font-medium mb-2">No student from {user?.class_year || 'your class'} selected for tomorrow</p>
+                      <p className="text-xs text-gray-400">
+                        Selection will happen at {seminarTimingService.getBookingWindowConfig().selectionTime}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-gray-50/60 backdrop-blur-sm rounded-lg border border-gray-200">
-                    <span className="text-gray-700 font-medium">Booking Window:</span>
-                    <span className="text-gray-800 font-bold text-sm">
-                      {seminarTimingService.getBookingWindowConfig().startTime} - {seminarTimingService.getBookingWindowConfig().endTime}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-gray-50/60 backdrop-blur-sm rounded-lg border border-gray-200">
-                    <span className="text-gray-700 font-medium">Selection Time:</span>
-                    <span className="text-gray-800 font-bold text-sm">
-                      {seminarTimingService.getBookingWindowConfig().selectionTime}
-                    </span>
-                  </div>
+              </div>
               
-                
+              {/* Next Seminar */}
+              <div className="saas-card p-5">
+                <div className="flex items-center space-x-3 mb-5">
+                  <div className="p-2 bg-[var(--color-accent)] rounded-lg">
+                    <Calendar className="h-5 w-5 text-[var(--color-secondary)]" />
+                  </div>
+                  <h3 className="text-base font-bold text-[var(--color-primary)]">Next Seminar</h3>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                  <div className="text-center bg-[var(--color-accent)]/50 rounded-lg p-5 border border-[var(--color-secondary)]/20">
+                    <p className="text-[var(--color-primary)] font-bold text-lg mb-2">
+                      {nextSeminarDate ? seminarTimingService.formatDateWithDay(nextSeminarDate) : 'Loading...'}
+                    </p>
+                    <p className="text-[var(--color-text-secondary)] text-sm font-medium">
+                      Selection at {seminarTimingService.getBookingWindowConfig().selectionTime}
+                    </p>
+                    
+                    {/* Holiday Information */}
+                    {holidayInfo.isHoliday && holidayInfo.rescheduledDate && holidayInfo.holidayDate !== holidayInfo.rescheduledDate && (
+                      <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <div className="flex items-center justify-center space-x-2 mb-2">
+                          <Info className="h-4 w-4 text-orange-600" />
+                          <span className="text-xs font-medium text-orange-800">Holiday Adjustment</span>
+                        </div>
+                        <p className="text-xs text-orange-700">
+                          Originally {seminarTimingService.formatDateWithDay(holidayInfo.holidayDate || '')} ({holidayInfo.holidayName})
+                        </p>
+                        <p className="text-xs text-orange-600 font-medium">
+                          Rescheduled to above date
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+          {/* Progressive Presenter History */}
+          <ProgressivePresenterHistory 
+            presenterHistory={presenterHistory} 
+            isLoading={isLoadingSelections} 
+            classYear={user?.class_year || 'Your Class'} 
+          />
         </div>
       </div>
-    </div>
+      </PageTransition>
+    </PullToRefresh>
   )
 }
