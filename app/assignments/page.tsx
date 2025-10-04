@@ -18,8 +18,8 @@ import { SkeletonAssignmentCard, SkeletonStatCard } from '../../components/ui/sk
 import ProgressiveLoader from '../../components/ui/ProgressiveLoader'
 import { motion, AnimatePresence } from 'framer-motion'
 import { staggerContainer, staggerItem } from '../../lib/animations'
-import SwipeableCard, { swipeActions } from '../../components/ui/SwipeableCard'
 import PageTransition from '../../components/ui/PageTransition'
+import RedirectLoader from '../../components/ui/RedirectLoader'
 
 // Lazy load heavy components
 const AssignmentCard = dynamic(() => import('../../components/assignments/AssignmentCard').then(mod => ({ default: mod.AssignmentCard })), { ssr: false })
@@ -101,8 +101,8 @@ export default function AssignmentsPage() {
         {/* Header */}
         <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
           <div className="flex items-center justify-between p-4">
-            <div className="w-16 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
-            <div className="w-24 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
+            <div className="w-16 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
+            <div className="w-24 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
             <div className="w-16"></div>
           </div>
         </div>
@@ -127,7 +127,7 @@ export default function AssignmentsPage() {
   }
 
   if (!user) {
-    return <div>Redirecting...</div>
+    return <RedirectLoader context="dashboard" />
   }
 
   // Show progressive submission view if an assignment is selected
@@ -209,42 +209,26 @@ export default function AssignmentsPage() {
               initial="initial"
               animate="animate"
             >
-              {assignments.map((assignment, index) => (
-                <motion.div
-                  key={assignment.id}
-                  variants={staggerItem}
-                  layout
-                >
-                  {!assignment.submission ? (
-                    <SwipeableCard
-                      rightAction={{
-                        ...swipeActions.complete,
-                        action: () => handleAssignmentClick(assignment)
-                      }}
-                      onSwipeRight={() => handleAssignmentClick(assignment)}
-                      threshold={80}
-                    >
-                      <LazyLoader minHeight="120px">
-                        <AssignmentCard
-                          assignment={assignment}
-                          onClick={() => handleAssignmentClick(assignment)}
-                          formatDate={formatDate}
-                          isOverdue={isOverdue}
-                        />
-                      </LazyLoader>
-                    </SwipeableCard>
-                  ) : (
+              {assignments.map((assignment, index) => {
+                const isPending = !assignment.submission && !isOverdue(assignment.due_date)
+                
+                return (
+                  <motion.div
+                    key={assignment.id}
+                    variants={staggerItem}
+                    layout
+                  >
                     <LazyLoader minHeight="120px">
                       <AssignmentCard
                         assignment={assignment}
-                        onClick={() => handleAssignmentClick(assignment)}
+                        onClick={isPending ? () => handleAssignmentClick(assignment) : undefined}
                         formatDate={formatDate}
                         isOverdue={isOverdue}
                       />
                     </LazyLoader>
-                  )}
-                </motion.div>
-              ))}
+                  </motion.div>
+                )
+              })}
             </motion.div>
           </AnimatePresence>
         )}

@@ -1,11 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../../lib/supabase';
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin } from '../../../../lib/supabase'
+import { safeParseJSON } from '@/lib/apiMiddleware';
 
 // POST - Mark notice as viewed by student
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { notice_id, student_id } = body;
+    const parseResult = await safeParseJSON<{ notice_id: string; student_id: string }>(request)
+    
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error }, { status: parseResult.status })
+    }
+    
+    const { notice_id, student_id } = parseResult.data
 
     if (!notice_id || !student_id) {
       return NextResponse.json(

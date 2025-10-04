@@ -24,6 +24,7 @@ import PageTransition from '../../components/ui/PageTransition'
 import { SkeletonCard } from '../../components/ui/skeletons'
 import { motion } from 'framer-motion'
 import { staggerContainer, staggerItem } from '../../lib/animations'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface Notice {
   id: string
@@ -79,6 +80,7 @@ const noticeTypeLabels = {
 export default function NoticePage() {
   const { user } = useAuth()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [notices, setNotices] = useState<Notice[]>([])
   const [filteredNotices, setFilteredNotices] = useState<Notice[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -147,10 +149,11 @@ export default function NoticePage() {
         }),
       })
       
-      // Update local state
-      setNotices(notices.map(n => 
-        n.id === noticeId ? { ...n, has_viewed: true } : n
-      ))
+      // Invalidate queries to refetch updated data from server
+      queryClient.invalidateQueries({ queryKey: ['noticeCount', user?.id, user?.class_year] })
+      
+      // Refetch notices to update UI with has_viewed status
+      await fetchNotices()
     } catch (error) {
       console.error('Error marking notice as viewed:', error)
     }
@@ -181,9 +184,9 @@ export default function NoticePage() {
       <div className="min-h-screen bg-[var(--color-background)] pb-20">
         <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
           <div className="flex items-center justify-between p-4">
-            <div className="w-16 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
-            <div className="w-32 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
-            <div className="w-10 h-10 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full skeleton animate-pulse" />
+            <div className="w-16 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
+            <div className="w-32 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
+            <div className="w-10 h-10 bg-gradient-to-r from-purple-100 to-purple-200 rounded-full skeleton animate-pulse" />
           </div>
         </div>
         <div className="p-4 space-y-4">

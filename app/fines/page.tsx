@@ -94,8 +94,8 @@ export default function FinesPage() {
         <div className="min-h-screen bg-[var(--color-background)] pb-20">
           <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
             <div className="flex items-center justify-between p-4">
-              <div className="w-16 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
-              <div className="w-24 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
+              <div className="w-16 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
+              <div className="w-24 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
               <div className="w-16"></div>
             </div>
           </div>

@@ -27,6 +27,7 @@ import PageTransition from "../../components/ui/PageTransition";
 import { SkeletonCard } from "../../components/ui/skeletons";
 import { motion } from "framer-motion";
 import { staggerContainer, staggerItem } from "../../lib/animations";
+import RedirectLoader from "../../components/ui/RedirectLoader";
 
 export default function ProfilePage() {
 
@@ -60,8 +61,8 @@ export default function ProfilePage() {
       <div className="min-h-screen bg-[var(--color-background)] pb-20">
         <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
           <div className="flex items-center justify-between p-4">
-            <div className="w-16 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
-            <div className="w-24 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
+            <div className="w-16 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
+            <div className="w-24 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
             <div className="w-16"></div>
           </div>
         </div>
@@ -75,7 +76,7 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    return <div>Redirecting...</div>;
+    return <RedirectLoader context="profile" />;
   }
 
   return (

@@ -3,10 +3,11 @@
 import { useAuth } from '@/contexts/AuthContext'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, ExternalLink } from 'lucide-react'
+import { Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { SkeletonCard } from '@/components/ui/skeletons'
 
 export default function NoDueRedirectPage() {
   const { user, loading } = useAuth()
@@ -29,9 +30,41 @@ export default function NoDueRedirectPage() {
     return () => clearTimeout(id)
   }, [user, loading, router])
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--color-background)] pb-20">
+        {/* Header Skeleton */}
+        <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
+          <div className="flex items-center justify-between p-4">
+            <div className="w-16 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
+            <div className="w-32 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
+            <div className="w-16" />
+          </div>
+        </div>
+        <div className="p-4">
+          <SkeletonCard />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--color-background)]">
-      <Card className="w-full max-w-lg shadow-2xl border-2" style={{ 
+      {/* Sticky Header */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
+        <div className="flex items-center justify-between p-4">
+          <Link href="/dashboard" className="flex items-center space-x-2 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+            <span className="font-medium">Back</span>
+          </Link>
+          <div className="text-center">
+            <h1 className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>No-Due</h1>
+          </div>
+          <div className="w-16" />
+        </div>
+      </div>
+
+      <Card className="w-full max-w-lg shadow-2xl border" style={{ 
         backgroundColor: 'var(--color-background)', 
         borderColor: 'var(--color-border-light)' 
       }}>

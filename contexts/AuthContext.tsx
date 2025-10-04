@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { Student, StudentRegistration } from '@/types/database'
 import { dbHelpers } from '@/lib/supabase'
+import { safeLocalStorage } from '@/lib/localStorage'
+import { loginRateLimiter } from '@/lib/rateLimiter'
 
 // Extended student type to include password
 interface StudentWithPassword extends Student {
@@ -42,25 +44,66 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<Student | null>(null)
   const [registrations, setRegistrations] = useState<StudentRegistration[]>([])
   const [loading, setLoading] = useState(true)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [sessionToken, setSessionToken] = useState<string | null>(null)
+
+  // Generate new session token
+  const generateSessionToken = (): string => {
+    if (typeof window !== 'undefined' && window.crypto) {
+      const array = new Uint8Array(32)
+      window.crypto.getRandomValues(array)
+      return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+    }
+    // Fallback for older browsers
+    return Math.random().toString(36).substring(2) + Date.now().toString(36)
+  }
 
   useEffect(() => {
     const loadStoredUser = async () => {
       try {
-        const storedUser = localStorage.getItem('unified_college_user')
-        if (storedUser) {
+        const storedUser = safeLocalStorage.getItem('unified_college_user')
+        const storedToken = safeLocalStorage.getItem('session_token')
+        const sessionCreatedAt = safeLocalStorage.getItem('session_created_at')
+        
+        if (storedUser && storedToken) {
+          // Check session age (expire after 30 days)
+          if (sessionCreatedAt) {
+            const ageInDays = (Date.now() - parseInt(sessionCreatedAt)) / (1000 * 60 * 60 * 24)
+            if (ageInDays > 30) {
+              // Session too old, require re-login
+              safeLocalStorage.removeItem('unified_college_user')
+              safeLocalStorage.removeItem('session_token')
+              safeLocalStorage.removeItem('session_created_at')
+              setAuthError('Session expired. Please login again.')
+              setLoading(false)
+              return
+            }
+          }
+          
           const userData = JSON.parse(storedUser) as Student
           const { data, error } = await dbHelpers.findStudentByRegNumber(userData.register_number)
           if (data && !error) {
             setUser(data as Student)
+            setSessionToken(storedToken)
             const registrationsData = (data as any).unified_student_registrations || []
             setRegistrations(registrationsData)
+            setAuthError(null)
+            // Ensure user_id is available for notifications subscription flows
+            safeLocalStorage.setItem('user_id', (data as Student).id)
           } else {
-            localStorage.removeItem('unified_college_user')
+            // Clear corrupted data and set error
+            safeLocalStorage.removeItem('unified_college_user')
+            safeLocalStorage.removeItem('session_token')
+            safeLocalStorage.removeItem('session_created_at')
+            setAuthError('Session expired. Please login again.')
           }
         }
       } catch (error) {
         console.error('Error loading stored user:', error)
-        localStorage.removeItem('unified_college_user')
+        safeLocalStorage.removeItem('unified_college_user')
+        safeLocalStorage.removeItem('session_token')
+        safeLocalStorage.removeItem('session_created_at')
+        setAuthError('Failed to load user session')
       } finally {
         setLoading(false)
       }
@@ -78,6 +121,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       const trimmedRegNumber = regNumber.trim().toUpperCase()
+      
+      // Check rate limiting
+      const rateLimitCheck = loginRateLimiter.isRateLimited(trimmedRegNumber)
+      if (rateLimitCheck.limited) {
+        const minutes = Math.ceil((rateLimitCheck.retryAfter || 0) / 60)
+        return { 
+          success: false, 
+          error: `Too many failed attempts. Please try again in ${minutes} minute${minutes > 1 ? 's' : ''}.` 
+        }
+      }
 
       let { data: student, error } = await dbHelpers.findStudentByRegNumber(trimmedRegNumber)
 
@@ -121,6 +174,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           studentWithPassword.password = password;
         } 
         else if (studentWithPassword.password !== password) {
+          // Record failed attempt for rate limiting
+          loginRateLimiter.recordFailedAttempt(trimmedRegNumber)
           return { success: false, error: 'Invalid password.' }
         }
       } else if (studentWithPassword.password) {
@@ -129,9 +184,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const registrationsData = (student as any).unified_student_registrations || []
 
+      // SECURITY: Generate new session token on login (prevents session fixation)
+      const newSessionToken = generateSessionToken()
+      setSessionToken(newSessionToken)
+      safeLocalStorage.setItem('session_token', newSessionToken)
+      safeLocalStorage.setItem('session_created_at', Date.now().toString())
+      
       setUser(student as Student)
       setRegistrations(registrationsData)
-      localStorage.setItem('unified_college_user', JSON.stringify(student))
+      setAuthError(null)
+      safeLocalStorage.setItem('unified_college_user', JSON.stringify(student))
+      // Persist user_id for notification services (web push & FCM)
+      safeLocalStorage.setItem('user_id', (student as Student).id)
+      
+      // Clear rate limiting on successful login
+      loginRateLimiter.clearAttempts(trimmedRegNumber)
 
       return { success: true }
     } catch (error) {
@@ -145,7 +212,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = () => {
     setUser(null)
     setRegistrations([])
-    localStorage.removeItem('unified_college_user')
+    setAuthError(null)
+    setSessionToken(null)
+    safeLocalStorage.removeItem('unified_college_user')
+    safeLocalStorage.removeItem('session_token')
+    safeLocalStorage.removeItem('session_created_at')
+    safeLocalStorage.removeItem('user_id')
   }
 
   const refreshUser = async () => {
@@ -155,7 +227,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const { data, error } = await dbHelpers.findStudentByRegNumber(user.register_number)
       if (data && !error) {
         setUser(data as Student)
-        localStorage.setItem('unified_college_user', JSON.stringify(data))
+        safeLocalStorage.setItem('unified_college_user', JSON.stringify(data))
         
         const registrationsData = (data as any).unified_student_registrations || []
         setRegistrations(registrationsData)
@@ -212,6 +284,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     registerForService,
     hasRegistration
   }
+
+  // Clear auth error when user successfully loads
+  useEffect(() => {
+    if (user && authError) {
+      setAuthError(null)
+    }
+  }, [user, authError])
 
   return (
     <AuthContext.Provider value={value}>

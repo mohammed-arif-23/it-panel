@@ -1,67 +1,103 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { RefreshCw, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { safeLocalStorage } from '../../lib/localStorage';
 
 export default function UpdateNotification() {
   const [showUpdate, setShowUpdate] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
-    // Check for service worker updates
-    navigator.serviceWorker.ready.then((reg) => {
-      setRegistration(reg);
-
-      // Check for updates every 60 seconds
-      setInterval(() => {
-        reg.update();
-      }, 60000);
-    });
-
-    // Listen for new service worker waiting to activate
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      window.location.reload();
-    });
-
-    // Detect when a new service worker is waiting
-    const onUpdateFound = () => {
-      navigator.serviceWorker.ready.then((reg) => {
-        if (reg.waiting) {
-          setShowUpdate(true);
-        }
-
-        if (reg.installing) {
-          reg.installing.addEventListener('statechange', (e: Event) => {
-            const sw = e.target as ServiceWorker;
-            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+    if ('serviceWorker' in navigator) {
+      // Register update handler
+      const handleUpdate = (registration: ServiceWorkerRegistration) => {
+        const newWorker = registration.installing || registration.waiting;
+        if (newWorker) {
+          const checkState = () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // Check if user dismissed update recently (within 1 hour)
+              const dismissedAt = safeLocalStorage.getItem('sw_update_dismissed');
+              if (dismissedAt) {
+                const hoursSinceDismissed = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60);
+                if (hoursSinceDismissed < 1) {
+                  return; // Don't show again within 1 hour
+                }
+              }
+              setWaitingWorker(newWorker);
               setShowUpdate(true);
             }
-          });
+          };
+          newWorker.addEventListener('statechange', checkState);
+          checkState(); // Check immediately in case already installed
+        }
+      };
+
+      navigator.serviceWorker.ready.then((registration) => {
+        // Listen for updates
+        registration.addEventListener('updatefound', () => handleUpdate(registration));
+        
+        // Check if there's already a waiting worker
+        if (registration.waiting) {
+          handleUpdate(registration);
         }
       });
-    };
 
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
-        setShowUpdate(true);
-      }
-    });
+      // Listen for controller change (new SW activated)
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
 
-    onUpdateFound();
+      // Check for updates every 30 minutes (more frequent than 1 hour)
+      const interval = setInterval(() => {
+        navigator.serviceWorker.ready.then((registration) => {
+          registration.update().catch((err) => {
+            console.warn('Service worker update check failed:', err);
+          });
+        });
+      }, 30 * 60 * 1000);
+
+      // Check for update on page visibility change
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          navigator.serviceWorker.ready.then((registration) => {
+            registration.update().catch((err) => {
+              console.warn('Service worker update check failed:', err);
+            });
+          });
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
   }, []);
 
   const handleUpdate = () => {
-    if (registration && registration.waiting) {
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    if (waitingWorker && !isUpdating) {
+      setIsUpdating(true);
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
       setShowUpdate(false);
+      // Reload will happen automatically via controllerchange event
     }
   };
 
   const handleDismiss = () => {
     setShowUpdate(false);
-    // Show again after 1 hour
-    setTimeout(() => setShowUpdate(true), 60 * 60 * 1000);
+    // Remember dismissal to avoid showing again too soon
+    safeLocalStorage.setItem('sw_update_dismissed', Date.now().toString());
   };
 
   if (!showUpdate) return null;
@@ -87,9 +123,11 @@ export default function UpdateNotification() {
             <div className="flex gap-2">
               <button
                 onClick={handleUpdate}
-                className="flex-1 bg-white text-green-600 text-sm font-medium py-2 px-4 rounded-lg hover:bg-gray-50 transition-all shadow-md"
+                disabled={isUpdating}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Update Now
+                <RefreshCw className={`w-4 h-4 ${isUpdating ? 'animate-spin' : ''}`} />
+                <span>{isUpdating ? 'Updating...' : 'Update Now'}</span>
               </button>
               <button
                 onClick={handleDismiss}

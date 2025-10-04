@@ -1,10 +1,13 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { useNoticeCount } from '../../hooks/useNoticeCount'
+import { useRealtimeNotifications } from '../../hooks/useRealtimeNotifications'
 import { useRouter } from 'next/navigation'
+import '../../lib/testNotification'
+import '../../lib/clearServiceWorker'
 import { PullToRefresh } from '../../components/pwa/PullToRefresh'
 import Loader from '../../components/ui/loader'
 import Link from 'next/link'
@@ -43,6 +46,14 @@ export default function DashboardPage() {
   const router = useRouter()
   const { data: dashboardData, isLoading: isLoadingDashboard, refetch: refetchDashboard } = useDashboardData(user?.id || '')
   const { data: noticeCount } = useNoticeCount(user?.id || '', user?.class_year || '')
+  // removed timetable dashboard state
+  
+  // Enable realtime notifications for backend updates
+  useRealtimeNotifications({
+    studentId: user?.id ?? undefined,
+    classYear: user?.class_year ?? undefined,
+    enabled: !!user
+  })
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -51,29 +62,31 @@ export default function DashboardPage() {
     }
   }, [user, loading, router])
 
+  // removed timetable fetch effect
+
   const handleRefresh = async () => {
     await refetchDashboard()
   }
 
   const quickTiles = [
+    // Reordered for typical usage priority
+    { title: 'Notice', href: '/notice', icon: Bell, badge: noticeCount?.unread || 0 },
+    { title: 'Timetable', href: '/timetable', icon: CalendarClock },
+    { title: 'Fine History', href: '/fines', icon: IndianRupee },
     { title: 'Assignments', href: '/assignments', icon: FileText },
     { title: 'Seminar', href: '/seminar', icon: ClipboardList },
-    { title: 'Fine History', href: '/fines', icon: IndianRupee },
-    { title: 'Notice', href: '/notice', icon: Bell, badge: noticeCount?.unread || 0 },
-    { title: 'Learning', href: '/learn', icon: BookOpen },
-    { title: 'Profile', href: '/profile', icon: User },
-    { title: 'NPTEL', href: '/nptel', icon: GraduationCap },
-    { title: 'No-Due', href: '/nodue', icon: FileCheck },
     { title: 'Concept of the Day', href: '/COD', icon: Lightbulb },
+    { title: 'Learning', href: '/learn', icon: BookOpen },
+    { title: 'No-Due', href: '/nodue', icon: FileCheck },
+    { title: 'NPTEL', href: '/nptel', icon: GraduationCap },
+    { title: "University QP's", href: '/qps', icon: Library },
+    { title: 'Lab Manuals', href: '/lab-manuals', icon: FlaskConical },
+    { title: 'Notes', href: '/notes', icon: StickyNote },
+    { title: 'Profile', href: '/profile', icon: User },
   /*    
-    { title: 'Lab Manuals', href: '/labmanual', icon: FlaskConical },
-    { title: 'Time Table', href: '/timetable', icon: CalendarClock },
     { title: 'Attendance', href: '/attendance', icon: UserCheck },
     { title: 'Results', href: '/results', icon: Award },
-    { title: 'Notes', href: '/notes', icon: StickyNote },
     { title: 'Syllabus', href: '/syllabus', icon: BookOpen },
-    { title: 'University QP\'s', href: '/library', icon: Library },
-    { title: 'Notice', href: '/notice', icon: Bell },
     { title: 'Feedback', href: '/feedback', icon: MessageCircle },
     { title: 'About Department', href: '/department', icon: Building2 },*/
   ]
@@ -84,28 +97,26 @@ export default function DashboardPage() {
         {/* Mobile Header Skeleton */}
         <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
           <div className="p-4">
-            <div className="flex items-center justify-center">
-              <div className="w-80 h-20 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg skeleton animate-pulse" />
+            <div className="flex items-center justify-between p-4">
+              <div className="w-16 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
+              <div className="w-24 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
+              <div className="w-16"></div>
             </div>
-          </div>
-        </div>
-
-        <div className="px-4 py-6">
-          <div className="space-y-6">
             {/* Title Skeletons */}
             <div className="space-y-3">
-              <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-64 mx-auto skeleton animate-pulse" />
-              <div className="h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-48 mx-auto skeleton animate-pulse" />
+              <div className="h-6 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg w-64 mx-auto skeleton animate-pulse" />
+              <div className="h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg w-48 mx-auto skeleton animate-pulse" />
             </div>
             
             {/* Dashboard Tiles Skeleton */}
             <div className="grid grid-cols-3 gap-4">
-              {Array.from({ length: 8 }).map((_, i) => (
+              {Array.from({ length: 10 }).map((_, i) => (
                 <SkeletonDashboardTile key={i} />
               ))}
             </div>
           </div>
         </div>
+
       </div>
     )
   }
@@ -135,15 +146,12 @@ export default function DashboardPage() {
         <div className="px-4 py-6">
           {isLoadingDashboard ? (
             <div className="space-y-6">
-              {/* Title Skeletons */}
               <div className="space-y-3">
-                <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-64 mx-auto skeleton animate-pulse" />
-                <div className="h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-48 mx-auto skeleton animate-pulse" />
+                <div className="h-6 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg w-64 mx-auto skeleton animate-pulse" />
+                <div className="h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg w-48 mx-auto skeleton animate-pulse" />
               </div>
-              
-              {/* Dashboard Tiles Skeleton */}
               <div className="grid grid-cols-3 gap-4">
-                {Array.from({ length: 8 }).map((_, i) => (
+                {Array.from({ length: 10 }).map((_, i) => (
                   <SkeletonDashboardTile key={i} />
                 ))}
               </div>
@@ -208,8 +216,7 @@ export default function DashboardPage() {
                   })}
                 </motion.div>
               </div>
-
-            
+              {/* Timetable card removed as requested */}
             </div>
           )}
         </div>

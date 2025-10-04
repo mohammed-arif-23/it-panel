@@ -73,15 +73,27 @@ export function useSubmitAssignment() {
 
       if (!response.ok) {
         let errorMessage = 'Failed to save assignment submission'
+        let plagiarismData = null
         
         try {
           const errorData = await response.json()
           errorMessage = errorData.error || errorMessage
+          
+          // Preserve plagiarism detection details
+          if (errorData.plagiarism_detected && errorData.matched_student) {
+            plagiarismData = errorData.matched_student
+          }
         } catch (parseError) {
           errorMessage = `Server error (${response.status}). Please try again.`
         }
         
-        throw new Error(errorMessage)
+        // Create error with additional plagiarism data
+        const error: any = new Error(errorMessage)
+        if (plagiarismData) {
+          error.plagiarismData = plagiarismData
+          error.isPlagiarism = true
+        }
+        throw error
       }
 
       return response.json()

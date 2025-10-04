@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "388888953459",
+    "project_id": "dynamit-b2aac",
+    "storage_bucket": "dynamit-b2aac.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:388888953459:android:9f3f70f95128b84e702006",
+        "android_client_info": {
+          "package_name": "com.dynamit.arif"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATu-3TDZaLUj_rvu19m-eSiwrR6FS-rh4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

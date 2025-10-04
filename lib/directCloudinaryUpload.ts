@@ -20,18 +20,12 @@ export interface CloudinaryUploadProgress {
 
 export class DirectCloudinaryUpload {
   private cloudName: string
-  private uploadPreset: string
 
   constructor() {
     this.cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || ''
-    this.uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'assignments_unsigned'
     
     if (!this.cloudName) {
       console.error('Missing NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME environment variable')
-    }
-    
-    if (!process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET) {
-      console.warn('Using default upload preset. Set NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET for custom configuration.')
     }
   }
 
@@ -50,19 +44,39 @@ export class DirectCloudinaryUpload {
       throw new Error('Cloudinary not configured. Please set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME environment variable.')
     }
 
+    // Get signed upload parameters from backend
+    let signedParams: any
+    try {
+      const signResponse = await fetch('/api/cloudinary/sign-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      if (!signResponse.ok) {
+        throw new Error('Failed to get upload signature')
+      }
+      
+      signedParams = await signResponse.json()
+    } catch (error) {
+      throw new Error('Failed to authenticate upload: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    }
+
     return new Promise((resolve, reject) => {
       // Create FormData for the upload
+      // IMPORTANT: Include exactly the same parameters that were used to generate the signature
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('upload_preset', this.uploadPreset)
-      formData.append('folder', 'assignments')
-      
-      // Generate unique filename
-      const timestamp = Date.now()
-      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '')
-      const extension = file.name.split('.').pop()?.toLowerCase() || 'pdf'
-      const customFilename = `${nameWithoutExt}_${timestamp}.${extension}`
-      formData.append('public_id', `assignments/${customFilename.replace(/\.[^/.]+$/, '')}`)
+      formData.append('api_key', signedParams.apiKey)
+      formData.append('timestamp', signedParams.timestamp)
+      formData.append('signature', signedParams.signature)
+      formData.append('folder', signedParams.folder)
+      // These two are included in the server signature, so they MUST be sent here as well
+      if (signedParams.use_filename) {
+        formData.append('use_filename', signedParams.use_filename)
+      }
+      if (signedParams.unique_filename) {
+        formData.append('unique_filename', signedParams.unique_filename)
+      }
 
       // Create XMLHttpRequest for progress tracking
       const xhr = new XMLHttpRequest()
@@ -106,7 +120,7 @@ export class DirectCloudinaryUpload {
       })
 
       // Configure and send request
-      xhr.open('POST', `https://api.cloudinary.com/v1_1/${this.cloudName}/upload`)
+      xhr.open('POST', signedParams.uploadUrl)
       xhr.timeout = 300000 // 5 minutes timeout
       xhr.send(formData)
     })

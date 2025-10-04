@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Download, X } from 'lucide-react';
+import { safeLocalStorage } from '../../lib/localStorage';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -20,9 +22,18 @@ export default function InstallPrompt() {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       
+      // Check if recently dismissed (within last 7 days)
+      const dismissedAt = safeLocalStorage.getItem('installPromptDismissed');
+      if (dismissedAt) {
+        const daysSinceDismissed = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
+        if (daysSinceDismissed < 7) {
+          return; // Don't show again within 7 days
+        }
+      }
+      
       // Show prompt after 30 seconds or on second visit
-      const visitCount = parseInt(localStorage.getItem('visitCount') || '0') + 1;
-      localStorage.setItem('visitCount', visitCount.toString());
+      const visitCount = parseInt(safeLocalStorage.getItem('visitCount') || '0') + 1;
+      safeLocalStorage.setItem('visitCount', visitCount.toString());
       
       if (visitCount >= 2) {
         setTimeout(() => setShowPrompt(true), 3000); // Show after 3 seconds on return visits
@@ -47,6 +58,10 @@ export default function InstallPrompt() {
     
     if (outcome === 'accepted') {
       console.log('PWA installed');
+      safeLocalStorage.setItem('pwaInstalled', 'true');
+    } else {
+      // User dismissed the browser prompt
+      safeLocalStorage.setItem('installPromptDismissed', Date.now().toString());
     }
     
     setDeferredPrompt(null);
@@ -55,7 +70,7 @@ export default function InstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false);
-    localStorage.setItem('installPromptDismissed', Date.now().toString());
+    safeLocalStorage.setItem('installPromptDismissed', Date.now().toString());
   };
 
   if (!showPrompt || !deferredPrompt) return null;

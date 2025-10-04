@@ -29,6 +29,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import Alert from '@/components/ui/alert'
 import Loader from '@/components/ui/loader'
+import { SkeletonCard } from '@/components/ui/skeletons'
 
 interface NPTELRegistrationData {
   register_number: string
@@ -449,21 +450,6 @@ export default function NPTELPage() {
       default:
         return <Badge variant="outline">Not Started</Badge>
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-[70vh] flex items-center justify-center" style={{backgroundColor: '#FFFFFF'}}>
-        <div className="text-center">
-          <Loader/>
-          <p className="mt-2 text-black">Loading your NPTEL data...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return <div>Redirecting...</div>
   }
 
   // Main NPTEL Dashboard

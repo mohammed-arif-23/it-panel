@@ -13,7 +13,7 @@ export function SkeletonTable({ rows = 5, columns = 4, className = '' }: Skeleto
       <div className="bg-[var(--color-accent)] p-4 border-b border-[var(--color-border-light)]">
         <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
           {Array.from({ length: columns }).map((_, index) => (
-            <div key={index} className="h-4 bg-gradient-to-r from-gray-300 to-gray-400 rounded-lg skeleton" />
+            <div key={index} className="h-4 bg-gradient-to-r from-purple-200 to-purple-300 rounded-lg skeleton" />
           ))}
         </div>
       </div>
@@ -26,7 +26,7 @@ export function SkeletonTable({ rows = 5, columns = 4, className = '' }: Skeleto
               {Array.from({ length: columns }).map((_, colIndex) => (
                 <div 
                   key={colIndex} 
-                  className={`h-3 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg skeleton ${
+                  className={`h-3 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg skeleton ${
                     colIndex === 0 ? 'w-3/4' : 'w-full'
                   }`} 
                 />

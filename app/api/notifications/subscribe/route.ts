@@ -1,46 +1,91 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// Validate env vars and fail fast with descriptive errors
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('[subscribe] Missing Supabase env vars', {
+    hasUrl: !!SUPABASE_URL,
+    hasServiceRole: !!SUPABASE_SERVICE_ROLE_KEY
+  })
+}
+
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  SUPABASE_URL || '',
+  SUPABASE_SERVICE_ROLE_KEY || ''
 )
 
 export async function POST(request: Request) {
   try {
-    const { subscription, userId } = await request.json()
+    const { subscription, userId, fcmToken, platform } = await request.json()
 
-    if (!userId || !subscription) {
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'User ID is required' },
         { status: 400 }
       )
     }
 
-    // Store subscription in database
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .upsert({
-        user_id: userId,
-        subscription: subscription,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id'
-      })
+    // Determine what type of subscription this is
+    const isAndroid = platform === 'android' || fcmToken;
+    
+    const subscriptionData: any = {
+      user_id: userId,
+      updated_at: new Date().toISOString(),
+      platform: isAndroid ? 'android' : 'web'
+    };
 
-    if (error) {
-      console.error('Error storing subscription:', error)
+    if (fcmToken) {
+      // Android FCM token
+      subscriptionData.fcm_token = fcmToken;
+      subscriptionData.subscription = null; // Clear web push subscription
+    } else if (subscription) {
+      // Web push subscription
+      subscriptionData.subscription = subscription;
+      subscriptionData.fcm_token = null; // Clear FCM token
+    } else {
       return NextResponse.json(
-        { error: 'Failed to store subscription' },
+        { error: 'Either subscription or fcmToken is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json(
+        { error: 'Server misconfiguration: Supabase credentials missing' },
         { status: 500 }
       )
     }
+
+    // Store subscription in database (unique per user + platform)
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .upsert(subscriptionData, {
+        onConflict: 'user_id,platform'
+      })
+
+    if (error) {
+      console.error('Error storing subscription:', {
+        message: error.message,
+        details: (error as any).details,
+        hint: (error as any).hint,
+        code: (error as any).code
+      })
+      return NextResponse.json(
+        { error: 'Failed to store subscription', code: (error as any).code, details: (error as any).message || (error as any).details },
+        { status: 500 }
+      )
+    }
+
+    console.log(`✅ ${isAndroid ? 'FCM' : 'Web push'} subscription saved for user ${userId}`);
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error in subscribe endpoint:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: (error as any)?.message },
       { status: 500 }
     )
   }

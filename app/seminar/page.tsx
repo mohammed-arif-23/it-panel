@@ -29,6 +29,8 @@ import { seminarTimingService } from '../../lib/seminarTimingService'
 import Loader from '@/components/ui/loader'
 import { SkeletonCard } from '../../components/ui/skeletons'
 import PageTransition from '../../components/ui/PageTransition'
+import RedirectLoader from '../../components/ui/RedirectLoader'
+import Spinner from '../../components/ui/Spinner'
 interface TodaySelection {
   student: {
     id: string
@@ -350,8 +352,8 @@ export default function SeminarPage() {
         {/* Header Skeleton */}
         <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
           <div className="flex items-center justify-between p-4">
-            <div className="w-16 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
-            <div className="w-32 h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded skeleton animate-pulse" />
+            <div className="w-16 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
+            <div className="w-32 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
             <div className="w-16"></div>
           </div>
         </div>
@@ -383,7 +385,7 @@ export default function SeminarPage() {
   }
 
   if (!user) {
-    return <div>Redirecting...</div>
+    return <RedirectLoader context="dashboard" />
   }
 
   return (
@@ -535,7 +537,7 @@ export default function SeminarPage() {
                           >
                             {isBooking ? (
                               <>
-                                <Loader /> 
+                                <Spinner size="sm" color="white" />
                                 <span>Booking...</span>
                               </>
                             ) : (

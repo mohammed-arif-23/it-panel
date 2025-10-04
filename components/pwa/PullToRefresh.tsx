@@ -23,14 +23,22 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
   const [startX, setStartX] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Determine if the view is scrolled to the very top (window or nearest scrollable container)
+  const isAtTop = () => {
+    const docTop = (document.scrollingElement?.scrollTop ?? window.scrollY ?? 0) <= 0;
+    const el = containerRef.current;
+    const elTop = el ? el.scrollTop <= 0 : true;
+    return docTop && elTop;
+  };
+
   const handleTouchStart = (e: TouchEvent) => {
-    if (disabled || window.scrollY > 0) return;
+    if (disabled || !isAtTop()) return;
     setStartY(e.touches[0].clientY);
     setStartX(e.touches[0].clientX);
   };
 
   const handleTouchMove = (e: TouchEvent) => {
-    if (disabled || window.scrollY > 0 || isRefreshing) return;
+    if (disabled || isRefreshing || !isAtTop()) return;
     
     const currentY = e.touches[0].clientY;
     const currentX = e.touches[0].clientX;
@@ -40,6 +48,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
     // Only handle vertical pulls (ignore horizontal swipes)
     // Require vertical movement to be at least 2x the horizontal movement
     if (deltaY > 0 && Math.abs(deltaY) > Math.abs(deltaX) * 2 && Math.abs(deltaY) > 10) {
+      // Prevent native pull-to-refresh/overscroll glow
       e.preventDefault();
       e.stopPropagation();
       const pullDistance = Math.min(deltaY * 0.5, threshold * 1.5);
@@ -68,6 +77,13 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
     setStartX(0);
   };
 
+  const handleTouchCancel = () => {
+    setIsPulling(false);
+    setPullDistance(0);
+    setStartY(0);
+    setStartX(0);
+  };
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -75,11 +91,13 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
     container.addEventListener('touchstart', handleTouchStart, { passive: false });
     container.addEventListener('touchmove', handleTouchMove, { passive: false });
     container.addEventListener('touchend', handleTouchEnd);
+    container.addEventListener('touchcancel', handleTouchCancel);
 
     return () => {
       container.removeEventListener('touchstart', handleTouchStart);
       container.removeEventListener('touchmove', handleTouchMove);
       container.removeEventListener('touchend', handleTouchEnd);
+      container.removeEventListener('touchcancel', handleTouchCancel);
     };
   }, [startY, startX, pullDistance, isPulling, isRefreshing, disabled]);
 

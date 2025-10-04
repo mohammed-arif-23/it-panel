@@ -3,7 +3,7 @@ import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
   dest: "public",
-  disable: process.env.NODE_ENV === "development",
+  disable: false, // Enable PWA in all environments to prevent stale SW issues
   register: true,
   fallbacks: {
     document: "/offline",
@@ -11,6 +11,9 @@ const withPWA = withPWAInit({
   workboxOptions: {
     disableDevLogs: true,
   },
+  // Custom service worker will be created to handle push notifications
+  cacheOnFrontEndNav: true,
+  reloadOnOnline: true,
 });
 
 const nextConfig: NextConfig = {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "../../../../lib/supabase";
+import { supabase } from "@/lib/supabase";
+import { verifyCronRequest } from "@/lib/apiMiddleware";
 import { seminarTimingService } from "../../../../lib/seminarTimingService";
 import { holidayService } from "../../../../lib/holidayService";
 import { fineService } from "../../../../lib/fineService";
@@ -22,10 +23,8 @@ interface BookingWithStudent {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if this is a cron job request and bypass authentication if needed
-    const userAgent = request.headers.get("user-agent") || "";
-    const isCronJob =
-      userAgent.includes("Vercel-Cron-Job") || userAgent.includes("cron");
+    // SECURITY: Verify cron request using secret token (not User-Agent)
+    const isCronJob = verifyCronRequest(request);
 
     if (isCronJob) {
       console.log(

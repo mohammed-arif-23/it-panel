@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { calculateFileHash } from '@/lib/hashUtils'
+import { safeParseJSON, errorResponse } from '@/lib/apiMiddleware'
 
 // Configure timeouts for this route
 export const maxDuration = 30
@@ -20,11 +21,24 @@ const supabase = createClient(
 )
 
 export async function POST(request: NextRequest) {
-  // Add CORS headers for Flutter WebView compatibility
+  // Add CORS headers - restrict to specific origins
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'https://localhost:3000',
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
+  ].filter(Boolean)
+  
+  const origin = request.headers.get('origin')
   const corsHeaders = new Headers()
-  corsHeaders.set('Access-Control-Allow-Origin', '*')
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    corsHeaders.set('Access-Control-Allow-Origin', origin)
+  }
+  
   corsHeaders.set('Access-Control-Allow-Methods', 'POST, OPTIONS')
   corsHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  corsHeaders.set('Access-Control-Allow-Credentials', 'true')
   
   try {
     
@@ -33,15 +47,24 @@ export async function POST(request: NextRequest) {
       return new NextResponse(null, { status: 200, headers: corsHeaders })
     }
     
-    const body = await request.json()
-    const { 
-      assignment_id, 
-      student_id, 
-      file_url, 
-      file_name, 
-      file_size,
-      cloudinary_public_id 
-    } = body
+    // Safe JSON parsing with size limit (2MB for file metadata)
+    const parseResult = await safeParseJSON<{
+      assignment_id: string
+      student_id: string
+      file_url: string
+      file_name: string
+      file_size: number
+      cloudinary_public_id: string
+    }>(request, 2 * 1024 * 1024)
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error },
+        { status: parseResult.status, headers: corsHeaders }
+      )
+    }
+
+    const { assignment_id, student_id, file_url, file_name, file_size, cloudinary_public_id } = parseResult.data
 
     // Validate required fields
     if (!assignment_id || !student_id || !file_url || !file_name) {
@@ -142,6 +165,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Failed to verify file originality' }, 
         { status: 500, headers: corsHeaders }
+      )
+    }
+
+    // Check for existing submission by this student for this assignment
+    // This prevents duplicate submissions (idempotency)
+    const { data: existingSubmission, error: checkError } = await supabase
+      .from('unified_assignment_submissions')
+      .select('id, file_hash, created_at')
+      .eq('student_id', student_id)
+      .eq('assignment_id', assignment_id)
+      .maybeSingle()
+
+    if (existingSubmission) {
+      return NextResponse.json(
+        { 
+          error: 'You have already submitted this assignment.',
+          submission_id: existingSubmission.id,
+          submitted_at: existingSubmission.created_at
+        },
+        { status: 409, headers: corsHeaders } // 409 Conflict
       )
     }
 

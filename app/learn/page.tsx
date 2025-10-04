@@ -3,10 +3,11 @@
 import { useAuth } from '@/contexts/AuthContext'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, ExternalLink } from 'lucide-react'
+import { Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { SkeletonCard } from '@/components/ui/skeletons'
 
 export default function LearnRedirectPage() {
   const { user, loading } = useAuth()
@@ -29,30 +30,68 @@ export default function LearnRedirectPage() {
     return () => clearTimeout(id)
   }, [user, loading, router])
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--color-background)] pb-20">
+        {/* Header Skeleton */}
+        <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
+          <div className="flex items-center justify-between p-4">
+            <div className="w-16 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
+            <div className="w-32 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
+            <div className="w-16" />
+          </div>
+        </div>
+        <div className="p-4">
+          <SkeletonCard />
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-[70vh] flex items-center justify-center p-4" style={{ backgroundColor: '#FFFFFF' }}>
-      <Card className="w-full max-w-lg bg-white shadow-2xl border-2 border-gray-200">
-        <CardHeader className="text-center bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-gray-200 rounded-t-xl">
-          <CardTitle className="text-2xl font-bold text-gray-800">Redirecting to Learning App</CardTitle>
-          <CardDescription className="text-gray-600">We are preparing your learning experience</CardDescription>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--color-background)]">
+      {/* Sticky Header */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
+        <div className="flex items-center justify-between p-4">
+          <Link href="/dashboard" className="flex items-center space-x-2 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+            <span className="font-medium">Back</span>
+          </Link>
+          <div className="text-center">
+            <h1 className="text-lg font-bold text-[var(--color-primary)]">Learning</h1>
+          </div>
+          <div className="w-16" />
+        </div>
+      </div>
+
+      <Card className="w-full max-w-lg shadow-2xl border" style={{ 
+        backgroundColor: 'var(--color-background)', 
+        borderColor: 'var(--color-border-light)'
+      }}>
+        <CardHeader className="text-center border-b rounded-t-xl" style={{ 
+          background: 'linear-gradient(to right, var(--color-accent), var(--color-background))',
+          borderColor: 'var(--color-border-light)'
+        }}>
+          <CardTitle className="text-2xl font-bold" style={{ color: 'var(--color-primary)' }}>Redirecting to Learning App</CardTitle>
+          <CardDescription style={{ color: 'var(--color-text-muted)' }}>We are preparing your learning experience</CardDescription>
         </CardHeader>
         <CardContent className="p-8">
           <div className="flex flex-col items-center text-center space-y-4">
             <div className="flex items-center space-x-3">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--color-secondary)' }} />
             </div>
             <div className="pt-2">
-              <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl">
-                <Link href="/">
-                  Go back to home
+              <Button asChild className="saas-button-primary rounded-xl">
+                <Link href="/dashboard">
+                  Go back to dashboard
                 </Link>
               </Button>
             </div>
-            <div className="text-xs text-gray-400">
+            <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
               If you are not redirected automatically, please check your internet connection.
             </div>
             {user && (
-              <div className="text-xs text-gray-500">
+              <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                 Ref ID: <span className="font-mono">{user.id}</span>
               </div>
             )}

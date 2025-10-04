@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PushNotificationSender } from '@/lib/pushNotificationSender'
 
+// Adjust to your admin panel origin(s) in production
+const ALLOWED_ORIGINS = ['*'];
+
+function withCors(body: any, init?: ResponseInit) {
+  const res = NextResponse.json(body, init);
+  const origin = (typeof body === 'object' && (body as any).__originOverride) || '*';
+  res.headers.set('Access-Control-Allow-Origin', ALLOWED_ORIGINS.includes('*') ? '*' : origin);
+  res.headers.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.headers.set('Access-Control-Max-Age', '86400');
+  return res;
+}
+
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get('origin') || '*';
+  return withCors({ ok: true, __originOverride: origin });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -12,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!target || !notification || !notification.title || !notification.body) {
-      return NextResponse.json(
+      return withCors(
         { error: 'Missing required fields' },
         { status: 400 }
       )
@@ -23,7 +41,7 @@ export async function POST(request: NextRequest) {
     switch (target) {
       case 'student':
         if (!targetValue) {
-          return NextResponse.json(
+          return withCors(
             { error: 'Student ID is required' },
             { status: 400 }
           )
@@ -36,7 +54,7 @@ export async function POST(request: NextRequest) {
 
       case 'students':
         if (!Array.isArray(targetValue) || targetValue.length === 0) {
-          return NextResponse.json(
+          return withCors(
             { error: 'Student IDs array is required' },
             { status: 400 }
           )
@@ -49,7 +67,7 @@ export async function POST(request: NextRequest) {
 
       case 'class':
         if (!targetValue) {
-          return NextResponse.json(
+          return withCors(
             { error: 'Class year is required' },
             { status: 400 }
           )
@@ -79,13 +97,13 @@ export async function POST(request: NextRequest) {
         break
 
       default:
-        return NextResponse.json(
+        return withCors(
           { error: 'Invalid target type. Must be: student, students, class, all, or category' },
           { status: 400 }
         )
     }
 
-    return NextResponse.json({
+    return withCors({
       message: 'Notifications sent successfully',
       ...result,
       details: {
@@ -99,7 +117,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error sending notifications:', error)
-    return NextResponse.json(
+    return withCors(
       { 
         error: 'Failed to send notifications',
         details: error instanceof Error ? error.message : 'Unknown error'
@@ -111,7 +129,7 @@ export async function POST(request: NextRequest) {
 
 // GET endpoint to check API status
 export async function GET() {
-  return NextResponse.json({
+  return withCors({
     status: 'ok',
     message: 'Push notification API is ready',
     endpoints: {

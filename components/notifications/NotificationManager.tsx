@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { notificationService } from '../../lib/notificationService'
+import { safeLocalStorage } from '../../lib/localStorage'
 import { Bell, X } from 'lucide-react'
 import { Button } from '../ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -12,17 +13,41 @@ export default function NotificationManager() {
 
   useEffect(() => {
     if (notificationService.isSupported()) {
-      setPermission(notificationService.getPermissionStatus())
-      
-      // Show prompt after 10 seconds on first visit
-      const hasSeenPrompt = localStorage.getItem('notification_prompt_seen')
-      if (!hasSeenPrompt && permission === 'default') {
+      // Handle async permission status check
+      const checkPermission = async () => {
+        const currentPermission = await notificationService.getPermissionStatus()
+        setPermission(currentPermission)
+        
+        // Don't show if already granted or denied
+        if (currentPermission !== 'default') {
+          return
+        }
+        
+        // Check if prompt was dismissed recently (within last 7 days)
+        const hasSeenPrompt = safeLocalStorage.getItem('notification_prompt_seen')
+        const dismissedAt = safeLocalStorage.getItem('notification_prompt_dismissed_at')
+        
+        if (hasSeenPrompt === 'true') {
+          // If dismissed, check if 7 days have passed
+          if (dismissedAt) {
+            const daysSinceDismissed = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24)
+            if (daysSinceDismissed < 7) {
+              return // Don't show again within 7 days
+            }
+          } else {
+            return // Previously seen, don't show
+          }
+        }
+        
+        // Show prompt after 10 seconds on first visit or after 7 days
         const timer = setTimeout(() => {
           setShowPrompt(true)
         }, 10000) // 10 seconds
 
         return () => clearTimeout(timer)
       }
+      
+      checkPermission()
     }
   }, [])
 
@@ -31,15 +56,15 @@ export default function NotificationManager() {
       const result = await notificationService.requestPermission()
       setPermission(result)
       setShowPrompt(false)
-      localStorage.setItem('notification_prompt_seen', 'true')
+      safeLocalStorage.setItem('notification_prompt_seen', 'true')
       
       if (result === 'granted') {
-        // Show success notification
-        await notificationService.showLocalNotification({
-          title: '🔔 Notifications Enabled',
-          body: "You'll now receive important updates about assignments, seminars, and more!",
-          tag: 'notification-enabled'
-        })
+        // Don't show immediate notification - it's annoying
+        // Instead, just log success and let natural notifications come through
+        console.log('✅ Notifications enabled successfully')
+        
+        // Optional: Show a subtle success message in UI instead of notification
+        // This prevents the auto-trigger issue
       }
     } catch (error) {
       console.error('Error enabling notifications:', error)
@@ -47,7 +72,8 @@ export default function NotificationManager() {
   }
 
   const handleDismiss = () => {
-    localStorage.setItem('notification_prompt_seen', 'true')
+    safeLocalStorage.setItem('notification_prompt_seen', 'true')
+    safeLocalStorage.setItem('notification_prompt_dismissed_at', Date.now().toString())
     setShowPrompt(false)
   }
 

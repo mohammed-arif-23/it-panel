@@ -1,7 +1,7 @@
 'use client'
 
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion'
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useRef } from 'react'
 import { CheckCircle, Trash2, Archive, Star } from 'lucide-react'
 
 interface SwipeAction {
@@ -19,6 +19,7 @@ interface SwipeableCardProps {
   leftAction?: SwipeAction
   rightAction?: SwipeAction
   threshold?: number
+  onTap?: () => void
 }
 
 export default function SwipeableCard({
@@ -28,22 +29,44 @@ export default function SwipeableCard({
   onSwipeRight,
   leftAction,
   rightAction,
-  threshold = 100
+  threshold = 100,
+  onTap
 }: SwipeableCardProps) {
   const x = useMotionValue(0)
-  const [isDragging, setIsDragging] = useState(false)
+  const isDraggingRef = useRef(false)
 
   const leftBgOpacity = useTransform(x, [-threshold, 0], [1, 0])
   const rightBgOpacity = useTransform(x, [0, threshold], [0, 1])
 
-  const handleDragEnd = (_: any, info: PanInfo) => {
-    setIsDragging(false)
-    
-    if (info.offset.x < -threshold && onSwipeLeft) {
-      onSwipeLeft()
-    } else if (info.offset.x > threshold && onSwipeRight) {
-      onSwipeRight()
+  const handleDragStart = () => {
+    isDraggingRef.current = false
+  }
+
+  const handleDrag = (_: any, info: PanInfo) => {
+    // Mark as actually dragging if moved more than 5 pixels
+    if (Math.abs(info.offset.x) > 5) {
+      isDraggingRef.current = true
     }
+  }
+
+  const handleDragEnd = (_: any, info: PanInfo) => {
+    const wasDragging = isDraggingRef.current
+    
+    // Only trigger swipe actions if dragged far enough
+    if (wasDragging) {
+      if (info.offset.x < -threshold && onSwipeLeft) {
+        onSwipeLeft()
+      } else if (info.offset.x > threshold && onSwipeRight) {
+        onSwipeRight()
+      }
+    } else {
+      // Was a tap/click, not a drag
+      if (onTap) {
+        onTap()
+      }
+    }
+    
+    isDraggingRef.current = false
   }
 
   return (
@@ -84,10 +107,12 @@ export default function SwipeableCard({
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.2}
-        onDragStart={() => setIsDragging(true)}
+        dragMomentum={false}
+        onDragStart={handleDragStart}
+        onDrag={handleDrag}
         onDragEnd={handleDragEnd}
         style={{ x }}
-        className={`${className} ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        className={className}
       >
         {children}
       </motion.div>

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { Capacitor } from '@capacitor/core'
+import { FilePicker } from '@capawesome/capacitor-file-picker'
 import { Button } from '../ui/button'
 import { Progress } from '../ui/progress'
 import Alert from '../ui/alert'
@@ -18,6 +20,8 @@ import { useSubmitAssignment } from '../../hooks/useAssignments'
 import { offlineSyncService } from '../../lib/offlineSyncService'
 import { useErrorHandler } from '../../hooks/useErrorHandler'
 import ErrorDisplay from '../ui/ErrorDisplay'
+import Spinner from '../ui/Spinner'
+import { notificationService } from '../../lib/notificationService'
 
 export type SubmissionStep = 'info' | 'upload' | 'success'
 
@@ -56,6 +60,13 @@ export function ProgressiveAssignmentSubmission({
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      // Validate file size (10MB max)
+      const maxSizeInBytes = 10 * 1024 * 1024 // 10MB
+      if (file.size > maxSizeInBytes) {
+        setUploadMessage(`❌ File too large! Maximum size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB.`)
+        return
+      }
+      
       const validation = directCloudinaryUpload.validateFile(file)
       if (!validation.isValid) {
         setUploadMessage(validation.error || 'Invalid file selected.')
@@ -65,6 +76,42 @@ export function ProgressiveAssignmentSubmission({
       setUploadMessage('')
     }
   }, [])
+
+  const pickWithFilePicker = useCallback(async () => {
+    try {
+      const isNative = Capacitor.isNativePlatform()
+      if (!isNative) return
+      const res = await FilePicker.pickFiles({ types: ['application/pdf'], readData: true })
+      const fileRes = res.files?.[0]
+      if (!fileRes) return
+      const name = fileRes.name || 'assignment.pdf'
+      const base64 = fileRes.data // base64 without prefix
+      const byteCharacters = atob(base64 || '')
+      const byteNumbers = new Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+      const byteArray = new Uint8Array(byteNumbers)
+      const blob = new Blob([byteArray], { type: 'application/pdf' })
+      const file = new File([blob], name, { type: 'application/pdf' })
+
+      // Validate size (10MB)
+      const maxSizeInBytes = 10 * 1024 * 1024
+      if (file.size > maxSizeInBytes) {
+        setUploadMessage(`❌ File too large! Maximum size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB.`)
+        return
+      }
+      const validation = directCloudinaryUpload.validateFile(file)
+      if (!validation.isValid) {
+        setUploadMessage(validation.error || 'Invalid file selected.')
+        return
+      }
+      setSelectedFile(file)
+      setUploadMessage('')
+    } catch (err) {
+      setUploadMessage('❌ Failed to pick file. Please try again.')
+    }
+  }, [setSelectedFile, setUploadMessage])
 
   const handleSubmission = useCallback(async () => {
     if (!selectedFile) return
@@ -97,9 +144,12 @@ export function ProgressiveAssignmentSubmission({
         )
         setUploadMessage('✓ Saved! Will sync when connection is restored.')
         setMarks(0) // Will be assigned when synced
-        setTimeout(() => {
+        setTimeout(async () => {
           setCurrentStep('success')
           setUploadMessage('')
+          
+          // Show success notification for offline submission
+          await notificationService.notifyAssignmentUploaded(assignment.title)
         }, 2000)
       } else {
         // Submit immediately if online
@@ -115,14 +165,33 @@ export function ProgressiveAssignmentSubmission({
         setMarks(result.marks)
         setCurrentStep('success')
         setUploadMessage('')
+        
+        // Show success notification
+        await notificationService.notifyAssignmentUploaded(assignment.title)
       }
 
-    } catch (error) {
-      handleError(error, {
-        endpoint: '/api/assignments/submit-direct',
-        method: 'POST',
-        userAction: 'file_upload'
-      })
+    } catch (error: any) {
+      // Check if this is a plagiarism error
+      if (error.isPlagiarism && error.plagiarismData) {
+        const { name, register_number, submission_date } = error.plagiarismData
+        const formattedDate = new Date(submission_date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+        setUploadMessage(
+          `Plagiarism Detected!\n\nThis file matches an assignment already submitted by ${name} (${register_number}).\n\nPlease submit your own original work.`
+        )
+      } else {
+        // Handle other errors normally
+        handleError(error, {
+          endpoint: '/api/assignments/submit-direct',
+          method: 'POST',
+          userAction: 'file_upload'
+        })
+      }
       setUploadProgress(0)
     } finally {
       setIsUploading(false)
@@ -239,13 +308,27 @@ export function ProgressiveAssignmentSubmission({
             </label>
             <p className="text-xs text-[var(--color-text-muted)]">Click to browse or drag and drop</p>
           </div>
-          <input
-            type="file"
-            accept="application/pdf"
-            onChange={handleFileSelect}
-            disabled={isUploading}
-            className="w-full text-sm text-[var(--color-text-muted)] file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-blue-600 file:to-indigo-600 file:text-white hover:file:from-blue-700 hover:file:to-indigo-700 file:cursor-pointer file:transition-all file:shadow-sm disabled:opacity-50"
-          />
+          {!Capacitor.isNativePlatform() && (
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={handleFileSelect}
+              disabled={isUploading}
+              className="w-full text-sm text-[var(--color-text-muted)] file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-blue-600 file:to-indigo-600 file:text-white hover:file:from-blue-700 hover:file:to-indigo-700 file:cursor-pointer file:transition-all file:shadow-sm disabled:opacity-50"
+            />
+          )}
+          {Capacitor.isNativePlatform() && (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={pickWithFilePicker}
+                disabled={isUploading}
+                className="w-full px-5 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] transition duration-200 ease-out disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Choose File
+              </button>
+            </div>
+          )}
           {selectedFile && (
             <div className="mt-4 p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
               <div className="flex items-center space-x-3">
@@ -307,7 +390,7 @@ export function ProgressiveAssignmentSubmission({
         >
           {isUploading ? (
             <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <Spinner size="sm" color="white" />
               <span>Uploading...</span>
             </>
           ) : (
