@@ -4,7 +4,7 @@
     <selectionStates>
       <SelectionState runConfigName="dynamit">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-10-03T13:42:18.186346200Z">
+        <DropdownSelection timestamp="2025-10-05T08:49:19.589845800Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="PhysicalDevice" identifier="serial=0004534BF002963" />

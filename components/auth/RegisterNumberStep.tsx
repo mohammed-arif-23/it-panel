@@ -5,6 +5,8 @@ import { useDebounce } from '../../hooks/useDebounce'
 import { Button } from '../ui/button'
 import Loader from '../ui/loader'
 import { Search, User, ArrowLeft, CheckCircle } from 'lucide-react'
+import { SkeletonCard } from '../ui/skeletons'
+import { Skeleton } from '../ui/skeleton'
 
 interface Student {
   id: string
@@ -106,11 +108,16 @@ export function RegisterNumberStep({ onStudentSelect, onBack }: RegisterNumberSt
           {showStudentDropdown && (studentSearch.length >= 2 || students.length > 0) && (
             <div className="absolute z-50 w-full mt-1 bg-[var(--color-background)] border border-[var(--color-border-light)] rounded-xl shadow-lg max-h-48 overflow-y-auto">
               {isLoadingStudents ? (
-                <div className="flex items-center justify-center p-4">
-                  <div className="w-8 h-8">
-                    <Loader />
-                  </div>
-                  <span className="text-sm text-[var(--color-text-muted)] ml-2">Searching...</span>
+                <div className="p-3 space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={`student-skel-${i}`} className="flex items-center gap-3">
+                      <Skeleton className="h-10 w-10 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-3 w-2/3" />
+                        <Skeleton className="h-3 w-1/3" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : students.length > 0 ? (
                 students.map((student) => (

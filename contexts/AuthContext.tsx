@@ -113,8 +113,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [])
 
   const login = async (regNumber: string, password?: string): Promise<{ success: boolean; error?: string }> => {
-    setLoading(true)
-    
+    // Do not toggle global loading during interactive login to avoid unmounting the login flow UI
     try {
       if (!regNumber || regNumber.trim().length === 0) {
         return { success: false, error: 'Please enter your registration number' }
@@ -200,12 +199,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Clear rate limiting on successful login
       loginRateLimiter.clearAttempts(trimmedRegNumber)
 
+      // Sync FCM token after login (if available)
+      try {
+        const { enhancedNotificationService } = await import('@/lib/enhancedNotificationService');
+        await enhancedNotificationService.syncTokenAfterLogin();
+      } catch (error) {
+        console.warn('Failed to sync FCM token after login:', error);
+      }
+
       return { success: true }
     } catch (error) {
       console.error('Login error:', error)
       return { success: false, error: 'An unexpected error occurred. Please try again.' }
-    } finally {
-      setLoading(false)
     }
   }
 

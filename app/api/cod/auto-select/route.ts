@@ -23,6 +23,19 @@ interface BookingWithStudent {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if COD is enabled
+    if (process.env.NEXT_PUBLIC_COD_ENABLED === 'false') {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'COD functionality is disabled',
+          disabled: true,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 410 }
+      );
+    }
+
     // SECURITY: Verify cron request using secret token (not User-Agent)
     const isCronJob = verifyCronRequest(request);
 

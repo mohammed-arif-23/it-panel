@@ -60,11 +60,29 @@ export async function POST(request: Request) {
     }
 
     // Store subscription in database (unique per user + platform)
-    const { error } = await supabase
+    // First check if subscription exists
+    const { data: existing } = await supabase
       .from('push_subscriptions')
-      .upsert(subscriptionData, {
-        onConflict: 'user_id,platform'
-      })
+      .select('id')
+      .eq('user_id', userId)
+      .eq('platform', subscriptionData.platform)
+      .single();
+
+    let error;
+    if (existing) {
+      // Update existing subscription
+      const result = await supabase
+        .from('push_subscriptions')
+        .update(subscriptionData)
+        .eq('id', existing.id);
+      error = result.error;
+    } else {
+      // Insert new subscription
+      const result = await supabase
+        .from('push_subscriptions')
+        .insert(subscriptionData);
+      error = result.error;
+    }
 
     if (error) {
       console.error('Error storing subscription:', {

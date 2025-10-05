@@ -8,6 +8,7 @@ import { useRealtimeNotifications } from '../../hooks/useRealtimeNotifications'
 import { useRouter } from 'next/navigation'
 import '../../lib/testNotification'
 import '../../lib/clearServiceWorker'
+import FCMNotificationManager from '../../components/notifications/FCMNotificationManager'
 import { PullToRefresh } from '../../components/pwa/PullToRefresh'
 import Loader from '../../components/ui/loader'
 import Link from 'next/link'
@@ -38,7 +39,8 @@ import {
   Library,
   Bell,
   MessageCircle,
-  Building2
+  Building2,
+  Icon
 } from 'lucide-react'
 
 export default function DashboardPage() {
@@ -68,22 +70,26 @@ export default function DashboardPage() {
     await refetchDashboard()
   }
 
+  // Check if COD is enabled
+  const codEnabled = process.env.NEXT_PUBLIC_COD_ENABLED !== 'false'
+
   const quickTiles = [
     // Reordered for typical usage priority
-    { title: 'Notice', href: '/notice', icon: Bell, badge: noticeCount?.unread || 0 },
     { title: 'Timetable', href: '/timetable', icon: CalendarClock },
-    { title: 'Fine History', href: '/fines', icon: IndianRupee },
     { title: 'Assignments', href: '/assignments', icon: FileText },
     { title: 'Seminar', href: '/seminar', icon: ClipboardList },
-    { title: 'Concept of the Day', href: '/COD', icon: Lightbulb },
+    ...(codEnabled ? [{ title: 'COD', href: '/COD', icon: Lightbulb }] : []),
     { title: 'Learning', href: '/learn', icon: BookOpen },
     { title: 'No-Due', href: '/nodue', icon: FileCheck },
-    { title: 'NPTEL', href: '/nptel', icon: GraduationCap },
     { title: "University QP's", href: '/qps', icon: Library },
     { title: 'Lab Manuals', href: '/lab-manuals', icon: FlaskConical },
     { title: 'Notes', href: '/notes', icon: StickyNote },
+    { title: 'Notice', href: '/notice', icon: Bell, badge: noticeCount?.unread || 0 },
+    { title: 'Fine History', href: '/fines', icon: IndianRupee },
+    { title: 'Department Info', href: '/department-info', icon: Building2 },
     { title: 'Profile', href: '/profile', icon: User },
   /*    
+    { title: 'NPTEL', href: '/nptel', icon: GraduationCap },
     { title: 'Attendance', href: '/attendance', icon: UserCheck },
     { title: 'Results', href: '/results', icon: Award },
     { title: 'Syllabus', href: '/syllabus', icon: BookOpen },
@@ -93,30 +99,10 @@ export default function DashboardPage() {
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen bg-[var(--color-background)] page-transition pb-20">
-        {/* Mobile Header Skeleton */}
-        <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
-          <div className="p-4">
-            <div className="flex items-center justify-between p-4">
-              <div className="w-16 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
-              <div className="w-24 h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded skeleton animate-pulse" />
-              <div className="w-16"></div>
-            </div>
-            {/* Title Skeletons */}
-            <div className="space-y-3">
-              <div className="h-6 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg w-64 mx-auto skeleton animate-pulse" />
-              <div className="h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg w-48 mx-auto skeleton animate-pulse" />
-            </div>
-            
-            {/* Dashboard Tiles Skeleton */}
-            <div className="grid grid-cols-3 gap-4">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <SkeletonDashboardTile key={i} />
-              ))}
-            </div>
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)] page-transition pb-20">
+        <div className="w-full h-full flex items-center justify-center">
+          <Loader/>
         </div>
-
       </div>
     )
   }
@@ -151,7 +137,7 @@ export default function DashboardPage() {
                 <div className="h-5 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg w-48 mx-auto skeleton animate-pulse" />
               </div>
               <div className="grid grid-cols-3 gap-4">
-                {Array.from({ length: 10 }).map((_, i) => (
+                {Array.from({ length: 12 }).map((_, i) => (
                   <SkeletonDashboardTile key={i} />
                 ))}
               </div>
@@ -160,21 +146,13 @@ export default function DashboardPage() {
             <div className="space-y-6">
               <div>
                 <motion.h1 
-                  className="text-xl pb-3 font-semibold text-center text-[var(--color-primary)]"
+                  className="text-xl pb-3 my-3  font-semibold text-center text-[var(--color-primary)]"
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5 }}
                 >
                   Department of Information Technology
                 </motion.h1>
-                <motion.h3 
-                  className="text-lg pb-3 mb-7 font-semibold text-center text-[var(--color-primary)]"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
-                >
-                  Welcome, {user?.name}
-                </motion.h3>
                 <motion.div 
                   className="grid grid-cols-3 gap-4"
                   variants={staggerContainer}
@@ -190,10 +168,10 @@ export default function DashboardPage() {
                       >
                       <Link
                         href={tile.href}
-                        className="saas-card p-4 text-center hover:shadow-md transition-all duration-200 ripple block h-[100px] flex flex-col items-center justify-center relative"
+                        className="saas-card  p-4 text-center hover:shadow-md transition-all duration-200 ripple block h-[100px] flex flex-col items-center justify-center relative"
                       >    
-                        <div className="w-12 h-12 bg-[var(--color-accent)] rounded-xl flex items-center justify-center mx-auto mb-3 relative">
-                          <Icon className="w-6 h-6 text-[var(--color-secondary)] mb-2 mx-auto" />
+                        <div className="w-12 h-12 shimmer bg-[var(--color-accent)] rounded-xl flex items-center justify-center mx-auto mb-3 relative">
+                          <Icon className="w-6 h-6 text-[var(--color-secondary)] mx-auto" />
                           {tile.badge !== undefined && tile.badge > 0 && (
                             <motion.span
                               initial={{ scale: 0 }}
@@ -217,6 +195,11 @@ export default function DashboardPage() {
                 </motion.div>
               </div>
               {/* Timetable card removed as requested */}
+              
+              {/* FCM Notification Manager - Temporarily disabled */}
+              {/* <div className="mt-6">
+                <FCMNotificationManager />
+              </div> */}
             </div>
           )}
         </div>

@@ -26,13 +26,10 @@ const config: CapacitorConfig = {
       presentationOptions: ["badge", "sound", "alert"]
     },
     SplashScreen: {
-      launchShowDuration: 2000,
+      launchShowDuration: 0,
       launchAutoHide: true,
-      backgroundColor: "#667eea",
-      androidSplashResourceName: "splash",
-      androidScaleType: "CENTER_CROP",
-      showSpinner: true,
-      spinnerColor: "#ffffff"
+      backgroundColor: "#ffffff",
+      showSpinner: false
     },
     Filesystem: {
       iosScheme: "file",

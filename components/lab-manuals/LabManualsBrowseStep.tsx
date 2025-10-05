@@ -56,10 +56,12 @@ export function LabManualsBrowseStep({ data, onNext, onBack, currentStep }: LabM
       setError('')
       
       if (currentStep === 'department') {
-        const res = await fetch('/api/lab-manuals/departments', { cache: 'no-store' })
-        const json = await res.json()
-        if (!res.ok || !json.success) throw new Error(json.error || 'Failed to fetch departments')
-        setDepartments(json.departments)
+        // Auto-select IT department instead of fetching all departments
+        setDepartments(['IT'])
+        setSelectedItem('IT')
+        // Automatically proceed to next step
+        setTimeout(() => onNext({ department: 'IT' }), 100)
+        return
       } else if (currentStep === 'year') {
         const dept = data.department || 'IT'
         const res = await fetch(`/api/lab-manuals/years?dept=${encodeURIComponent(dept)}`, { cache: 'no-store' })

@@ -28,6 +28,7 @@ import { SkeletonCard } from "../../components/ui/skeletons";
 import { motion } from "framer-motion";
 import { staggerContainer, staggerItem } from "../../lib/animations";
 import RedirectLoader from "../../components/ui/RedirectLoader";
+import StudentOverview from "../../components/profile/StudentOverview";
 
 export default function ProfilePage() {
 
@@ -85,20 +86,30 @@ export default function ProfilePage() {
       <div className="min-h-screen bg-[var(--color-background)] pb-20">
         {/* Mobile Header */}
         <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
-          <div className="flex items-center justify-between p-4">
+          <div className="flex items-center justify-between px-4 py-2">
             <Link href="/dashboard" className="flex items-center space-x-2 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors ripple">
               <ArrowLeft className="w-5 h-5" />
               <span className="font-medium">Back</span>
             </Link>
-            <div className="text-center">
+            <div className="flex items-center space-x-3">
               <h1 className="text-lg font-bold text-[var(--color-primary)]">Profile</h1>
             </div>
-            <div className="w-16"></div>
+            <img src="/icons/android/android-launchericon-512-512.png" 
+              className='w-12 h-12 p-0'
+              alt="Logo"/>
           </div>
         </div>
 
 
-        <Card className="saas-card mb-4 mt-20 p-4">
+        {/* Student Overview Section */}
+        <div className="mt-6 mb-6">
+          <StudentOverview 
+            studentId={user.id} 
+            classYear={user.class_year || ''} 
+          />
+        </div>
+
+        <Card className="saas-card mb-4 p-4">
           <CardHeader className="border-b border-[var(--color-border-light)]">
             <CardTitle className="flex items-center space-x-3 text-[var(--color-primary)]">
               <div className="p-2 bg-[var(--color-accent)] rounded-lg">

@@ -1,9 +1,0 @@
-{
-  "functions": {
-    "app/api/assignments/submit/route.ts": {
-      "maxDuration": 30
-    }
-  },
-  "regions": ["bom1"],
-  "framework": "nextjs"
-}

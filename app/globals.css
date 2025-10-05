@@ -64,11 +64,24 @@ body {
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+  text-rendering: optimizeLegibility;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+
 }
 
 /* Utility to opt-in extra safe-area top padding for containers if needed */
 .safe-area-top {
   padding-top: var(--safe-area-inset-top);
+  
 }
 
 /* Use Playfair for all headings */

@@ -126,15 +126,17 @@ export default function FinesPage() {
       <div className="min-h-screen bg-[var(--color-background)] pb-20">
         {/* Mobile Header */}
         <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
-          <div className="flex items-center justify-between p-4">
+          <div className="flex items-center justify-between px-4 py-2">
             <Link href="/dashboard" className="flex items-center space-x-2 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors ripple">
               <ArrowLeft className="w-5 h-5" />
               <span className="font-medium">Back</span>
             </Link>
-            <div className="text-center">
-              <h1 className="text-lg font-bold text-[var(--color-primary)]">Fine History</h1>
+            <div className="flex items-center space-x-3">
+              <h1 className="text-lg font-bold text-[var(--color-primary)]">Fines</h1>
             </div>
-            <div className="w-16"></div> {/* Spacer for centering */}
+            <img src="/icons/android/android-launchericon-512-512.png" 
+              className='w-12 h-12 p-0'
+              alt="Logo"/>
           </div>
         </div>
 

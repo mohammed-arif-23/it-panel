@@ -4,6 +4,7 @@ import { Button } from '../ui/button'
 import { ArrowRight } from 'lucide-react'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 interface WelcomeStepProps {
   onContinue: () => void
@@ -31,16 +32,31 @@ export function WelcomeStep({ onContinue }: WelcomeStepProps) {
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center px-4 py-20">
         <div className="max-w-md w-full text-center space-y-6">
+          {/* Lottie Animation */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mb-6"
+          >
+            <DotLottieReact
+              src="https://lottie.host/3199af32-c379-4724-9516-cf9e54bc0489/Kv7UJzIUvk.lottie"
+              loop
+              autoplay
+              className="w-full h-48"
+            />
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
           >
             <motion.h1 
               className="text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--color-primary)] mb-3"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
             >
               DynamIT 
             </motion.h1>
@@ -48,7 +64,7 @@ export function WelcomeStep({ onContinue }: WelcomeStepProps) {
               className="text-sm sm:text-base text-[var(--color-text-muted)]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
             >
               Student Management System
             </motion.p>
@@ -58,7 +74,7 @@ export function WelcomeStep({ onContinue }: WelcomeStepProps) {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
+            transition={{ duration: 0.5, delay: 0.8 }}
           >
             <Button 
               onClick={onContinue}

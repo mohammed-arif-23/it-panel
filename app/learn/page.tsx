@@ -52,15 +52,17 @@ export default function LearnRedirectPage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--color-background)]">
       {/* Sticky Header */}
       <div className="fixed top-0 left-0 right-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
-        <div className="flex items-center justify-between p-4">
+        <div className="flex items-center justify-between px-4 py-2">
           <Link href="/dashboard" className="flex items-center space-x-2 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">
             <ArrowLeft className="w-5 h-5" />
             <span className="font-medium">Back</span>
           </Link>
-          <div className="text-center">
+          <div className="flex items-center space-x-3">
             <h1 className="text-lg font-bold text-[var(--color-primary)]">Learning</h1>
           </div>
-          <div className="w-16" />
+          <img src="/icons/android/android-launchericon-512-512.png" 
+            className='w-12 h-12 p-0'
+            alt="Logo"/>
         </div>
       </div>
 

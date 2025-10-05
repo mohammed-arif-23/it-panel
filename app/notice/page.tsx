@@ -302,7 +302,7 @@ export default function NoticePage() {
       <PageTransition>
       <div className="min-h-screen bg-[var(--color-background)] pb-20">
         <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
-          <div className="flex items-center justify-between p-4">
+          <div className="flex items-center justify-between px-4 py-2">
             <Link href="/dashboard" className="flex items-center space-x-2 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">
               <ArrowLeft className="w-5 h-5" />
               <span className="font-medium">Back</span>
@@ -315,12 +315,9 @@ export default function NoticePage() {
                 </span>
               )}
             </div>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="p-2 hover:bg-[var(--color-accent)] rounded-lg transition-colors"
-            >
-              <Filter className="w-5 h-5 text-[var(--color-text-secondary)]" />
-            </button>
+              <img src="/icons/android/android-launchericon-512-512.png" 
+              className='w-12 h-12 p-0'
+              alt="Logo"/>
           </div>
 
           {showFilters && (

@@ -1,23 +1,11 @@
 'use client'
-
-import { useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useRouter } from 'next/navigation'
 import { ProgressiveLoginFlow } from '../components/auth/ProgressiveLoginFlow'
-import { SkeletonCard } from '../components/ui/skeletons'
 import Image from 'next/image'
-import RedirectLoader from '../components/ui/RedirectLoader'
+import { LoginSuccessStep } from '../components/auth/LoginSuccessStep'
 
 export default function HomePage() {
   const { user, loading, login } = useAuth()
-  const router = useRouter()
-
-  // Redirect to dashboard if already logged in
-  useEffect(() => {
-    if (!loading && user) {
-      router.push('/dashboard')
-    }
-  }, [user, loading, router])
 
   if (loading) {
     return (
@@ -53,8 +41,9 @@ export default function HomePage() {
     )
   }
 
+  // If user exists, show success step briefly (handles its own redirect)
   if (user) {
-    return <RedirectLoader context="dashboard" />
+    return <LoginSuccessStep student={user} />
   }
 
   return <ProgressiveLoginFlow onLogin={login} />

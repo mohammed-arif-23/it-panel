@@ -295,11 +295,18 @@ class EnhancedNotificationService {
     setTimeout(() => notification.close(), 10000);
   }
 
-  private async saveFCMToken(token: string) {
+  private async saveFCMToken(token: string, retryCount: number = 0) {
     try {
       const userId = localStorage.getItem('user_id');
       if (!userId) {
-        console.warn('⚠️ No user_id found, cannot save FCM token');
+        console.warn('⚠️ No user_id found, will retry saving FCM token...');
+        
+        // Retry up to 10 times with 2 second intervals
+        if (retryCount < 20) {
+          setTimeout(() => this.saveFCMToken(token, retryCount + 1), 3500);
+        } else {
+          console.error('❌ Failed to save FCM token: user_id not available after retries');
+        }
         return;
       }
 
@@ -316,18 +323,24 @@ class EnhancedNotificationService {
 
       if (response.ok) {
         console.log('✅ FCM token saved to backend');
+        // Store token locally to avoid duplicate saves
+        localStorage.setItem('fcm_token_saved', 'true');
       } else {
         const errorText = await response.text();
         console.error('❌ Failed to save FCM token:', errorText);
         
         // Retry after delay
-        setTimeout(() => this.saveFCMToken(token), 5000);
+        if (retryCount < 3) {
+          setTimeout(() => this.saveFCMToken(token, retryCount + 1), 5000);
+        }
       }
     } catch (error) {
       console.error('❌ Error saving FCM token:', error);
       
       // Retry after delay
-      setTimeout(() => this.saveFCMToken(token), 5000);
+      if (retryCount < 3) {
+        setTimeout(() => this.saveFCMToken(token, retryCount + 1), 5000);
+      }
     }
   }
 
@@ -337,6 +350,18 @@ class EnhancedNotificationService {
 
   isReady(): boolean {
     return this.isInitialized;
+  }
+
+  /**
+   * Manually trigger token save (call this after user login)
+   */
+  async syncTokenAfterLogin(): Promise<void> {
+    if (this.fcmToken) {
+      console.log('🔄 Syncing FCM token after login...');
+      await this.saveFCMToken(this.fcmToken, 0);
+    } else {
+      console.log('⚠️ No FCM token available to sync');
+    }
   }
 
   // Request battery optimization whitelist (Android)

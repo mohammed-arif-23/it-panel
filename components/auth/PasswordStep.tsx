@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '../ui/button'
 import Alert from '../ui/alert'
-import { Lock, ArrowLeft, User, Eye, EyeOff } from 'lucide-react'
+import { Lock, ArrowLeft, User, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 interface Student {
@@ -87,7 +87,9 @@ export function PasswordStep({ student, onSubmit, onBack, error }: PasswordStepP
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
-              className="saas-input pl-10 pr-20 glow-on-focus"
+              className={`saas-input pl-10 pr-20 glow-on-focus ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
+              aria-invalid={!!error}
+              aria-describedby={error ? 'password-error' : undefined}
               required
               autoFocus
             />
@@ -107,7 +109,17 @@ export function PasswordStep({ student, onSubmit, onBack, error }: PasswordStepP
         </div>
 
         {error && (
-          <Alert variant="error" message={error} />
+          <div
+            id="password-error"
+            role="alert"
+            aria-live="assertive"
+            className="flex items-start gap-2 p-3 rounded-md bg-red-50 border border-red-200 text-red-700"
+          >
+            <AlertCircle className="w-4 h-4 mt-0.5 animate-pulse flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+          </div>
         )}
 
         <Button 

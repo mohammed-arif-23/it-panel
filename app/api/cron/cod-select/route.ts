@@ -47,6 +47,19 @@ async function createFinesForNonBookedStudents(codDate: string) {
 
 export async function GET() {
   try {
+    // Check if COD is enabled
+    if (process.env.NEXT_PUBLIC_COD_ENABLED === 'false') {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'COD functionality is disabled',
+          disabled: true,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 410 }
+      );
+    }
+
     console.log('COD cron selection started at:', new Date().toISOString());
     
     let codDate = codTimingService.getNextCODDate();

@@ -1,32 +1,41 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, memo, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
+import { supabase } from '../../lib/supabase'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  Calendar, 
+  Clock, 
+  User, 
+  CheckCircle, 
+  AlertCircle, 
+  Lightbulb,
+  ArrowLeft,
+  RefreshCw,
+  Users,
+  BookOpen,
+  Target,
+  Lock,
+  CalendarX,
+  XCircle,
+  Trophy,
+  Loader2,
+  Info
+} from 'lucide-react'
+import Loader from '../../components/ui/loader'
+import { codTimingService } from '../../lib/codTimingService'
+import { holidayService } from '../../lib/holidayService'
+import Image from 'next/image'
 import { useCODStudent, useCODDashboardData, usePresenterHistory, useCODBooking } from '../../hooks/useCODData'
 import { ProgressivePresenterHistory } from '../../components/seminar/ProgressivePresenterHistory'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import Alert from '../../components/ui/alert'
 import { PullToRefresh } from '../../components/pwa/PullToRefresh'
-import { 
-  Calendar, 
-  Clock, 
-  User, 
-  CheckCircle, 
-  XCircle, 
-  AlertCircle, 
-  ArrowLeft,
-  Trophy,
-  CalendarX,
-  Loader2,
-  Info
-} from 'lucide-react'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabase'
-import { holidayService } from '../../lib/holidayService'
-import { codTimingService } from '../../lib/codTimingService'
-import Loader from '@/components/ui/loader'
 import PageTransition from '../../components/ui/PageTransition'
 import { SkeletonCard, SkeletonStatCard } from '../../components/ui/skeletons'
 import RedirectLoader from '../../components/ui/RedirectLoader'
@@ -194,8 +203,14 @@ const codDbHelpers = {
 }
 
 export default function CODPage() {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
+  const queryClient = useQueryClient()
+  const [selectedTopic, setSelectedTopic] = useState('')
+
+  // Check if COD is enabled
+  const codEnabled = process.env.NEXT_PUBLIC_COD_ENABLED !== 'false'
+
   const [windowInfo, setWindowInfo] = useState<BookingWindowInfo>({ isOpen: false })
   const [isBooking, setIsBooking] = useState(false)
   const [bookingMessage, setBookingMessage] = useState('')
@@ -227,16 +242,55 @@ export default function CODPage() {
   // Extract data from dashboard with safe defaults
   const { hasBookedToday, todaySelection, tomorrowSelections = [], nextCODDate } = dashboardData || {}
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    if (!user) {
+    if (!loading && !user) {
       router.push('/')
-      return
     }
-  }, [user, router])
+  }, [user, loading, router])
 
-  // Real-time updates with auto-selection and holiday checking
+  // If COD is disabled, show disabled message
+  if (!codEnabled) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen bg-[var(--color-background)] pb-20">
+          <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
+            <div className="px-4 py-2 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Link href="/dashboard" className="p-2 hover:bg-[var(--color-accent)] rounded-lg transition-colors">
+                  <ArrowLeft className="w-5 h-5 text-[var(--color-text-primary)]" />
+                </Link>
+                <h1 className="text-lg font-semibold text-[var(--color-text-primary)]">COD</h1>
+              </div>
+              <Image 
+                src="/icons/android/android-launchericon-512-512.png" 
+                alt="IT Department Logo" 
+                width={32} 
+                height={32}
+                className="w-8 h-8 object-contain"
+              />
+            </div>
+          </div>
+          
+          <div className="p-6 flex flex-col items-center justify-center min-h-[60vh]">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
+                <Lock className="w-8 h-8 text-gray-400" />
+              </div>
+              <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">COD Feature Disabled</h2>
+              <p className="text-[var(--color-text-secondary)] max-w-md">
+                The COD (Code of the Day) feature is currently disabled. Please contact your administrator for more information.
+              </p>
+            </div>
+          </div>
+        </div>
+      </PageTransition>
+    )
+  }
+
+  // Update window info and holiday checks
   useEffect(() => {
-    const updateWindowInfo = async () => {
+    async function updateWindowInfo() {
       const info = codTimingService.getBookingWindowInfo()
       setWindowInfo(info)
       
@@ -382,15 +436,17 @@ export default function CODPage() {
       <div className="min-h-screen bg-[var(--color-background)] pb-20">
         {/* Header */}
         <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
-          <div className="flex items-center justify-between p-4">
+          <div className="flex items-center justify-between px-4 py-2">
             <Link href="/dashboard" className="flex items-center space-x-2 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors ripple">
               <ArrowLeft className="w-5 h-5" />
               <span className="font-medium">Back</span>
             </Link>
-            <div className="text-center">
-              <h1 className="text-lg font-bold text-[var(--color-primary)]">Concept of the Day Booking</h1>
+            <div className="flex items-center space-x-3">
+              <h1 className="text-lg font-bold text-[var(--color-primary)]">COD</h1>
             </div>
-            <div className="w-16"></div>
+            <img src="/icons/android/android-launchericon-512-512.png" 
+              className='w-12 h-12 p-0'
+              alt="Logo"/>
           </div>
         </div>
 
@@ -642,7 +698,7 @@ export default function CODPage() {
                     </div>
                   ) : tomorrowSelections.length > 0 ? (
                     <div className="space-y-3">
-                      {tomorrowSelections.map((selection, index) => (
+                      {tomorrowSelections.map((selection: any, index: number) => (
                         <div key={index} className="bg-[var(--color-accent)] rounded-lg p-4 border border-[var(--color-secondary)]/20">
                           <div className="text-center">
                             <div className="flex items-center justify-center mb-3">
@@ -716,7 +772,7 @@ export default function CODPage() {
 
           {/* Progressive Presenter History */}
           <ProgressivePresenterHistory 
-            presenterHistory={presenterHistory.map(p => ({ ...p, seminarDate: p.codDate }))} 
+            presenterHistory={presenterHistory.map((p: any) => ({ ...p, seminarDate: p.codDate }))} 
             isLoading={isLoadingSelections} 
             classYear={user?.class_year || 'Your Class'} 
           />
