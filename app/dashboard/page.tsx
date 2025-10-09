@@ -81,6 +81,7 @@ export default function DashboardPage() {
     ...(codEnabled ? [{ title: 'COD', href: '/COD', icon: Lightbulb }] : []),
     { title: 'Learning', href: '/learn', icon: BookOpen },
     { title: 'No-Due', href: '/nodue', icon: FileCheck },
+    { title: 'Results', href: '/results', icon: Award },
     { title: "University QP's", href: '/qps', icon: Library },
     { title: 'Lab Manuals', href: '/lab-manuals', icon: FlaskConical },
     { title: 'Notes', href: '/notes', icon: StickyNote },
@@ -91,7 +92,6 @@ export default function DashboardPage() {
   /*    
     { title: 'NPTEL', href: '/nptel', icon: GraduationCap },
     { title: 'Attendance', href: '/attendance', icon: UserCheck },
-    { title: 'Results', href: '/results', icon: Award },
     { title: 'Syllabus', href: '/syllabus', icon: BookOpen },
     { title: 'Feedback', href: '/feedback', icon: MessageCircle },
     { title: 'About Department', href: '/department', icon: Building2 },*/

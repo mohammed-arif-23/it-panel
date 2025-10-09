@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, memo, useMemo } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useSeminarStudent, useSeminarDashboardData, usePresenterHistory, useSeminarBooking } from '../../hooks/useSeminarData'
+import { useRealtimeSelections, useRealtimeSelectionUpdates } from '../../hooks/useRealtimeSelections'
 import { ProgressivePresenterHistory } from '../../components/seminar/ProgressivePresenterHistory'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
@@ -213,6 +214,13 @@ export default function SeminarPage() {
   const { data: dashboardData, isLoading: isLoadingSelections, refetch: refetchDashboard } = useSeminarDashboardData(seminarStudent?.id || '', user?.class_year || '')
   const { data: presenterHistory = [], refetch: refetchHistory } = usePresenterHistory(user?.class_year || '')
   const bookingMutation = useSeminarBooking()
+
+  // Enable real-time updates for selections and bookings
+  useRealtimeSelections(seminarStudent?.id, user?.class_year || undefined)
+  
+  // Check if we're in selection time for aggressive updates
+  const isSelectionTime = windowInfo.timeUntilSelection !== undefined && windowInfo.timeUntilSelection > 0 && windowInfo.timeUntilSelection < 300000 // 5 minutes before selection
+  useRealtimeSelectionUpdates(seminarStudent?.id, user?.class_year || undefined, isSelectionTime)
 
   const handleRefresh = async () => {
     await Promise.all([

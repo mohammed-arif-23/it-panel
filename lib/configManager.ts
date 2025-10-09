@@ -39,9 +39,9 @@ class ConfigManager {
     // Determine server URL based on environment
     let serverUrl = 'http://localhost:3000';
     if (isProduction) {
-      serverUrl = 'https://it-panel-beta.vercel.app';
+      serverUrl = 'https://avsec-it.vercel.app';
     } else if (isStaging) {
-      serverUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://it-panel-beta.vercel.app';
+      serverUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://avsec-it.vercel.app';
     }
 
     return {

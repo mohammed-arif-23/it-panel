@@ -22,13 +22,22 @@ class EnhancedNotificationService {
   async initialize(): Promise<boolean> {
     if (this.isInitialized) return true;
     
+    // Check if we're running in a web context (PWA)
     if (!Capacitor.isNativePlatform()) {
-      console.log('📱 Not running in native app, using web notifications');
+      console.log('📱 Running as PWA, using web notifications');
+      return this.initializeWebNotifications();
+    }
+
+    // Check if PushNotifications plugin is available
+    try {
+      await PushNotifications.checkPermissions();
+    } catch (error) {
+      console.warn('📱 PushNotifications plugin not available, falling back to web notifications');
       return this.initializeWebNotifications();
     }
 
     try {
-      console.log('📱 Initializing enhanced push notifications...');
+      console.log('📱 Initializing native push notifications...');
 
       // Request permissions with retry logic
       const permission = await this.requestPermissionsWithRetry();
@@ -50,22 +59,13 @@ class EnhancedNotificationService {
       await this.createNotificationChannels();
 
       this.isInitialized = true;
-      console.log('✅ Enhanced push notifications initialized');
+      console.log('✅ Native push notifications initialized');
       return true;
 
     } catch (error) {
-      console.error('❌ Failed to initialize push notifications:', error);
-      
-      if (this.retryCount < this.maxRetries) {
-        this.retryCount++;
-        console.log(`🔄 Retrying initialization (${this.retryCount}/${this.maxRetries})...`);
-        
-        // Exponential backoff
-        const delay = Math.min(1000 * Math.pow(2, this.retryCount - 1), 30000);
-        setTimeout(() => this.initialize(), delay);
-      }
-      
-      return false;
+      console.error('❌ Failed to initialize native push notifications:', error);
+      console.log('📱 Falling back to web notifications');
+      return this.initializeWebNotifications();
     }
   }
 

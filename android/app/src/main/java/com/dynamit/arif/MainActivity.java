@@ -2,6 +2,7 @@ package com.dynamit.arif;
 
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.Window;
@@ -10,14 +11,50 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebChromeClient;
 import android.content.pm.ActivityInfo;
+import android.content.Intent;
+import android.net.Uri;
+import android.provider.Settings;
 import android.view.KeyEvent;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Bridge;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import android.content.pm.PackageManager;
+import android.Manifest;
+
+// Import Capacitor plugins
+import com.capacitorjs.plugins.pushnotifications.PushNotificationsPlugin;
+import com.capacitorjs.plugins.localnotifications.LocalNotificationsPlugin;
+import com.capacitorjs.plugins.filesystem.FilesystemPlugin;
+import com.capacitorjs.plugins.camera.CameraPlugin;
+import com.capacitorjs.plugins.preferences.PreferencesPlugin;
+import com.capacitorjs.plugins.network.NetworkPlugin;
+import com.capacitorjs.plugins.app.AppPlugin;
+import com.capacitorjs.plugins.browser.BrowserPlugin;
+import com.capacitorjs.plugins.splashscreen.SplashScreenPlugin;
+import com.capacitorjs.plugins.statusbar.StatusBarPlugin;
 
 public class MainActivity extends BridgeActivity {
+    private static final int STORAGE_PERMISSION_REQUEST_CODE = 1001;
+    private static final int MANAGE_STORAGE_REQUEST_CODE = 1002;
+    
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(PushNotificationsPlugin.class);
+        registerPlugin(LocalNotificationsPlugin.class);
+        registerPlugin(FilesystemPlugin.class);
+        registerPlugin(CameraPlugin.class);
+        registerPlugin(PreferencesPlugin.class);
+        registerPlugin(NetworkPlugin.class);
+        registerPlugin(AppPlugin.class);
+        registerPlugin(BrowserPlugin.class);
+        registerPlugin(SplashScreenPlugin.class);
+        registerPlugin(StatusBarPlugin.class);
+        
         super.onCreate(savedInstanceState);
+        
+        // Request storage permissions
+        requestStoragePermissions();
         
         // Prevent memory leaks by setting orientation
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
@@ -241,5 +278,63 @@ public class MainActivity extends BridgeActivity {
             bridge.getWebView().clearCache(false);
         }
         System.gc(); // Suggest garbage collection
+    }
+    
+    private void requestStoragePermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11+ - Request MANAGE_EXTERNAL_STORAGE
+            if (!Environment.isExternalStorageManager()) {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    startActivityForResult(intent, MANAGE_STORAGE_REQUEST_CODE);
+                } catch (Exception e) {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                    startActivityForResult(intent, MANAGE_STORAGE_REQUEST_CODE);
+                }
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Android 6-10 - Request READ/WRITE_EXTERNAL_STORAGE
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) 
+                != PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) 
+                != PackageManager.PERMISSION_GRANTED) {
+                
+                ActivityCompat.requestPermissions(this,
+                    new String[]{
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    },
+                    STORAGE_PERMISSION_REQUEST_CODE);
+            }
+        }
+    }
+    
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        
+        if (requestCode == STORAGE_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                android.util.Log.d("Permissions", "Storage permissions granted");
+            } else {
+                android.util.Log.w("Permissions", "Storage permissions denied");
+            }
+        }
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        if (requestCode == MANAGE_STORAGE_REQUEST_CODE) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (Environment.isExternalStorageManager()) {
+                    android.util.Log.d("Permissions", "MANAGE_EXTERNAL_STORAGE permission granted");
+                } else {
+                    android.util.Log.w("Permissions", "MANAGE_EXTERNAL_STORAGE permission denied");
+                }
+            }
+        }
     }
 }

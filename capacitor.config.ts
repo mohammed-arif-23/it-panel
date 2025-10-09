@@ -6,12 +6,12 @@ const config: CapacitorConfig = {
   webDir: 'out', // Fallback directory (not used with server.url)
   server: {
     // Load from your remote server - this is correct for your PWA
-    url: 'https://it-panel-beta.vercel.app',
+    url: 'https://avsec-it.vercel.app',
     cleartext: false,
     androidScheme: 'https',
     // Allow navigation to other PWA domains
     allowNavigation: [
-      'it-panel-beta.vercel.app',
+      'avsec-it.vercel.app',
       'no-due-generator-app.vercel.app',
       'dynamit-learn.vercel.app',
       '*.vercel.app'

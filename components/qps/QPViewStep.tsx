@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Capacitor } from '@capacitor/core'
 import { Filesystem, Directory } from '@capacitor/filesystem'
+import { fileDownloadManager } from '../../lib/fileDownloadManager'
 import { notificationService } from '../../lib/notificationService'
 
 interface SubjectItem {
@@ -87,32 +88,18 @@ export function QPViewStep({ data, onBack }: QPViewStepProps) {
         // Request permissions if needed
         try { await Filesystem.requestPermissions() } catch {}
         
-        // Fetch and save to Downloads (ExternalStorage on Android; Documents on iOS)
+        // Fetch and save using the improved download manager
         const resp = await fetch(file.url)
         const blob = await resp.blob()
         const b64 = await blobToBase64(blob)
         
-        // Prefer ExternalStorage for Android so it appears in Downloads app
-        await Filesystem.writeFile({
-          path: `Download/${fileName}`,
-          data: b64,
-          directory: Directory.ExternalStorage,
-          recursive: true
-        }).catch(async () => {
-          // Fallback to Documents (iOS / restricted cases)
-          await Filesystem.writeFile({
-            path: fileName,
-            data: b64,
-            directory: Directory.Documents,
-            recursive: true
-          })
-        })
+        const result = await fileDownloadManager.downloadFile(fileName, b64)
+        if (!result.success) {
+          throw new Error(result.error || 'Download failed')
+        }
         
-        const platform = Capacitor.getPlatform()
-        const savedPath = platform === 'android' 
-          ? `Download/${fileName}` 
-          : `Documents/${fileName}`
-        setToast(`✅ Saved to ${savedPath}`)
+        const successMessage = fileDownloadManager.getDownloadSuccessMessage(result)
+        setToast(`✅ ${successMessage}`)
         setTimeout(() => setToast(''), 3000)
         
         // Show download notification

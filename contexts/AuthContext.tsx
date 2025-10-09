@@ -60,17 +60,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     const loadStoredUser = async () => {
+      console.log('🔐 AuthContext: Starting loadStoredUser')
       try {
         const storedUser = safeLocalStorage.getItem('unified_college_user')
         const storedToken = safeLocalStorage.getItem('session_token')
         const sessionCreatedAt = safeLocalStorage.getItem('session_created_at')
         
+        console.log('🔐 AuthContext: StoredUser exists:', !!storedUser)
+        console.log('🔐 AuthContext: StoredToken exists:', !!storedToken)
+        
         if (storedUser && storedToken) {
           // Check session age (expire after 30 days)
           if (sessionCreatedAt) {
             const ageInDays = (Date.now() - parseInt(sessionCreatedAt)) / (1000 * 60 * 60 * 24)
+            console.log('🔐 AuthContext: Session age in days:', ageInDays)
             if (ageInDays > 30) {
               // Session too old, require re-login
+              console.log('🔐 AuthContext: Session expired (too old)')
               safeLocalStorage.removeItem('unified_college_user')
               safeLocalStorage.removeItem('session_token')
               safeLocalStorage.removeItem('session_created_at')
@@ -81,8 +87,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
           
           const userData = JSON.parse(storedUser) as Student
+          console.log('🔐 AuthContext: Parsed user data, register_number:', userData.register_number)
+          
           const { data, error } = await dbHelpers.findStudentByRegNumber(userData.register_number)
+          console.log('🔐 AuthContext: DB query result - data:', !!data, 'error:', !!error)
+          
           if (data && !error) {
+            console.log('✅ AuthContext: User loaded successfully:', (data as Student)?.register_number)
             setUser(data as Student)
             setSessionToken(storedToken)
             const registrationsData = (data as any).unified_student_registrations || []
@@ -92,19 +103,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
             safeLocalStorage.setItem('user_id', (data as Student).id)
           } else {
             // Clear corrupted data and set error
+            console.log('❌ AuthContext: Failed to load user from DB')
             safeLocalStorage.removeItem('unified_college_user')
             safeLocalStorage.removeItem('session_token')
             safeLocalStorage.removeItem('session_created_at')
             setAuthError('Session expired. Please login again.')
           }
+        } else {
+          console.log('🔐 AuthContext: No stored session found')
         }
       } catch (error) {
-        console.error('Error loading stored user:', error)
+        console.error('❌ AuthContext: Error loading stored user:', error)
         safeLocalStorage.removeItem('unified_college_user')
         safeLocalStorage.removeItem('session_token')
         safeLocalStorage.removeItem('session_created_at')
         setAuthError('Failed to load user session')
       } finally {
+        console.log('🔐 AuthContext: Setting loading to false')
         setLoading(false)
       }
     }

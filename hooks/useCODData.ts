@@ -157,7 +157,7 @@ interface CODDashboardData {
 
 export function useCODDashboardData(studentId: string, classYear: string) {
   return useQuery<CODDashboardData>({
-    queryKey: ['cod-dashboard', studentId],
+    queryKey: ['cod-dashboard', studentId, classYear],
     queryFn: async () => {
       const holidayAwareDate = await holidayService.getHolidayAwareNextSeminarDate()
       
@@ -233,8 +233,10 @@ export function useCODDashboardData(studentId: string, classYear: string) {
       } as CODDashboardData
     },
     enabled: !!studentId && !!classYear,
-    staleTime: 30 * 1000, // 30 seconds
-    refetchInterval: 30 * 1000, // Refetch every 30 seconds
+    staleTime: 5 * 1000, // 5 seconds - much shorter for real-time feel
+    refetchInterval: 10 * 1000, // Refetch every 10 seconds
+    refetchOnWindowFocus: true, // Refetch when user focuses window
+    refetchOnMount: true, // Always refetch on component mount
   })
 }
 
@@ -282,7 +284,8 @@ export function usePresenterHistory(classYear: string) {
       return []
     },
     enabled: !!classYear,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 2 * 60 * 1000, // 2 minutes - reduced for more frequent updates
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -307,9 +310,17 @@ export function useCODBooking() {
       
       return data
     },
-    onSuccess: () => {
-      // Invalidate COD dashboard data
+    onSuccess: (data, variables) => {
+      // Invalidate all related COD queries for immediate updates
       queryClient.invalidateQueries({ queryKey: ['cod-dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['cod-student'] })
+      queryClient.invalidateQueries({ queryKey: ['cod-presenter-history'] })
+      
+      // Also invalidate any dashboard data that might show booking status
+      queryClient.invalidateQueries({ queryKey: ['dashboardData'] })
+      
+      // Force refetch of dashboard data immediately
+      queryClient.refetchQueries({ queryKey: ['cod-dashboard', variables.studentId] })
     },
   })
 }

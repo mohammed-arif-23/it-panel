@@ -7,6 +7,7 @@ import CapacitorInit from '../components/pwa/CapacitorInit';
 import StartupHandler from '../components/pwa/StartupHandler';
 import OfflineFallback from '../components/pwa/OfflineFallback';
 import WebViewErrorHandler from '../components/pwa/WebViewErrorHandler';
+import PermissionHandler from '../components/pwa/PermissionHandler';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import MaintenanceGate from '../components/ui/MaintenanceGate';
 

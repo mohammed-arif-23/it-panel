@@ -48,6 +48,8 @@ dependencies {
     implementation 'com.google.firebase:firebase-messaging'
     implementation 'com.google.firebase:firebase-analytics'
     
+    // Capacitor plugins will be auto-added by cap sync
+    
     // Additional Capacitor plugins
     implementation 'androidx.core:core-splashscreen:1.0.1'
 }

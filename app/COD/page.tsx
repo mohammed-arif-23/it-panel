@@ -30,6 +30,7 @@ import { codTimingService } from '../../lib/codTimingService'
 import { holidayService } from '../../lib/holidayService'
 import Image from 'next/image'
 import { useCODStudent, useCODDashboardData, usePresenterHistory, useCODBooking } from '../../hooks/useCODData'
+import { useRealtimeSelections, useRealtimeSelectionUpdates } from '../../hooks/useRealtimeSelections'
 import { ProgressivePresenterHistory } from '../../components/seminar/ProgressivePresenterHistory'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
@@ -230,6 +231,13 @@ export default function CODPage() {
   const { data: dashboardData, isLoading: isLoadingSelections, refetch: refetchDashboard } = useCODDashboardData(codStudent?.id || '', user?.class_year || '')
   const { data: presenterHistory = [], refetch: refetchHistory } = usePresenterHistory(user?.class_year || '')
   const bookingMutation = useCODBooking()
+
+  // Enable real-time updates for selections and bookings
+  useRealtimeSelections(codStudent?.id, user?.class_year || undefined)
+  
+  // Check if we're in selection time for aggressive updates
+  const isSelectionTime = windowInfo.timeUntilSelection !== undefined && windowInfo.timeUntilSelection > 0 && windowInfo.timeUntilSelection < 300000 // 5 minutes before selection
+  useRealtimeSelectionUpdates(codStudent?.id, user?.class_year || undefined, isSelectionTime)
 
   const handleRefresh = async () => {
     await Promise.all([

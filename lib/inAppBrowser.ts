@@ -37,14 +37,14 @@ export function setupInAppBrowserLinks() {
 
   // List of PWA domains that should open in the main WebView (not in-app browser)
   const pwaDomainsToOpenInWebView = [
-    'it-panel-beta.vercel.app',
+    'avsec-it.vercel.app',
     'no-due-generator-app.vercel.app',
     'dynamit-learn.vercel.app'
   ];
 
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
-    const link = target.closest('a');
+    const link = target.closest('a')
     
     if (!link) return;
     

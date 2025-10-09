@@ -50,28 +50,21 @@ export default function NoDueRedirectPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--color-background)]">
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
-        <div className="grid grid-cols-3 items-center gap-4 px-4 py-3">
-          {/* Left section */}
-          <Link href="/dashboard" className="flex items-center space-x-2 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Back</span>
-          </Link>
-          
-          {/* Center section */}
-          <div className="flex justify-center">
-            <h1 className="text-lg font-bold text-[var(--color-primary)] whitespace-nowrap">No Due Certificate</h1>
-          </div>
-          
-          {/* Right section */}
-          <div className="flex justify-end">
-            <img src="/icons/android/android-launchericon-512-512.png" 
-              className="w-10 h-10 rounded-lg"
-              alt="Logo"/>
-          </div>
+    {/* Sticky Header */}
+    <div className="fixed top-0 left-0 right-0 z-40 bg-[var(--color-background)] border-b border-[var(--color-border-light)]">
+      <div className="flex items-center justify-between px-4 py-2">
+        <Link href="/dashboard" className="flex items-center space-x-2 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">
+          <ArrowLeft className="w-5 h-5" />
+          <span className="font-medium">Back</span>
+        </Link>
+        <div className="flex items-center space-x-3">
+          <h1 className="text-lg font-bold text-[var(--color-primary)]">No Due Certificate</h1>
         </div>
+        <img src="/icons/android/android-launchericon-512-512.png" 
+          className='w-12 h-12 p-0'
+          alt="Logo"/>
       </div>
+    </div>
 
       <Card className="w-full max-w-lg shadow-2xl border" style={{ 
         backgroundColor: 'var(--color-background)', 

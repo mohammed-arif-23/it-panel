@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Home, FileText, MessageCircle, User } from 'lucide-react'
+import { Home, FileText, MessageCircle, User, GraduationCap } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const navigationItems = [
@@ -15,6 +15,11 @@ const navigationItems = [
     name: 'Assignments',
     href: '/assignments',
     icon: FileText
+  },
+  {
+    name: 'Results',
+    href: '/results',
+    icon: GraduationCap
   },
   {
     name: 'Chat',

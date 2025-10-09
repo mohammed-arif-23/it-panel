@@ -157,7 +157,7 @@ interface SeminarDashboardData {
 
 export function useSeminarDashboardData(studentId: string, classYear: string) {
   return useQuery<SeminarDashboardData>({
-    queryKey: ['seminar-dashboard', studentId],
+    queryKey: ['seminar-dashboard', studentId, classYear],
     queryFn: async () => {
       const holidayAwareDate = await holidayService.getHolidayAwareNextSeminarDate()
       
@@ -233,8 +233,10 @@ export function useSeminarDashboardData(studentId: string, classYear: string) {
       } as SeminarDashboardData
     },
     enabled: !!studentId && !!classYear,
-    staleTime: 30 * 1000, // 30 seconds
-    refetchInterval: 30 * 1000, // Refetch every 30 seconds
+    staleTime: 5 * 1000, // 5 seconds - much shorter for real-time feel
+    refetchInterval: 10 * 1000, // Refetch every 10 seconds
+    refetchOnWindowFocus: true, // Refetch when user focuses window
+    refetchOnMount: true, // Always refetch on component mount
   })
 }
 
@@ -282,7 +284,8 @@ export function usePresenterHistory(classYear: string) {
       return []
     },
     enabled: !!classYear,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 2 * 60 * 1000, // 2 minutes - reduced for more frequent updates
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -307,9 +310,17 @@ export function useSeminarBooking() {
       
       return data
     },
-    onSuccess: () => {
-      // Invalidate seminar dashboard data
+    onSuccess: (data, variables) => {
+      // Invalidate all related seminar queries for immediate updates
       queryClient.invalidateQueries({ queryKey: ['seminar-dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['seminar-student'] })
+      queryClient.invalidateQueries({ queryKey: ['presenter-history'] })
+      
+      // Also invalidate any dashboard data that might show booking status
+      queryClient.invalidateQueries({ queryKey: ['dashboardData'] })
+      
+      // Force refetch of dashboard data immediately
+      queryClient.refetchQueries({ queryKey: ['seminar-dashboard', variables.studentId] })
     },
   })
 }
