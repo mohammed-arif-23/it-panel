@@ -233,10 +233,10 @@ export function useSeminarDashboardData(studentId: string, classYear: string) {
       } as SeminarDashboardData
     },
     enabled: !!studentId && !!classYear,
-    staleTime: 5 * 1000, // 5 seconds - much shorter for real-time feel
-    refetchInterval: 10 * 1000, // Refetch every 10 seconds
+    staleTime: 0, // No caching - always fetch fresh data
+    gcTime: 0, // Don't keep in cache when component unmounts
     refetchOnWindowFocus: true, // Refetch when user focuses window
-    refetchOnMount: true, // Always refetch on component mount
+    refetchOnMount: 'always', // Always refetch on component mount
   })
 }
 
@@ -284,8 +284,9 @@ export function usePresenterHistory(classYear: string) {
       return []
     },
     enabled: !!classYear,
-    staleTime: 2 * 60 * 1000, // 2 minutes - reduced for more frequent updates
+    staleTime: 5 * 60 * 1000, // 5 minutes - reasonable cache for history data
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
   })
 }
 
