@@ -357,5 +357,143 @@ export const dbHelpers = {
     } catch (error) {
       return { data: null, error: error as any };
     }
+  },
+
+  // ===========================
+  // NO DUE OPERATIONS
+  // ===========================
+  async findStudentById(studentId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('unified_students')
+      .select('*')
+      .eq('id', studentId)
+      .single()
+    
+    return { data, error }
+  },
+
+  async getNoDueData(studentId: string) {
+    const [student, marks, subjects, assignments] = await Promise.all([
+      this.findStudentById(studentId),
+      this.getStudentMarks(studentId),
+      this.getStudentSubjects(studentId),
+      this.getStudentAssignments(studentId)
+    ])
+    
+    return { student, marks, subjects, assignments }
+  },
+  
+  async getStudentMarks(studentId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('unified_marks')
+      .select('*')
+      .eq('student_id', studentId)
+    
+    return { data, error }
+  },
+  
+  async getStudentSubjects(studentId: string) {
+    // Get student's semester first
+    const { data: student } = await this.findStudentById(studentId)
+    const studentData = student as any
+    if (!studentData || !studentData.semester) return { data: null, error: 'Student not found or semester not set' }
+    
+    const { data, error } = await (supabaseAdmin as any)
+      .from('subjects')
+      .select('*')
+      .eq('semester', studentData.semester)
+      .eq('department', 'IT')
+      .in('course_type', ['THEORY', 'ELECTIVE'])
+    
+    return { data, error }
+  },
+
+  async getStudentAssignments(studentId: string) {
+    // Get student's class_year first
+    const { data: student } = await this.findStudentById(studentId)
+    const studentData = student as any
+    if (!studentData || !studentData.class_year) return { data: null, error: 'Student not found or class_year not set' }
+    
+    // Get all assignments for the student's class
+    const { data: assignments, error: assignmentsError } = await (supabaseAdmin as any)
+      .from('assignments')
+      .select('id, sub_code, class_year')
+      .eq('class_year', studentData.class_year)
+    
+    if (assignmentsError || !assignments) {
+      return { data: null, error: assignmentsError }
+    }
+    
+    // Get submission status for each assignment
+    const assignmentData: { [key: string]: { total: number, submitted: number } } = {}
+    
+    for (const assignment of assignments) {
+      const subCode = (assignment as any).sub_code
+      if (!subCode) continue
+      
+      if (!assignmentData[subCode]) {
+        assignmentData[subCode] = { total: 0, submitted: 0 }
+      }
+      
+      assignmentData[subCode].total++
+      
+      // Check if student submitted this assignment
+      const { data: submission } = await (supabaseAdmin as any)
+        .from('assignment_submissions')
+        .select('id, status')
+        .eq('assignment_id', (assignment as any).id)
+        .eq('student_id', studentId)
+        .in('status', ['submitted', 'graded'])
+        .maybeSingle()
+      
+      if (submission) {
+        assignmentData[subCode].submitted++
+      }
+    }
+    
+    return { data: assignmentData, error: null }
+  },
+  
+  async saveNoDueHistory(record: {
+    student_id: string
+    register_number: string
+    student_name: string
+    class_year: string
+    semester: number
+    year: number
+    marks_snapshot: any
+    pdf_url?: string
+  }) {
+    const { data, error } = await (supabaseAdmin as any)
+      .from('nodue_history')
+      .insert(record)
+      .select()
+      .single()
+    
+    return { data, error }
+  },
+  
+  async getNoDueHistory(filters: {
+    studentId?: string
+    registerNumber?: string
+    classYear?: string
+    semester?: number
+    startDate?: string
+    endDate?: string
+  }) {
+    let query = supabaseAdmin
+      .from('nodue_history')
+      .select('*')
+    
+    if (filters.studentId) query = query.eq('student_id', filters.studentId)
+    if (filters.registerNumber) query = query.ilike('register_number', `%${filters.registerNumber}%`)
+    if (filters.classYear) query = query.eq('class_year', filters.classYear)
+    if (filters.semester) query = query.eq('semester', filters.semester)
+    if (filters.startDate) query = query.gte('generated_at', filters.startDate)
+    if (filters.endDate) query = query.lte('generated_at', filters.endDate)
+    
+    const { data, error } = await query.order('generated_at', { ascending: false })
+    
+    return { data, error }
   }
 }

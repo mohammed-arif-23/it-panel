@@ -10,6 +10,9 @@ export interface Database {
           mobile: string | null
           class_year: string | null
           password: string | null
+          semester: number | null
+          year: number | null
+          total_fine_amount: number | null
           created_at: string
           updated_at: string
         }
@@ -21,6 +24,9 @@ export interface Database {
           mobile?: string | null
           class_year?: string | null
           password?: string | null
+          semester?: number | null
+          year?: number | null
+          total_fine_amount?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -32,6 +38,9 @@ export interface Database {
           mobile?: string | null
           class_year?: string | null
           password?: string | null
+          semester?: number | null
+          year?: number | null
+          total_fine_amount?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -198,6 +207,8 @@ export interface Database {
           title: string
           description: string | null
           due_date: string
+          sub_code: string | null
+          class_year: string | null
           created_at: string
           updated_at: string
         }
@@ -206,6 +217,8 @@ export interface Database {
           title: string
           description?: string | null
           due_date: string
+          sub_code?: string | null
+          class_year?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -214,8 +227,121 @@ export interface Database {
           title?: string
           description?: string | null
           due_date?: string
+          sub_code?: string | null
+          class_year?: string | null
           created_at?: string
           updated_at?: string
+        }
+      }
+      unified_marks: {
+        Row: {
+          id: string
+          student_id: string
+          subject: string
+          iat: number | null
+          model: number | null
+          assignmentsubmitted: boolean | null
+          signed: boolean | null
+          department_fine: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          student_id: string
+          subject: string
+          iat?: number | null
+          model?: number | null
+          assignmentsubmitted?: boolean | null
+          signed?: boolean | null
+          department_fine?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          student_id?: string
+          subject?: string
+          iat?: number | null
+          model?: number | null
+          assignmentsubmitted?: boolean | null
+          signed?: boolean | null
+          department_fine?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      subjects: {
+        Row: {
+          code: string
+          name: string
+          department: string
+          semester: number
+          course_type: string
+          category: string
+          credits: number
+          created_at: string
+        }
+        Insert: {
+          code: string
+          name: string
+          department: string
+          semester: number
+          course_type: string
+          category: string
+          credits: number
+          created_at?: string
+        }
+        Update: {
+          code?: string
+          name?: string
+          department?: string
+          semester?: number
+          course_type?: string
+          category?: string
+          credits?: number
+          created_at?: string
+        }
+      }
+      nodue_history: {
+        Row: {
+          id: string
+          student_id: string
+          register_number: string
+          student_name: string
+          class_year: string
+          semester: number
+          year: number
+          generated_at: string
+          marks_snapshot: any
+          pdf_url: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          student_id: string
+          register_number: string
+          student_name: string
+          class_year: string
+          semester: number
+          year: number
+          generated_at?: string
+          marks_snapshot: any
+          pdf_url?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          student_id?: string
+          register_number?: string
+          student_name?: string
+          class_year?: string
+          semester?: number
+          year?: number
+          generated_at?: string
+          marks_snapshot?: any
+          pdf_url?: string | null
+          created_at?: string
         }
       }
       assignment_submissions: {

@@ -177,7 +177,7 @@ export default function ResultsPage() {
   // Calculate overall statistics
   const overallGPA = hasResults 
     ? Math.round((results.reduce((sum, result) => {
-        const gpa = calculateGPA(result.student_data.res_data, subjectCredits)
+        const gpa = calculateGPA(result.student_data.res_data, subjectCredits, result.semester)
         return sum + gpa
       }, 0) / results.length) * 100) / 100
     : 0
@@ -283,8 +283,10 @@ export default function ResultsPage() {
                     <span>Semester Results</span>
                   </h3>
 
-                  {results.map((result, index) => {
-                    const semesterGPA = calculateGPA(result.student_data.res_data, subjectCredits)
+                  {results
+                    .sort((a, b) => a.semester - b.semester) // Sort by semester number (1, 2, 3, 4...)
+                    .map((result, index) => {
+                    const semesterGPA = calculateGPA(result.student_data.res_data, subjectCredits, result.semester)
                     const status = getSemesterStatus(semesterGPA)
                     const subjects = Object.entries(result.student_data.res_data)
                     const isExpanded = selectedSemester === index
