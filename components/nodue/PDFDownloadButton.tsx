@@ -77,7 +77,8 @@ export function PDFDownloadButton({
     title: string,
     body: string,
     id: number = 1,
-    actionData?: { fileUri?: string; pdfUrl?: string }
+    actionData?: { fileUri?: string; pdfUrl?: string },
+    withAction: boolean = false
   ) => {
     if (!Capacitor.isNativePlatform()) return;
 
@@ -85,16 +86,17 @@ export function PDFDownloadButton({
       const hasPermission = await requestNotificationPermission();
       if (!hasPermission) return;
 
+      const notification: any = {
+        title,
+        body,
+        id,
+        schedule: { at: new Date(Date.now() + 100) },
+        extra: actionData,
+        actionTypeId: withAction ? "OPEN_PDF" : undefined,
+      };
+
       await LocalNotifications.schedule({
-        notifications: [
-          {
-            title,
-            body,
-            id,
-            schedule: { at: new Date(Date.now() + 100) },
-            extra: actionData, // Store file URI or URL for opening on tap
-          },
-        ],
+        notifications: [notification],
       });
     } catch (error) {
       console.error("Error showing notification:", error);
@@ -105,15 +107,25 @@ export function PDFDownloadButton({
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    let listenerHandle: any;
+    let actionListener: any;
+    let receivedListener: any;
 
-    const setupListener = async () => {
-      listenerHandle = await LocalNotifications.addListener(
+    const setupListeners = async () => {
+      // Listen for notification tap (when user taps the notification body)
+      actionListener = await LocalNotifications.addListener(
         "localNotificationActionPerformed",
         async (notification) => {
+          console.log("Notification action performed:", notification);
           const extra = notification.notification.extra;
-          if (extra?.fileUri) {
-            // Open the downloaded PDF file
+
+          // Always prefer opening in browser for better UX
+          if (extra?.pdfUrl) {
+            await Browser.open({
+              url: extra.pdfUrl,
+              presentationStyle: "fullscreen",
+            });
+          } else if (extra?.fileUri) {
+            // Try to open the file
             try {
               await FileOpener.open({
                 filePath: extra.fileUri,
@@ -121,24 +133,28 @@ export function PDFDownloadButton({
               });
             } catch (error) {
               console.error("Error opening file from notification:", error);
-              // Fallback: try opening URL if available
-              if (extra?.pdfUrl) {
-                await Browser.open({ url: extra.pdfUrl });
-              }
             }
-          } else if (extra?.pdfUrl) {
-            // Open the PDF URL in browser
-            await Browser.open({ url: extra.pdfUrl });
           }
+        }
+      );
+
+      // Also listen for when notification is received/tapped
+      receivedListener = await LocalNotifications.addListener(
+        "localNotificationReceived",
+        async (notification) => {
+          console.log("Notification received:", notification);
         }
       );
     };
 
-    setupListener();
+    setupListeners();
 
     return () => {
-      if (listenerHandle) {
-        listenerHandle.remove();
+      if (actionListener) {
+        actionListener.remove();
+      }
+      if (receivedListener) {
+        receivedListener.remove();
       }
     };
   }, []);
@@ -174,12 +190,13 @@ export function PDFDownloadButton({
 
       console.log("File saved to:", result.uri);
 
-      // Show success notification with file URI
+      // Show success notification with file URI and PDF URL
       await showNotification(
         "Download Complete",
         `Tap to open ${fileName}`,
         2,
-        { fileUri: result.uri } // Pass file URI so notification can open it
+        { fileUri: result.uri, pdfUrl }, // Pass both file URI and URL
+        true // Enable action button
       );
 
       // Automatically open the PDF in external app
