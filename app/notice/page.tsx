@@ -365,14 +365,6 @@ export default function NoticePage() {
                         <PriorityIcon className={`w-4 h-4 ${notice.priority === 'urgent' ? 'text-red-600' : notice.priority === 'high' ? 'text-orange-600' : 'text-blue-600'}`} />
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded ${notice.priority === 'urgent' ? 'bg-red-600' : notice.priority === 'high' ? 'bg-orange-600' : 'bg-blue-600'} text-white`}>
-                            {notice.priority.toUpperCase()}
-                          </span>
-                          <span className="text-xs px-2 py-0.5 rounded bg-gray-200 text-gray-700">
-                            {noticeTypeLabels[notice.notice_type as keyof typeof noticeTypeLabels]}
-                          </span>
-                        </div>
                         <h3 className={`font-bold text-base ${priorityTextColors[notice.priority as keyof typeof priorityTextColors]} line-clamp-2`}>
                           {notice.title}
                         </h3>
@@ -386,25 +378,7 @@ export default function NoticePage() {
                   <p className="text-gray-600 text-sm line-clamp-2 mb-3">
                     {notice.content}
                   </p>
-
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="w-3 h-3" />
-                      <span>{formatDate(notice.published_at)}</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      {notice.attachment_url && (
-                        <div className="flex items-center space-x-1 text-blue-600">
-                          <Download className="w-3 h-3" />
-                          <span>Attachment</span>
-                        </div>
-                      )}
-                      <div className="flex items-center space-x-1">
-                        <Eye className="w-3 h-3" />
-                        <span>{notice.views_count}</span>
-                      </div>
-                    </div>
-                  </div>
+                  
                 </motion.button>
               )
             })
