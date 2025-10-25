@@ -223,16 +223,7 @@ export default function NoticePage() {
                 <div className={`p-2 ${selectedNotice.priority === 'urgent' ? 'bg-red-100' : selectedNotice.priority === 'high' ? 'bg-orange-100' : 'bg-blue-100'} rounded-lg`}>
                   <PriorityIcon className={`w-5 h-5 ${selectedNotice.priority === 'urgent' ? 'text-red-600' : selectedNotice.priority === 'high' ? 'text-orange-600' : 'text-blue-600'}`} />
                 </div>
-                <div>
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded ${selectedNotice.priority === 'urgent' ? 'bg-red-600' : selectedNotice.priority === 'high' ? 'bg-orange-600' : 'bg-blue-600'} text-white`}>
-                      {selectedNotice.priority.toUpperCase()}
-                    </span>
-                    <span className="text-xs px-2 py-1 rounded bg-gray-200 text-gray-700">
-                      {noticeTypeLabels[selectedNotice.notice_type as keyof typeof noticeTypeLabels]}
-                    </span>
-                  </div>
-                </div>
+
               </div>
               {selectedNotice.has_viewed && (
                 <div className="flex items-center space-x-1 text-green-600 text-xs">
@@ -245,17 +236,6 @@ export default function NoticePage() {
             <h1 className={`text-2xl font-bold mb-4 ${priorityTextColors[selectedNotice.priority as keyof typeof priorityTextColors]}`}>
               {selectedNotice.title}
             </h1>
-
-            <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
-              <div className="flex items-center space-x-1">
-                <Calendar className="w-4 h-4" />
-                <span>{formatDate(selectedNotice.published_at)}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <Eye className="w-4 h-4" />
-                <span>{selectedNotice.views_count} views</span>
-              </div>
-            </div>
 
             <div className="prose max-w-none">
               <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
