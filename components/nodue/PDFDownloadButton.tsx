@@ -5,6 +5,8 @@ import { Download, Loader2, ExternalLink, CheckCircle } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Browser } from "@capacitor/browser";
+import { FileOpener } from "@capacitor-community/file-opener";
 
 interface PDFDownloadButtonProps {
   studentId: string;
@@ -71,7 +73,12 @@ export function PDFDownloadButton({
     }
   };
 
-  const showNotification = async (title: string, body: string, id: number = 1) => {
+  const showNotification = async (
+    title: string,
+    body: string,
+    id: number = 1,
+    actionData?: { fileUri?: string; pdfUrl?: string }
+  ) => {
     if (!Capacitor.isNativePlatform()) return;
 
     try {
@@ -85,6 +92,7 @@ export function PDFDownloadButton({
             body,
             id,
             schedule: { at: new Date(Date.now() + 100) },
+            extra: actionData, // Store file URI or URL for opening on tap
           },
         ],
       });
@@ -93,9 +101,51 @@ export function PDFDownloadButton({
     }
   };
 
+  // Listen for notification taps
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let listenerHandle: any;
+
+    const setupListener = async () => {
+      listenerHandle = await LocalNotifications.addListener(
+        "localNotificationActionPerformed",
+        async (notification) => {
+          const extra = notification.notification.extra;
+          if (extra?.fileUri) {
+            // Open the downloaded PDF file
+            try {
+              await FileOpener.open({
+                filePath: extra.fileUri,
+                contentType: "application/pdf",
+              });
+            } catch (error) {
+              console.error("Error opening file from notification:", error);
+              // Fallback: try opening URL if available
+              if (extra?.pdfUrl) {
+                await Browser.open({ url: extra.pdfUrl });
+              }
+            }
+          } else if (extra?.pdfUrl) {
+            // Open the PDF URL in browser
+            await Browser.open({ url: extra.pdfUrl });
+          }
+        }
+      );
+    };
+
+    setupListener();
+
+    return () => {
+      if (listenerHandle) {
+        listenerHandle.remove();
+      }
+    };
+  }, []);
+
   const downloadToMobile = async (pdfUrl: string, fileName: string) => {
     if (!Capacitor.isNativePlatform()) {
-      // Web/PWA: just open in new tab
+      // Web/PWA: open in new tab
       window.open(pdfUrl, "_blank");
       return;
     }
@@ -105,7 +155,8 @@ export function PDFDownloadButton({
       await showNotification(
         "Downloading Certificate",
         "Your No Due Certificate is being downloaded...",
-        1
+        1,
+        { pdfUrl } // Pass URL so notification can open it
       );
 
       // Fetch the PDF
@@ -123,12 +174,25 @@ export function PDFDownloadButton({
 
       console.log("File saved to:", result.uri);
 
-      // Show success notification
+      // Show success notification with file URI
       await showNotification(
         "Download Complete",
-        `${fileName} has been saved to your device`,
-        2
+        `Tap to open ${fileName}`,
+        2,
+        { fileUri: result.uri } // Pass file URI so notification can open it
       );
+
+      // Automatically open the PDF in external app
+      try {
+        await FileOpener.open({
+          filePath: result.uri,
+          contentType: "application/pdf",
+        });
+      } catch (openError) {
+        console.error("Error opening PDF:", openError);
+        // Fallback: open URL in browser
+        await Browser.open({ url: pdfUrl });
+      }
 
       return result.uri;
     } catch (error) {
@@ -205,8 +269,13 @@ export function PDFDownloadButton({
     if (!existingPdfUrl) return;
 
     try {
-      const fileName = `NoDue_${registerNumber}.pdf`;
-      await downloadToMobile(existingPdfUrl, fileName);
+      if (Capacitor.isNativePlatform()) {
+        // On native: Open in external browser/PDF viewer
+        await Browser.open({ url: existingPdfUrl });
+      } else {
+        // On web: Open in new tab
+        window.open(existingPdfUrl, "_blank");
+      }
     } catch (error: any) {
       console.error("Error viewing PDF:", error);
       alert("Failed to open certificate: " + error.message);
@@ -215,7 +284,10 @@ export function PDFDownloadButton({
 
   if (checkingExisting) {
     return (
-      <button disabled className="w-full saas-button-primary opacity-50 cursor-not-allowed">
+      <button
+        disabled
+        className="w-full saas-button-primary opacity-50 cursor-not-allowed"
+      >
         <Loader2 className="w-5 h-5 animate-spin mr-2" />
         <span>Checking...</span>
       </button>
@@ -228,7 +300,9 @@ export function PDFDownloadButton({
       <div className="space-y-3">
         <div className="flex items-center justify-center space-x-2 text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
           <CheckCircle className="w-5 h-5" />
-          <span className="text-sm font-medium">Certificate Already Generated</span>
+          <span className="text-sm font-medium">
+            Certificate Already Generated
+          </span>
         </div>
         <button
           onClick={handleViewExisting}
