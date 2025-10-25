@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Download, Loader2, ExternalLink, CheckCircle } from "lucide-react";
+import {
+  Download,
+  Loader2,
+  ExternalLink,
+  CheckCircle,
+  Copy,
+} from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { Filesystem, Directory } from "@capacitor/filesystem";
@@ -305,11 +311,22 @@ export function PDFDownloadButton({
         disabled
         className="w-full saas-button-primary opacity-50 cursor-not-allowed"
       >
-        <Loader2 className="w-5 h-5 animate-spin mr-2" />
         <span>Checking...</span>
       </button>
     );
   }
+
+  const handleCopyLink = async () => {
+    if (!existingPdfUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(existingPdfUrl);
+      alert("Certificate link copied to clipboard!");
+    } catch (error) {
+      console.error("Error copying link:", error);
+      alert("Failed to copy link");
+    }
+  };
 
   // If certificate already exists, show view button
   if (existingPdfUrl) {
@@ -321,13 +338,22 @@ export function PDFDownloadButton({
             Certificate Already Generated
           </span>
         </div>
-        <button
-          onClick={handleViewExisting}
-          className="w-full saas-button-primary flex items-center justify-center space-x-2"
-        >
-          <ExternalLink className="w-5 h-5" />
-          <span>View Certificate</span>
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={handleViewExisting}
+            className="flex-[80] saas-button-primary flex items-center justify-center space-x-2"
+          >
+            <ExternalLink className="w-5 h-5" />
+            <span>View Certificate</span>
+          </button>
+          <button
+            onClick={handleCopyLink}
+            className="flex-[15] saas-button-primary flex items-center justify-center"
+            title="Copy certificate link"
+          >
+            <Copy className="w-5 h-5" />
+          </button>
+        </div>
       </div>
     );
   }
