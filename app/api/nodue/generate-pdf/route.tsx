@@ -71,10 +71,20 @@ const sanitizeText = (input: any): string => {
 
     console.log("[PDF Generation] Student found:", student.name)
 
+    // Normalizers to improve matching between sources
+    const normalizeNameKey = (s: any) =>
+      sanitizeText(String(s || "").toLowerCase())
+        .replace(/&/g, "and")
+        .replace(/[^a-z0-9\s]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+
+    const normalizeCodeKey = (s: any) => String(s || "").toUpperCase().replace(/\s+/g, "").trim()
+
     // Helper: fetch timetable SUBJECT_DETAILS and build abbreviation maps
-    // Returns two maps:
-    // - byName: full subject name (lowercased) -> abbreviation (e.g., "computer networks" -> "CN")
-    // - byCode: subject code (uppercased) -> abbreviation (e.g., "CS3591" -> "CN")
+    // Returns two maps using normalized keys:
+    // - byName: normalized full subject name -> abbreviation (e.g., "computer networks" -> "CN")
+    // - byCode: normalized subject code -> abbreviation (e.g., "CS3591" -> "CN")
     const getAbbrevMap = async (): Promise<{ byName: Record<string,string>; byCode: Record<string,string> }> => {
       try {
         const classYear = String(student.class_year || '').trim()
@@ -89,11 +99,13 @@ const sanitizeText = (input: any): string => {
         const byCode: Record<string,string> = {}
         for (const abbr of Object.keys(details)) {
           const rec = details[abbr] || {}
-          const full = String(rec.Subject || '').toLowerCase().trim()
-          const subjCode = String(rec.Code || '').toUpperCase().trim()
+          const full = rec.Subject ?? rec.subject ?? rec.Name ?? rec.name ?? ""
+          const subjCodeRaw = rec.Code ?? rec.code ?? ""
+          const fullKey = normalizeNameKey(full)
+          const codeKey = normalizeCodeKey(subjCodeRaw)
           const abbrStr = String(abbr).trim()
-          if (full && abbrStr) byName[full] = abbrStr
-          if (subjCode && abbrStr) byCode[subjCode] = abbrStr
+          if (fullKey && abbrStr) byName[fullKey] = abbrStr
+          if (codeKey && abbrStr) byCode[codeKey] = abbrStr
         }
         return { byName, byCode }
       } catch {
@@ -241,13 +253,30 @@ const sanitizeText = (input: any): string => {
         marksCleared
 
       const fullName = sanitizeText(s.name)
-      const fullLower = fullName.toLowerCase().trim()
-      const subjCode = normalize(s.code as any)
-      // Use only timetable-provided abbreviation, prefer code match over name match.
-      // If missing, leave empty so full name is shown.
-      const abbrev = sanitizeText(
-        (abbrevMap.byCode[subjCode] || abbrevMap.byName[fullLower] || "")
-      )
+      const fullLower = normalizeNameKey(fullName)
+      const subjCode = normalizeCodeKey(s.code as any)
+      // Prefer timetable abbrev by code, then exact name key
+      let abbrevRaw = abbrevMap.byCode[subjCode] || abbrevMap.byName[fullLower]
+      // If still missing, try a cautious partial match: choose the longest key that is contained in the other
+      if (!abbrevRaw) {
+        let best: { key: string; abbr: string } | null = null
+        for (const [k, abbr] of Object.entries(abbrevMap.byName)) {
+          if (k.length < 3) continue
+          const fits = fullLower.includes(k) || k.includes(fullLower)
+          if (fits && (!best || k.length > best.key.length)) {
+            best = { key: k, abbr }
+          }
+        }
+        if (best) abbrevRaw = best.abbr
+      }
+      // Final sanitize (no initials or DB code fallback)
+      const abbrev = sanitizeText(abbrevRaw || "")
+      if (!abbrev) {
+        console.log("[PDF Generation] No timetable abbreviation found", {
+          subjectName: fullName,
+          subjectCode: subjCode,
+        })
+      }
 
       return {
         subject: fullName,
