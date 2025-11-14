@@ -234,7 +234,9 @@ const sanitizeText = (input: any): string => {
 
       const fullName = sanitizeText(s.name)
       const fullLower = fullName.toLowerCase().trim()
-      const abbrev = sanitizeText(abbrevMap[fullLower] || s.code || toInitials(fullName))
+      // Prefer timetable abbreviation; if missing, derive initials from the full subject name.
+      // Never use the database subject code (e.g., CS3591) in the PDF.
+      const abbrev = sanitizeText(abbrevMap[fullLower] || toInitials(fullName))
 
       return {
         subject: fullName,
