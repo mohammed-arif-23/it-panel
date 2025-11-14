@@ -1,7 +1,6 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import React from "react"
-import { Document, Page, Text, View, StyleSheet, Image, pdf, Font } from "@react-pdf/renderer"
+import { Document, Page, Text, View, StyleSheet, Image, pdf, Svg, Path, Font } from "@react-pdf/renderer"
 
 export const runtime = "nodejs"
 
@@ -19,6 +18,22 @@ export async function POST(request: NextRequest) {
     if (!studentId) {
       return NextResponse.json({ error: "Student ID is required" }, { status: 400 })
     }
+
+// Normalize/sanitize text for PDF (remove smart quotes and odd symbols)
+const sanitizeText = (input: any): string => {
+  const s = String(input ?? "")
+  // Replace common smart punctuation with ASCII equivalents
+  return s
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'") // single quotes
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"') // double quotes
+    .replace(/[\u2013\u2014\u2212]/g, "-") // dashes
+    .replace(/[\u2026]/g, "...") // ellipsis
+    .replace(/[\u00AA\u00BA]/g, "") // ordinals
+    .replace(/[\u02DA\u00B0]/g, "°") // degree unify
+    .replace(/[\u00C2\u00A0]/g, " ") // non-breaking space variants
+    .replace(/[<>]/g, "") // remove angle brackets
+    .replace(/[^\x00-\x7F°]/g, "") // strip other non-ascii except degree symbol
+}
 
     console.log("[PDF Generation] Creating Supabase client...")
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -55,6 +70,28 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[PDF Generation] Student found:", student.name)
+
+    // Helper: best-effort fetch of timetable SUBJECT_DETAILS to build abbrev map
+    const getAbbrevMap = async (): Promise<Record<string,string>> => {
+      try {
+        const classYear = String(student.class_year || '').trim()
+        if (!classYear) return {}
+        const base = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+        const url = `${base.replace(/\/$/, '')}/api/timetable?` + new URLSearchParams({ class_year: classYear }).toString()
+        const res = await fetch(url, { cache: 'no-store' })
+        if (!res.ok) return {}
+        const json = await res.json()
+        const details = json?.data?.json?.SUBJECT_DETAILS || {}
+        const map: Record<string,string> = {}
+        for (const code of Object.keys(details)) {
+          const full = String(details[code]?.Subject || '').toLowerCase().trim()
+          if (full) map[full] = String(code)
+        }
+        return map
+      } catch {
+        return {}
+      }
+    }
 
     // Fetch marks data
     console.log("[PDF Generation] Fetching marks data...")
@@ -167,6 +204,17 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Abbreviation map from timetable (full name -> abbrev)
+    const abbrevMap = await getAbbrevMap()
+
+    const toInitials = (name: string) =>
+      name
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(w => w[0])
+        .join('')
+        .toUpperCase()
+
     // Build rows for PDF rendering
     const pdfRows = (subjects || []).map((s: any) => {
       const code = normalize(s.code as any)
@@ -184,13 +232,18 @@ export async function POST(request: NextRequest) {
         (assignmentStatus === "Submitted" || assignmentStatus === "No Assignments") &&
         marksCleared
 
+      const fullName = sanitizeText(s.name)
+      const fullLower = fullName.toLowerCase().trim()
+      const abbrev = sanitizeText(abbrevMap[fullLower] || s.code || toInitials(fullName))
+
       return {
-        subject: s.name,
+        subject: fullName,
+        subjectAbbrev: abbrev,
         iat: mark?.iat ?? null,
         model: mark?.model ?? null,
         assignment: assignmentStatus,
         fees: feesPaid ? "Paid" : "Not Paid",
-        signature: signatureAllowed ? "✓" : "",
+        signature: signatureAllowed ? "●" : "",
       }
     })
 
@@ -260,7 +313,7 @@ export async function POST(request: NextRequest) {
         status: "cleared",
         generated_at: nowIso,
         pdf_url: pdfUrl,
-        notes: "Generated via API and uploaded to Cloudinary",
+        notes: "Generated via API and uploaded to Supabase Storage",
       })
 
       if (insertError) {
@@ -298,119 +351,210 @@ export async function POST(request: NextRequest) {
 
 const styles = StyleSheet.create({
   page: {
+    position: "relative",
     display: "flex",
     flexDirection: "column",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    fontSize: 9,
+    padding: 18,
+    fontSize: 8,
     color: "#111827",
     backgroundColor: "#FFFFFF",
+    fontFamily: "Helvetica",
   },
-  container: { padding: 18, backgroundColor: "#FFFFFF", borderRadius: 12 },
-  header: { alignItems: "center", marginBottom: 10 },
-  logo: { width: 360, height: 120, objectFit: "contain", marginVertical: 2 },
+  // Thin grayscale frame for print
+  frameOuter: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    right: 12,
+    bottom: 12,
+    borderColor: "#6B7280",
+    borderWidth: 1,
+    borderRadius: 6,
+  },
+  container: { width: "100%", zIndex: 1 },
+  header: { alignItems: "center", marginBottom: 6, paddingTop: 0 },
+  logo: { width: 400, height: 160, objectFit: "contain", marginBottom: 2 },
   dept: {
-    fontSize: 12,
-    marginVertical: 2,
-    marginBottom: 10,
-    fontWeight: 600,
-    color: "#111827",
-  },
-  title: { fontSize: 14, fontWeight: 700, textDecoration: "underline", marginTop: 2 },
-  grid: {
-    display: "flex",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginVertical: 10,
-    marginHorizontal: 12,
-    paddingHorizontal: 12,
-  },
-  gridItem: { marginBottom: 4, paddingRight: 10, fontSize: 12 },
-  label: { fontWeight: 700 },
-  value: {},
-  tableWrap: { borderWidth: 2, borderColor: "#374151", borderRadius: 12, overflow: "hidden" },
-  table: { display: "flex", width: "100%", borderRadius: 12, overflow: "hidden" },
-  thead: { flexDirection: "row", backgroundColor: "#F3F4F6" },
-  th: {
-    flex: 1,
-    borderRightWidth: 1,
-    borderColor: "#374151",
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    fontSize: 14,
     fontWeight: 700,
+    color: "#111827",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 4,
     textAlign: "center",
   },
-  tbody: {},
-  tr: { flexDirection: "row" },
-  trEven: { backgroundColor: "#F9FAFB" },
-  td: {
-    flex: 1,
-    minWidth: 0,
-    borderTopWidth: 1,
-    borderRightWidth: 1,
-    borderColor: "#374151",
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-  },
-  tdCenter: { textAlign: "center" },
-  subjectCell: { fontWeight: 600 },
-  thSubject: {
-    flex: 2,
-    textAlign: "left",
-    borderRightWidth: 1,
-    borderColor: "#374151",
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+  title: {
+    fontSize: 12,
     fontWeight: 700,
+    color: "#111827",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    textAlign: "center",
   },
-  tdSubject: { flex: 2 },
-  cellText: { fontSize: 10, lineHeight: 1.4, wordBreak: "break-word" },
+
+  // Student card (compact)
+  studentCard: {
+    marginTop: 6,
+    backgroundColor: "#FFFFFF",
+    borderColor: "#D1D5DB",
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+  },
+  infoGrid: { flexDirection: "row", alignItems: "stretch", width: "100%" },
+  infoCol: { flex: 1 },
+  dividerV: { width: 1, backgroundColor: "#E5E7EB", marginHorizontal: 8 },
+  field: { marginBottom: 6, flexDirection: "row", alignItems: "center" },
+  label: { fontSize: 9, fontWeight: 700, color: "#111827", textTransform: "uppercase", letterSpacing: 0.5, marginRight: 6 },
+  value: { fontSize: 10, fontWeight: 600, color: "#111827" },
+
+  // Table (professional, elegant)
+  tableWrap: {
+    marginTop: 12,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: "#374151",
+    borderRadius: 6,
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+  },
+  table: { 
+    display: "flex", 
+    width: "100%",
+    flexDirection: "column"
+  },
+  thead: { 
+    flexDirection: "row", 
+    backgroundColor: "#F8FAFC",
+    borderBottomWidth: 2,
+    borderBottomColor: "#E2E8F0",
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5
+  },
+  th: {
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRightWidth: 1.5,
+    borderRightColor: "#D1D5DB",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  thText: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#1F2937",
+    textTransform: "uppercase",
+    textAlign: "center",
+  },
+  thSubject: {
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRightWidth: 1.5,
+    borderRightColor: "#D1D5DB",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  thLast: {
+    borderRightWidth: 0,
+  },
+  tbody: {
+    flexDirection: "column"
+  },
+  tr: { 
+    flexDirection: "row", 
+    minHeight: 40,
+    borderBottomWidth: 1.5,
+    borderBottomColor: "#E5E7EB"
+  },
+  trEven: { 
+    flexDirection: "row", 
+    minHeight: 40,
+    borderBottomWidth: 1.5,
+    borderBottomColor: "#E5E7EB",
+    backgroundColor: "#FAFBFC" 
+  },
+  trLast: {
+    flexDirection: "row", 
+    minHeight: 40,
+    borderBottomWidth: 0,
+    borderBottomColor: "#F1F5F9"
+  },
+  td: {
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRightWidth: 1.5,
+    borderRightColor: "#E5E7EB",
+  },
+  tdSubject: {
+    textAlign: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRightWidth: 1.5,
+    borderRightColor: "#E5E7EB",
+  },
+  tdLast: {
+    borderRightWidth: 0,
+  },
+  subjectCell: {
+    fontSize: 10,
+    fontWeight: 500,
+    color: "#1F2937",
+    textAlign: "left",
+  },
+  cellText: {
+    fontSize: 10,
+    fontWeight: 400,
+    color: "#374151",
+    textAlign: "center",
+  },
+  markAB: {
+    color: "#EF4444",
+    fontWeight: 600,
+  },
+  signCell: {
+    minHeight: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  // Column widths
+  colSubject: { flex: 3 },
+  colIat: { flex: 1.2 },
+  colModel: { flex: 1.2 },
+  colAssignment: { flex: 1.8 },
+  colFines: { flex: 1.2 },
+  colSignature: { flex: 1.8 },
+
+  // Badges (grayscale)
   badge: {
-    borderRadius: 9999,
-    paddingVertical: 2,
-    paddingHorizontal: 5,
-    fontSize: 8.5,
+    borderRadius: 16,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    fontSize: 8,
     fontWeight: 700,
     alignSelf: "center",
-  },
-  badgeGreen: {
-    backgroundColor: "#ECFDF5",
-    color: "#065F46",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+    color: "#111827",
     borderWidth: 1,
-    borderColor: "#A7F3D0",
-    padding: 3,
+    borderColor: "#9CA3AF",
+    backgroundColor: "#FFFFFF",
   },
-  badgeRed: {
-    backgroundColor: "#FEF2F2",
-    color: "#991B1B",
-    borderWidth: 1,
-    borderColor: "#FECACA",
-    padding: 3,
-  },
-  badgeGray: {
-    backgroundColor: "#F3F4F6",
-    color: "#374151",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    padding: 3,
-  },
-  green: { color: "#16A34A" },
-  red: { color: "#DC2626" },
-  muted: { color: "#6B7280" },
-  footer: {
-    fontSize: 14,
-    display: "flex",
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 32,
-    paddingTop: 16,
-    alignItems: "flex-end",
-  },
-  sigBlock: { alignItems: "center", width: 160 },
-  sigLineBar: { borderTopWidth: 2, borderColor: "#111827", width: 160 },
-  sigLabel: { marginTop: 6, fontWeight: 600, textAlign: "center" },
+
+  // Special rows (grayscale accent)
+  specialTr: { flexDirection: "row", backgroundColor: "#F9FAFB", minHeight: 28, borderLeftWidth: 3, borderLeftColor: "#9CA3AF" },
+
+  // Footer
+  footer: { display: "flex", width: "100%", flexDirection: "row", justifyContent: "space-between", marginTop: 28, paddingTop: 8, alignItems: "flex-end" },
+  sigBlock: { alignItems: "center", width: 180 },
+  sigLine: { borderTopWidth: 1, borderColor: "#6B7280", borderStyle: "dashed", width: 140 },
+  sigLabel: { marginTop: 4, fontWeight: 600, textAlign: "center", color: "#111827", fontSize: 10 },
+  sigDate: { marginTop: 2, fontSize: 8, color: "#6B7280" },
 })
 
 function CertificatePDF({
@@ -420,6 +564,7 @@ function CertificatePDF({
   student: any
   rows: Array<{
     subject: string
+    subjectAbbrev?: string
     iat: number | null
     model: number | null
     assignment: string
@@ -428,138 +573,207 @@ function CertificatePDF({
   }>
 }) {
   const headerLogo = "https://avsec-it.vercel.app/logo.png"
+  const now = new Date()
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  const dateText = `${String(now.getDate()).padStart(2, "0")} ${months[now.getMonth()]} ${now.getFullYear()}`
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+        {/* Frame */}
+        <View style={styles.frameOuter} />
+
+        {/* Header */}
         <View style={styles.header}>
           <Image src={headerLogo} style={styles.logo} />
           <Text style={styles.dept}>Department of Information Technology</Text>
-          <Text style={styles.title}>NO DUE CERTIFICATE</Text>
+          <Text style={styles.title}>No Due Certificate</Text>
         </View>
 
         <View style={styles.container}>
-          <View style={styles.grid}>
-            <View style={styles.gridItem}>
-              <Text>
-                <Text style={styles.label}>Name: </Text>
-                <Text style={styles.value}>{String(student.name)}</Text>
-              </Text>
-            </View>
-            <View style={styles.gridItem}>
-              <Text>
-                <Text style={styles.label}>Register Number: </Text>
-                <Text style={styles.value}>{String(student.register_number)}</Text>
-              </Text>
-            </View>
-            <View style={styles.gridItem}>
-              <Text>
-                <Text style={styles.label}>Year/Sem: </Text>
-                <Text style={styles.value}>
-                  {String(student.year)}rd / {String(student.semester)}th
-                </Text>
-              </Text>
+          {/* Student Info Card */}
+          <View style={styles.studentCard}>
+            <View style={styles.infoGrid}>
+              <View style={styles.infoCol}>
+                <View style={styles.field}>
+                  <Text style={styles.label}>Name:</Text>
+                  <Text style={styles.value}>{String(student.name)}</Text>
+                </View>
+                <View style={styles.field}>
+                  <Text style={styles.label}>Register Number:</Text>
+                  <Text style={styles.value}>{String(student.register_number)}</Text>
+                </View>
+              </View>
+              <View style={styles.dividerV} />
+              <View style={styles.infoCol}>
+                <View style={styles.field}>
+                  <Text style={styles.label}>Year / Semester:</Text>
+                  <Text style={styles.value}>
+                    {String(student.year)} / {String(student.semester)}
+                  </Text>
+                </View>
+                <View style={styles.field}>
+                  <Text style={styles.label}>Date of Issue:</Text>
+                  <Text style={styles.value}>{dateText}</Text>
+                </View>
+              </View>
             </View>
           </View>
 
+          {/* Table */}
           <View style={styles.tableWrap}>
             <View style={styles.table}>
+              {/* Header */}
               <View style={styles.thead}>
-                <Text style={styles.thSubject}>Subject</Text>
-                <Text style={styles.th}>IAT</Text>
-                <Text style={styles.th}>Model</Text>
-                <Text style={styles.th}>Assignment</Text>
-                <Text style={styles.th}>Department Fees</Text>
-                <Text style={styles.th}>Signature</Text>
+                <View style={[styles.th, styles.thSubject, styles.colSubject]}>
+                  <Text style={styles.thText}>SUBJECT</Text>
+                </View>
+                <View style={[styles.th, styles.colIat]}>
+                  <Text style={styles.thText}>IAT</Text>
+                </View>
+                <View style={[styles.th, styles.colModel]}>
+                  <Text style={styles.thText}>MODEL</Text>
+                </View>
+                <View style={[styles.th, styles.colAssignment]}>
+                  <Text style={styles.thText}>ASSIGNMENT</Text>
+                </View>
+                <View style={[styles.th, styles.colFines]}>
+                  <Text style={styles.thText}>FINES</Text>
+                </View>
+                <View style={[styles.th, styles.thLast, styles.colSignature]}>
+                  <Text style={styles.thText}>SIGNATURE</Text>
+                </View>
               </View>
 
               <View style={styles.tbody}>
                 {rows.map((r, idx) => {
-                  const signatureAllowed = Boolean(r.signature)
-                  const rowStyle = idx % 2 === 1 ? [styles.tr, styles.trEven] : [styles.tr]
+                  const isLast = idx === rows.length - 1
+                  const rowStyle = [styles.tr]
+                  if (idx % 2 === 1) rowStyle.push(styles.trEven)
+                  if (isLast) rowStyle.push(styles.trLast)
+                  
                   return (
                     <View style={rowStyle} key={idx}>
-                      <Text style={[styles.td, styles.tdSubject, styles.subjectCell, styles.cellText]}>
-                        {r.subject}
-                      </Text>
-                      <Text style={[styles.td, styles.tdCenter, styles.cellText]}>
-                        {r.iat ?? "-"}
-                      </Text>
-                      <Text style={[styles.td, styles.tdCenter, styles.cellText]}>
-                        {r.model ?? "-"}
-                      </Text>
-                      <View style={[styles.td, { alignItems: "center" }]}>
-                        {r.assignment === "No Assignments" ? (
-                          <Text style={[styles.badge, styles.badgeGray]}>No Assignments</Text>
-                        ) : r.assignment === "Submitted" ? (
-                          <Text style={[styles.badge, styles.badgeGreen]}>Submitted</Text>
+                      <View style={[styles.td, styles.tdSubject, styles.colSubject]}>
+                        <Text style={styles.subjectCell}>
+                          {r.subjectAbbrev ? String(r.subjectAbbrev) : r.subject}
+                        </Text>
+                      </View>
+                      <View style={[styles.td, styles.colIat]}>
+                        {r.iat === 0 ? (
+                          <Text style={[styles.cellText, styles.markAB]}>AB</Text>
                         ) : (
-                          <Text style={[styles.badge, styles.badgeRed]}>Not Submitted</Text>
+                          <Text style={styles.cellText}>
+                            {r.iat == null ? "-" : String(r.iat)}
+                          </Text>
                         )}
                       </View>
-                      <View style={[styles.td, { alignItems: "center" }]}>
+                      <View style={[styles.td, styles.colModel]}>
+                        {r.model === 0 ? (
+                          <Text style={[styles.cellText, styles.markAB]}>AB</Text>
+                        ) : (
+                          <Text style={styles.cellText}>
+                            {r.model == null ? "-" : String(r.model)}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={[styles.td, styles.colAssignment]}>
+                        {r.assignment === "Submitted" || r.assignment === "No Assignments" ? (
+                          <Svg width="14" height="14" viewBox="0 0 24 24">
+                            <Path
+                              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                              fill="#10B981"
+                            />
+                          </Svg>
+                        ) : null}
+                      </View>
+                      <View style={[styles.td, styles.colFines]}>
                         {r.fees === "Paid" ? (
-                          <Text style={[styles.badge, styles.badgeGreen]}>Paid</Text>
-                        ) : (
-                          <Text style={[styles.badge, styles.badgeRed]}>Not Paid</Text>
-                        )}
+                          <Svg width="14" height="14" viewBox="0 0 24 24">
+                            <Path
+                              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                              fill="#10B981"
+                            />
+                          </Svg>
+                        ) : null}
                       </View>
-                      <Text style={[styles.td, styles.tdCenter, styles.cellText]}>
-                        {signatureAllowed ? "" : "X"}
-                      </Text>
+                      <View style={[styles.td, styles.signCell, styles.tdLast, styles.colSignature]}>
+                        <Text>{" "}</Text>
+                      </View>
                     </View>
                   )
                 })}
 
                 {/* Office */}
-                <View style={styles.tr}>
-                  <Text style={[styles.td, styles.tdSubject, styles.subjectCell, styles.cellText]}>
-                    Office
-                  </Text>
-                  <Text style={[styles.td, styles.tdCenter, styles.cellText]}>-</Text>
-                  <Text style={[styles.td, styles.tdCenter, styles.cellText]}>-</Text>
-                  <Text style={[styles.td, styles.tdCenter, styles.cellText]}>-</Text>
-                  <View style={[styles.td, { alignItems: "center" }]}>
-                    {Number(student.total_fine_amount || 0) === 0 ? (
-                      <Text style={[styles.badge, styles.badgeGreen]}>Paid</Text>
-                    ) : (
-                      <Text style={[styles.badge, styles.badgeRed]}>Not Paid</Text>
-                    )}
+                <View style={[styles.tr, styles.trEven]}>
+                  <View style={[styles.td, styles.tdSubject, styles.colSubject]}>
+                    <Text style={styles.subjectCell}>Office</Text>
                   </View>
-                  <Text style={[styles.td, styles.tdCenter, styles.cellText]}>
-                    {Number(student.total_fine_amount || 0) === 0 ? "" : "X"}
-                  </Text>
+                  <View style={[styles.td, styles.colIat]}>
+                    <Text style={styles.cellText}>-</Text>
+                  </View>
+                  <View style={[styles.td, styles.colModel]}>
+                    <Text style={styles.cellText}>-</Text>
+                  </View>
+                  <View style={[styles.td, styles.colAssignment]}>
+                    <Text style={styles.cellText}>-</Text>
+                  </View>
+                  <View style={[styles.td, styles.colFines]}>
+                    {Number(student.total_fine_amount || 0) === 0 ? (
+                      <Svg width="14" height="14" viewBox="0 0 24 24">
+                        <Path
+                          d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                          fill="#10B981"
+                        />
+                      </Svg>
+                    ) : null}
+                  </View>
+                  <View style={[styles.td, styles.signCell, styles.tdLast, styles.colSignature]}>
+                    <Text>{" "}</Text>
+                  </View>
                 </View>
 
                 {/* Library */}
-                <View style={styles.tr}>
-                  <Text style={[styles.td, styles.tdSubject, styles.subjectCell, styles.cellText]}>
-                    Library
-                  </Text>
-                  <Text style={[styles.td, styles.tdCenter, styles.cellText]}>-</Text>
-                  <Text style={[styles.td, styles.tdCenter, styles.cellText]}>-</Text>
-                  <Text style={[styles.td, styles.tdCenter, styles.cellText]}>-</Text>
-                  <View style={[styles.td, { alignItems: "center" }]}>
-                    {Number(student.total_fine_amount || 0) === 0 ? (
-                      <Text style={[styles.badge, styles.badgeGreen]}>Paid</Text>
-                    ) : (
-                      <Text style={[styles.badge, styles.badgeRed]}>Not Paid</Text>
-                    )}
+                <View style={[styles.tr, styles.trLast]}>
+                  <View style={[styles.td, styles.tdSubject, styles.colSubject]}>
+                    <Text style={styles.subjectCell}>Library</Text>
                   </View>
-                  <Text style={[styles.td, styles.tdCenter, styles.cellText]}>
-                    {Number(student.total_fine_amount || 0) === 0 ? "" : "X"}
-                  </Text>
+                  <View style={[styles.td, styles.colIat]}>
+                    <Text style={styles.cellText}>-</Text>
+                  </View>
+                  <View style={[styles.td, styles.colModel]}>
+                    <Text style={styles.cellText}>-</Text>
+                  </View>
+                  <View style={[styles.td, styles.colAssignment]}>
+                    <Text style={styles.cellText}>-</Text>
+                  </View>
+                  <View style={[styles.td, styles.colFines]}>
+                    {Number(student.total_fine_amount || 0) === 0 ? (
+                      <Svg width="14" height="14" viewBox="0 0 24 24">
+                        <Path
+                          d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                          fill="#10B981"
+                        />
+                      </Svg>
+                    ) : null}
+                  </View>
+                  <View style={[styles.td, styles.signCell, styles.tdLast, styles.colSignature]}>
+                    <Text>{" "}</Text>
+                  </View>
                 </View>
               </View>
             </View>
           </View>
         </View>
 
+        {/* Footer signatures */}
         <View style={styles.footer}>
           <View style={styles.sigBlock}>
-            <Text style={styles.sigLabel}>CC</Text>
+            <View style={styles.sigLine} />
+            <Text style={styles.sigLabel}>Class Coordinator</Text>
           </View>
           <View style={styles.sigBlock}>
+            <View style={styles.sigLine} />
             <Text style={styles.sigLabel}>Head of Department</Text>
           </View>
         </View>
@@ -572,6 +786,7 @@ async function buildPdf(
   student: any,
   rows: Array<{
     subject: string
+    subjectAbbrev?: string
     iat: number | null
     model: number | null
     assignment: string
