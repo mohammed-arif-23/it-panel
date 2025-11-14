@@ -71,25 +71,33 @@ const sanitizeText = (input: any): string => {
 
     console.log("[PDF Generation] Student found:", student.name)
 
-    // Helper: best-effort fetch of timetable SUBJECT_DETAILS to build abbrev map
-    const getAbbrevMap = async (): Promise<Record<string,string>> => {
+    // Helper: fetch timetable SUBJECT_DETAILS and build abbreviation maps
+    // Returns two maps:
+    // - byName: full subject name (lowercased) -> abbreviation (e.g., "computer networks" -> "CN")
+    // - byCode: subject code (uppercased) -> abbreviation (e.g., "CS3591" -> "CN")
+    const getAbbrevMap = async (): Promise<{ byName: Record<string,string>; byCode: Record<string,string> }> => {
       try {
         const classYear = String(student.class_year || '').trim()
-        if (!classYear) return {}
+        if (!classYear) return { byName: {}, byCode: {} }
         const base = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
         const url = `${base.replace(/\/$/, '')}/api/timetable?` + new URLSearchParams({ class_year: classYear }).toString()
         const res = await fetch(url, { cache: 'no-store' })
-        if (!res.ok) return {}
+        if (!res.ok) return { byName: {}, byCode: {} }
         const json = await res.json()
         const details = json?.data?.json?.SUBJECT_DETAILS || {}
-        const map: Record<string,string> = {}
-        for (const code of Object.keys(details)) {
-          const full = String(details[code]?.Subject || '').toLowerCase().trim()
-          if (full) map[full] = String(code)
+        const byName: Record<string,string> = {}
+        const byCode: Record<string,string> = {}
+        for (const abbr of Object.keys(details)) {
+          const rec = details[abbr] || {}
+          const full = String(rec.Subject || '').toLowerCase().trim()
+          const subjCode = String(rec.Code || '').toUpperCase().trim()
+          const abbrStr = String(abbr).trim()
+          if (full && abbrStr) byName[full] = abbrStr
+          if (subjCode && abbrStr) byCode[subjCode] = abbrStr
         }
-        return map
+        return { byName, byCode }
       } catch {
-        return {}
+        return { byName: {}, byCode: {} }
       }
     }
 
@@ -204,7 +212,7 @@ const sanitizeText = (input: any): string => {
       })
     }
 
-    // Abbreviation map from timetable (full name -> abbrev)
+    // Abbreviation maps from timetable
     const abbrevMap = await getAbbrevMap()
 
     const toInitials = (name: string) =>
@@ -234,9 +242,12 @@ const sanitizeText = (input: any): string => {
 
       const fullName = sanitizeText(s.name)
       const fullLower = fullName.toLowerCase().trim()
-      // Prefer timetable abbreviation; if missing, derive initials from the full subject name.
-      // Never use the database subject code (e.g., CS3591) in the PDF.
-      const abbrev = sanitizeText(abbrevMap[fullLower] || toInitials(fullName))
+      const subjCode = normalize(s.code as any)
+      // Use only timetable-provided abbreviation, prefer code match over name match.
+      // If missing, leave empty so full name is shown.
+      const abbrev = sanitizeText(
+        (abbrevMap.byCode[subjCode] || abbrevMap.byName[fullLower] || "")
+      )
 
       return {
         subject: fullName,
